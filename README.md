@@ -33,8 +33,10 @@ of notes are questions, bodies of notes are answers.
 
 
 - creating items directly from the srrs UI doesn't work
-- items are not currently being scheduled - see the `%raise-item` action to
-  manually add items to review
+- though the spaced repetition parameters are being calculated, items are not
+  currently being scheduled - see the `%raise-item` action to manually add items
+  to review. when an item is in the review list, it appears in the review page
+  and the answer is not shown until you click on it. 
   
   
 **TODO:**
