@@ -95,7 +95,7 @@
     =^  cards  state
       ?+  path  [~ state]
         [%srrstile *]       (peer-srrstile:sc t.path)
-        [%srrs-primary *]   ~&  srrsprim+path  (peer-srrs-primary:sc t.path)
+        [%srrs-primary *]   (peer-srrs-primary:sc t.path)
         [%http-response *]  [~ state]
       ==
     [cards this]
@@ -216,6 +216,19 @@
   ::
       [[[~ %js] [%'~srrs' %tile ~]] ~]
     (js-response:gen tile-js)
+  ::  learned status as json for given stack
+      [[[~ %json] [%'~srrs' %learn @ ~]] ~]
+    =/  stack-name  i.t.t.site.request-line
+    %-  json-response:gen
+    %-  json-to-octs
+    %-  stack-status-to-json  (~(got by pubs) stack-name)
+      [[[~ %json] [%'~srrs' %learn @ @ ~]] ~]
+    =/  stack-name  i.t.t.site.request-line
+    =/  item-name  i.t.t.t.site.request-line
+    =/  stack=stack  (~(got by pubs) stack-name)
+    %-  json-response:gen
+    %-  json-to-octs
+    %-  status-to-json  (~(got by status.stack) item-name)
   ::  home page; redirect
   ::
       [[~ [%'~srrs' ~]] ~]
@@ -278,15 +291,14 @@
           now.bol
       ==
     ::
-    =/  add-items
-    %+  roll  ~(tap by items.act)
-    |=  [[item=@tas note=note:publish] cad=(list card)]
-    (snoc cad (add-item item title.conf))
+    ::  =/  add-items
+    ::  %+  roll  ~(tap by items.act)
+    ::  |=  [[item=@tas note=note:publish] cad=(list card)]
+    ::  (snoc cad (add-item item title.conf))
     =^  cards  state  (add-stack conf items.act)
-    [(weld add-items cards) state]
+    [cards state]
       %new-item
-    :_  state
-    [(add-item name.act stak.act)]~
+    [~ state]
     ::
       %delete-stack
     ~&  delete-stack+act
