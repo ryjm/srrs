@@ -29,20 +29,15 @@ in app/publish, like this:
   |_  bol=bowl:gall
 ...
 ```
-and run `:publish %memo` - this will hook into the publish app and add all
+and run `:publish +memo` - this will hook into the publish app and add all
 notebooks to srrs (you need to add a new post or notebook to trigger it). title
 of notes are questions, bodies of notes are answers.
 
 
 - creating items directly from the srrs UI doesn't work
-- though the spaced repetition parameters are being calculated, items are not
-  currently being scheduled - see the `%raise-item` action to manually add items
-  to review. when an item is in the review list, it appears in the review page
-  and the answer is not shown until you click on it. 
-  
   
 **TODO:**
-- handle the scheduling of review items
+- ~~handle the scheduling of review items~~
 - support creating stacks/items through frontend
 - tile
 - remove old publish artifacts
