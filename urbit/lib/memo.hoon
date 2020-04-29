@@ -35,7 +35,13 @@
       %bowl  `this(bowl-print !bowl-print)
     ==
   =^  cards  agent  (on-poke:ag mark vase)
-  [cards this]
+  =/  publish-state  on-save:ag
+  =/  books  (slop !>(%add-books) (slap publish-state [%limb %books]))
+  =/  memo-cards=(list card:agent:gall)
+  :~
+      [%pass /memo %agent [our.bowl %srrs] %poke %srrs-action books]
+  ==
+  [(weld memo-cards cards) this]
 ::
 ++  on-watch
   |=  =path
