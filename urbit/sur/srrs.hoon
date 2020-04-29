@@ -99,7 +99,7 @@
 ::
 +$  learned-status
   $:  ease=@rs
-      interval=@rs
+      interval=@dr
       box=@
   ==
 ::

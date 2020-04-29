@@ -1,19 +1,20 @@
 /-  *srrs
 /+  elem-to-react-json, publish
 |%
+++  time-to-atom
+  |=  time=@d
+  ^-  @
+  (yule (yell time))
 ::
-::  ++  front-to-item-info
-::    |=  fro=(map knot cord)
-::    ^-  item-info
-::    =/  got  ~(got by fro)
-::    ~|  %invalid-frontmatter
-::    :*  (slav %p (got %author))
-::        (got %title)
-::        (got %stack)
-::        (got %filename)
-::        (slav %da (got %date-created))
-::        (slav %da (got %last-modified))
-::    ==
+++  time-to-rs
+  |=  time=@d
+  ^-  @rs
+  (sun:rs (time-to-atom time))
+::
+++  rs-to-time
+  |=  time=@rs
+  ^-  @dr
+  (abs:si (need (toi:rs time)))
 ::
 ++  stack-info-to-json
   |=  con=stack-info

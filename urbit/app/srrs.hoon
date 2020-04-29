@@ -118,11 +118,13 @@
   ++  on-arvo
     |=  [=wire =sign-arvo]
     ^-  (quip card _this)
-    ?+  wire
-      (on-arvo:def wire sign-arvo)
-        [%bind ~]
-      [~ this]
-    ==
+    =^  cards  state
+      ?+  wire  [~ state]
+        [%bind ~]  [~ state]
+        [%review-schedule @ ~]  (wake:sc wire)
+        [%review-schedule @ @ @ ~]  (wake:sc wire)
+      ==
+    [cards this]
   ::
   ++  on-save  !>(state)
   ++  on-load
@@ -385,6 +387,20 @@
 ::
 ++  our-beak  /(scot %p our.bol)/[q.byk.bol]/(scot %da now.bol)
 ::
+++  wake
+  |=  =wire
+  ^-  (quip card _state)
+  =^  cards  state
+    ?+  wire
+      [~ state]
+        [%review-schedule @ @ @ ~]
+          :-  ~
+          %=  state
+           review  (~(put in review.state) [our.bol i.t.wire i.t.t.wire])
+          ==
+    ==
+  [cards state]
+::
 ++  poke-noun
   |=  a=*
     ^-  (quip card _state)
@@ -398,6 +414,8 @@
         %clear-state
       ~&  state+state
       [~ *versioned-state]
+        %clear-review
+      [~ state(review review:*versioned-state)]
     ==
 ::
 ++  state-to-json
@@ -523,13 +541,13 @@
   =/  item-status=learned-status  (~(got by status.old-stack) item)
   =/  ease=@rs  (next-ease recall-grade item-status)
   =/  box=@  (next-box recall-grade item-status)
-  ~&  box+box
-  =/  interval=@rs  (next-interval [ease box item-status])
+  =/  interval=@dr  (next-interval [ease box item-status])
   =/  new-item-status=learned-status  (learned-status [ease interval box])
-  ~&  new-item-status+new-item-status
   =/  new-status  (~(put by status.old-stack) item new-item-status)
   =/  new-stack  old-stack(status new-status)
-  [~ state(pubs (~(put by pubs) stak new-stack))]
+  =/  review-date=@da  (add now.bol interval)
+  =/  schedule-card  [%pass /review-schedule/(scot %tas stak)/(scot %tas item)/(scot %da review-date) %arvo %b %wait review-date]~
+  [schedule-card state(pubs (~(put by pubs) stak new-stack))]
 ::
 ++  next-ease
   |=  [=recall-grade =learned-status]
@@ -564,30 +582,32 @@
       ==
     2
   ?:  =(recall-grade %again)  0
-  ~&  old+box.learned-status
-  ~&  new+(add box.learned-status 1)
   (add box.learned-status 1)
 ::
 ++  next-interval
   |=  [next-ease=@rs next-box=@ =learned-status]
-  ^-  @rs
+  ^-  @dr
   ::  ~15 min, 1 day, 6 days
-  =/  fixed-intervals=(list @rs)  [.0 .0.1 .1.0 .6.0 ~]
+  =/  fixed-intervals=(list @dr)  [~s5 ~m15 ~d1 ~d6 ~]
   ?:  (lth next-box (lent fixed-intervals))
     (snag next-box fixed-intervals)
-  (interval-fuzz (mul:rs next-ease interval.learned-status))
+  (interval-fuzz interval.learned-status next-ease)
 ::
+++  interval-fuzz
+  |=  [interval=@dr next-ease=@rs]
+  ^-  @dr
+  =/  random  ~(. og eny.bol)
+  =/  interval-rs  (time-to-rs interval)
+  =/  r=@rs  (add:rs `@rs`.0.9 (rad:random .1.1))
+  =/  fuzzed  (mul:rs (mul:rs next-ease interval-rs) r)
+  (rs-to-time fuzzed)
+::
+
 ++  next-clay
   |=  [=wire =path]
   ^-  card
   =/  rav  [%next %t [%da now.bol] path]
   [%pass wire %arvo %c %warp our.bol q.byk.bol `rav]
-::
-++  interval-fuzz
-  |=  interval=@rs
-  =/  random  ~(. og eny.bol)
-  =/  r=@rs  (add:rs `@rs`.0.9 (rad:random .1.1))
-  (mul:rs interval r)
 ::
 ++  sing-clay
   |=  [=wire =path]
