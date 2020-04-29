@@ -44,6 +44,19 @@ class UrbitApi {
         });
     });
   }
+
+  fetchStatus(stack, item) {
+    fetch(`/~srrs/learn/${stack}/${item}.json`)
+    .then((response) => response.json())
+    .then((json) => {
+      store.handleEvent({
+        type: 'learn',
+        data: json,
+        stack: stack,
+        item: item,
+      });
+    });
+  }
 }
 export let api = new UrbitApi();
 window.api = api;

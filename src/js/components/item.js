@@ -39,6 +39,10 @@ class Admin extends Component {
              onClick={this.props.deleteItem}>
             Delete
           </p>
+          <p className="label-regular gray-50 pointer tr b"
+             onClick={this.props.toggleAdvanced}>
+            Advanced
+          </p>
         </div>
       );
     } else if (this.props.mode === 'edit'){
@@ -87,9 +91,6 @@ class Admin extends Component {
                     ->  Save Grade
                   </p>
 
-                  <div id={`choices__label-${name}`} className="choices__label">
-                    {label}
-                  </div>
                   <div className="choices__items">
                     {states.map((state, idx) => (
                       <button
@@ -116,6 +117,23 @@ class Admin extends Component {
               )}
           </Choices>
           </div>
+      );
+    } else if (this.props.mode === 'advanced') {
+      let ease = `ease: ${this.props.learn.ease}`;
+      let interval = `interval: ${this.props.learn.interval}`;
+      let box = `box: ${this.props.learn.box}`;
+      let backString = `<- Back`
+
+      return (
+        <div className="body-regular flex-col fr">
+          <p className="pointer"
+            onClick={this.props.toggleAdvanced}>
+            {backString}
+          </p>
+          <p className="label-small gray-50">{ease}</p>
+          <p className="label-small gray-50">{interval}</p>
+          <p className="label-small gray-50">{box}</p>
+        </div>
       );
     }
 
@@ -155,6 +173,7 @@ export class Item extends Component {
       title: '',
       body: '',
       recallGrade: '',
+      learn: [],
       awaitingEdit: false,
       awaitingGrade: false,
       awaitingLoad: false,
@@ -177,6 +196,7 @@ export class Item extends Component {
     this.gradeItem = this.gradeItem.bind(this);
     this.setGrade = this.setGrade.bind(this);
     this.saveGrade = this.saveGrade.bind(this);
+    this.toggleAdvanced = this.toggleAdvanced.bind(this);
 
   }
 
@@ -189,6 +209,13 @@ export class Item extends Component {
   }
   setGrade(value) {
     this.setState({recallGrade: value});
+  }
+  toggleAdvanced() {
+    if (this.state.mode == 'advanced') {
+      this.setState({mode: 'view'});
+    } else {
+      this.setState({mode: 'advanced'});
+    }
   }
   saveItem() {
     if (this.state.title == this.state.titleOriginal &&
@@ -240,7 +267,6 @@ export class Item extends Component {
         answer: this.state.recallGrade
       },
     };
-    console.log(data);
     this.setState({
       awaitingGrade: {
         ship: this.state.ship,
@@ -263,6 +289,7 @@ export class Item extends Component {
 
       if (stack) {
         let item = _.get(stack, `items["${itemId}"].item`, false);
+        let learn = _.get(stack, `items["${itemId}"].learn`, false);
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
         let itemUrl = `${stackUrl}/${item["note-id"]}`;
 
@@ -273,6 +300,7 @@ export class Item extends Component {
           body: item.file,
           stack: stack,
           item: item,
+          learn: learn,
           pathData: [
             { text: "Home", url: "/~srrs/review" },
             { text: stack.info.title, url: stackUrl },
@@ -308,6 +336,7 @@ export class Item extends Component {
     } else {
       let stack = _.get(this.props, `pubs["${stackId}"]`, false);
       let item = _.get(stack, `items["${itemId}"].item`, false);
+      let learn = _.get(stack, `items["${itemId}"].learn`, false);
 
       if (!stack || !item) {
         this.setState({notFound: true});
@@ -323,6 +352,7 @@ export class Item extends Component {
           body: item.file,
           stack: stack,
           item: item,
+          learn: learn,
           pathData: [
             { text: "Home", url: "/~srrs/review" },
             { text: stack.info.title, url: stackUrl },
@@ -334,6 +364,8 @@ export class Item extends Component {
   }
 
   handleEvent(diff) {
+    console.log("handle event")
+    console.log(diff)
     if (diff.data.total) {
       let stack = diff.data.total.data;
       let item = stack.items[this.state.itemId].item;
@@ -387,18 +419,24 @@ export class Item extends Component {
     let oldItem = prevState.item;
     let oldStack = prevState.stack;
 
+
     let item;
     let stack;
+    let learn;
 
     if (ship === window.ship) {
       stack = _.get(this.props, `pubs["${stackId}"]`, false);
       item = _.get(stack, `items["${itemId}"].item`, false);
+      learn = _.get(stack, `items["${itemId}"].learn`, false);
     } else {
       stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
       item = _.get(stack, `items["${itemId}"].item`, false);
+      learn = _.get(stack, `items["${itemId}"].learn`, false);
     }
 
-
+    if (this.state.learn !== this.props.learn) {
+      this.state.learn = this.props.learn;
+    }
     if (this.state.awaitingDelete && (item === false) && oldItem) {
       this.props.setSpinner(false);
       let redirect = `/~srrs/~${this.props.ship}/${this.props.stackId}`;
@@ -446,10 +484,9 @@ export class Item extends Component {
     }
 
     if (this.state.awaitingGrade ) {
-      console.log("here");
      let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
      let itemUrl = `${stackUrl}/${item["note-id"]}`;
-
+     this.props.api.fetchStatus(stack.info.filename, item.title)
      this.setState({
        mode: 'view',
        titleOriginal: item.title,
@@ -552,7 +589,7 @@ export class Item extends Component {
       return null;
     } else if (this.state.awaitingEdit) {
       return null;
-    } else if (this.state.mode == 'view' || this.state.mode == 'grade') {
+    } else if (this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
       let stackLink = `/~srrs/~${this.state.ship}/${this.props.stackId}`;
       let stackLinkText = `<- Back to ${this.state.stack.info.title}`;
 
@@ -582,6 +619,8 @@ export class Item extends Component {
                   gradeItem={this.gradeItem}
                   setGrade={this.setGrade}
                   saveGrade={this.saveGrade}
+                  toggleAdvanced={this.toggleAdvanced}
+                  learn={this.state.learn}
                 />
               </div>
 

@@ -1,6 +1,7 @@
 import { InitialReducer } from '/reducers/initial';
 import { ConfigReducer } from '/reducers/config';
 import { UpdateReducer } from '/reducers/update';
+import { LearnReducer } from '/reducers/learn';
 
 
 class Store {
@@ -13,6 +14,7 @@ class Store {
         this.initialReducer = new InitialReducer();
         this.configReducer = new ConfigReducer();
         this.updateReducer = new UpdateReducer();
+        this.learnReducer = new LearnReducer();
         this.setState = () => { };
     }
 
@@ -23,11 +25,10 @@ class Store {
     handleEvent(data) {
         let json = data.data;
 
-        console.log(json);
         this.initialReducer.reduce(json, this.state);
         this.configReducer.reduce(json, this.state);
         this.updateReducer.reduce(json, this.state);
-
+        this.learnReducer.reduce(data, this.state);
         this.setState(this.state);
     }
 }

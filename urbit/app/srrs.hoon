@@ -471,21 +471,6 @@
       new+(numb:enjs:format ~(wyt in unread))
   ==
 ::
-++  add-item
-  |=  [nam=@tas stak=@tas]
-  ^-  card
-  =/  ipax=path  /app/srrs/[stak]/[nam]/srrs-item-info
-  =/  info
-  =|  inf=item-info
-    %=  inf
-      author  src.bol
-      stack  stak
-      name  nam
-      date-created  now.bol
-      last-modified  now.bol
-    ==
-  (write-file ipax %srrs-item-info !>(info))
-::
 ++  add-stack
   |=  [info=stack-info items=(map @tas note:publish)]
   ^-  (quip card _state)
@@ -499,8 +484,7 @@
     status  (~(run by items) |*(a=* (learned-status [.2.5 0 0])))
   ==
   =/  new-pubs  (~(put by pubs.state) filename.info new-stack)
-  =/  pax=path  /app/srrs/[filename.info]/srrs-info
-  [[(write-file pax %srrs-info !>(info))]~ state(pubs new-pubs)]
+  [~ state(pubs new-pubs)]
 ::
 ++  add-books
   |=  books=(map @tas notebook:publish)

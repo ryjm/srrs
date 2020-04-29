@@ -27,17 +27,6 @@
       :-  %filename       [%s filename.con]
   ==
 ::
-++  item-info-to-json
-  |=  info=item-info
-  ^-  json
-  %-  pairs:enjs:format
-  :~  :-  %author        [%s (scot %p author.info)]
-      :-  %date-created   (time:enjs:format date-created.info)
-      :-  %last-modified  (time:enjs:format last-modified.info)
-      :-  %name       [%s name.info]
-      :-  %stack     [%s stack.info]
-  ==
-::
 ++  tang-to-json
   |=  tan=tang
   %-  wall:enjs:format
@@ -67,21 +56,29 @@
     (stack-info-to-json +.bud)
   (tang-to-json +.bud)
 ::
-++  item-build-to-json
-  |=  bud=(each [item-info manx @t] tang)
+++  status-to-json
+  |=  status=learned-status
   ^-  json
-  ?:  ?=(%.y -.bud)
-    %-  pairs:enjs:format
-    :~  info+(item-info-to-json +<.bud)
-        body+(elem-to-react-json +>-.bud)
-        raw+[%s +>+.bud]
-    ==
-  (tang-to-json +.bud)
+  %-  pairs:enjs:format
+  :~  :-  %ease  [%s (scot %rs ease.status)]
+      :-  %interval  [%s (scot %dr interval.status)]
+      :-  %box  [%s (scot %u box.status)]
+  ==
+::
+++  stack-status-to-json
+  |=  stack=stack
+  ^-  json
+  :-  %o
+  %+  roll  ~(tap in ~(key by items.stack))
+  |=  [item=@tas out=(map @t json)]
+  =/  status-build  (~(got by status.stack) item)
+  %+  ~(put by out)
+    item
+  (status-to-json status-build)
 ::
 ++  total-build-to-json
   |=  stack=stack
   ^-  json
-  ~&  [%keys ~(key by items.stack)]
   %-  pairs:enjs:format
   :~  info+(stack-build-to-json stack.stack)
   ::
@@ -90,10 +87,12 @@
     %+  roll  ~(tap in ~(key by items.stack))
     |=  [item=@tas out=(map @t json)]
     =/  item-build  (~(got by items.stack) item)
+    =/  status-build  (~(got by status.stack) item)
     %+  ~(put by out)
       item
     %-  pairs:enjs:format
     :~  item+(note-full-json:publish item item-build)
+        learn+(status-to-json status-build)
     ==
   ::
     :-  %order

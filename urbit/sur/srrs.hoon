@@ -87,10 +87,8 @@
 +$  stack
   $:  stack=(each stack-info tang)
       name=@tas
-      item=(map @tas dat=(each [item-info manx @t] tang))
       items=(map @tas note:publish)
       status=(map @tas learned-status)
-      item-infos=(map @tas item-info)
       order=[pin=(list @tas) unpin=(list @tas)]
       contributors=[mod=?(%white %black) who=(set @p)]
       subscribers=(set @p)
@@ -107,7 +105,6 @@
 ::
 +$  delta
   $%  [%stack who=@p stack=@tas dat=(each stack-info tang)]
-      [%item who=@p stack=@tas item=@tas dat=(each [item-info manx @t] tang)]
       [%total who=@p stack=@tas dat=stack]
       [%remove who=@p stack=@tas item=(unit @tas)]
   ==
