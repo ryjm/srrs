@@ -279,6 +279,10 @@
       %answered-item
     ~&  answered-item+act
     =^  cards  state  (update-learned-status stak.act item.act answer.act)
+    :-  cards
+    %=  state
+      review  (~(del in review.state) [our.bol stak.act item.act])
+    ==
       %read
     ~&  read+act
     [~ state]
