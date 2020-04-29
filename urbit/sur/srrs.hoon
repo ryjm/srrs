@@ -38,15 +38,6 @@
           content=@t
       ==
   ::
-      [%invite stak=@tas title=@t who=(list ship)]
-      [%reject-invite who=@p stak=@tas]
-  ::
-      [%serve stak=@tas]
-      [%unserve stak=@tas]
-  ::
-      [%subscribe who=@p stak=@tas]
-      [%unsubscribe who=@p stak=@tas]
-  ::
       [%read who=@p stak=@tas item=@tas]
       [%add-books books=(map @tas notebook:publish)]
   ==
@@ -59,16 +50,6 @@
       date-created=@da
       last-modified=@da
   ==
-::
-+$  item-info
-  $:  author=@p
-      stack=@tas
-      name=@tas
-      date-created=@da
-      last-modified=@da
-      =learned-status
-  ==
-::
 ::
 +$  perm-config  [read=rule:clay write=rule:clay]
 ::

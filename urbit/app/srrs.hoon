@@ -135,58 +135,13 @@
     ?:  ?=(%& -.old-state)
       ~!  p.old-state
       [~ this(state p.old-state)]
-    :_  this
-    [(sing-clay /read/paths /app/srrs)]~
+    [~ this]
   ++  on-leave  on-leave:def
   ++  on-peek   on-peek:def
   ++  on-fail   on-fail:def
   --
 ::
 |_  bol=bowl:gall
-::  +write-file: write file at path
-::
-++  write-file
-  =,  space:userlib
-  |=  [pax=path cay=cage]
-  ^-  card
-  =.  pax  (weld our-beak pax)
-  [%pass (weld /write-file pax) %arvo %c %info (foal pax cay)]
-::
-++  delete-file
-  =,  space:userlib
-  |=  pax=path
-  ^-  card
-  =.  pax  (weld our-beak pax)
-  [%pass (weld /remove-file pax) %arvo %c %info (fray pax)]
-::
-++  add-front-matter
-  |=  [fro=(map knot cord) udon=@t]
-  ^-  @t
-  %-  of-wain:format
-  =/  tum  (trip udon)
-  =/  id  (find ";>" tum)
-  ?~  id
-    %+  weld  (front-to-wain fro)
-    (to-wain:format (crip :(weld ";>\0a" tum)))
-  %+  weld  (front-to-wain fro)
-  (to-wain:format (crip (slag u.id tum)))
-::
-++  front-to-wain
-  |=  a=(map knot cord)
-  ^-  wain
-  =/  entries=wain
-    %+  turn  ~(tap by a)
-    |=  b=[knot cord]
-    =/  c=[term cord]  (,[term cord] b)
-    (crip "  [{<-.c>} {<+.c>}]")
-  ::
-  ?~  entries  ~
-  ;:  weld
-    [':-  :~' ~]
-    entries
-    ['    ==' ~]
-  ==
-::
 ++  poke-sign-arvo
   |=  =sign-arvo
   ^-  (quip card _state)
@@ -292,11 +247,6 @@
           now.bol
           now.bol
       ==
-    ::
-    ::  =/  add-items
-    ::  %+  roll  ~(tap by items.act)
-    ::  |=  [[item=@tas note=note:publish] cad=(list card)]
-    ::  (snoc cad (add-item item title.conf))
     =^  cards  state  (add-stack conf items.act)
     [cards state]
       %new-item
@@ -329,25 +279,6 @@
       %answered-item
     ~&  answered-item+act
     =^  cards  state  (update-learned-status stak.act item.act answer.act)
-    [cards state]
-      %invite
-    ~&  invite+act
-    [~ state]
-      %reject-invite
-    ~&  reject-invite+act
-    [~ state]
-      %serve
-    ~&  serve+act
-    [~ state]
-      %unserve
-    ~&  unserve+act
-    [~ state]
-      %subscribe
-    ~&  subscribe+act
-    [~ state]
-      %unsubscribe
-    ~&  unsubscribe+act
-    [~ state]
       %read
     ~&  read+act
     [~ state]
@@ -602,16 +533,4 @@
   =/  fuzzed  (mul:rs (mul:rs next-ease interval-rs) r)
   (rs-to-time fuzzed)
 ::
-
-++  next-clay
-  |=  [=wire =path]
-  ^-  card
-  =/  rav  [%next %t [%da now.bol] path]
-  [%pass wire %arvo %c %warp our.bol q.byk.bol `rav]
-::
-++  sing-clay
-  |=  [=wire =path]
-  ^-  card
-  =/  rav  [%sing %t [%da now.bol] path]
-  [%pass wire %arvo %c %warp our.bol q.byk.bol `rav]
 --
