@@ -7,10 +7,9 @@ spaced repetition repetition system
 *warning*: this was originally written on top of the old publish app, so there is a
 lot of that code in here, especially on the front end. 
 
-**_i don't recommend running this on a live ship_**
-
 run with `npm serve`
 
+### Hooking into app/publish
 
 currently piggybacks off of publish notebooks - put 
 
@@ -32,6 +31,9 @@ in app/publish, like this:
 and run `:publish +memo` - this will hook into the publish app and add all
 notebooks to srrs (you need to add a new post or notebook to trigger it). title
 of notes are questions, bodies of notes are answers.
+
+you can also try scrying into app/publish to get the books, and then send to
+srrs with a poke. better support for that path soon. 
 
 
 - creating items directly from the srrs UI doesn't work
