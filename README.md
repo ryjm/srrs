@@ -37,6 +37,17 @@ srrs with a poke. better support for that path soon.
 
 
 - creating items directly from the srrs UI doesn't work
+
+
+to create a new stack with a single item, you can do something like this from the dojo:
+
+`
+> =note note(file 'test', title 'question', filename 'test')
+> =act &srrs-action [%new-stack %my-items 'my items' (my ~[[%my-items note]]) edit-config perm-config]
+> :srrs act
+`
+
+where note is just a bunted `note:publish`.
   
 **TODO:**
 - ~~handle the scheduling of review items~~
