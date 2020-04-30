@@ -41,11 +41,13 @@ srrs with a poke. better support for that path soon.
 
 to create a new stack with a single item, you can do something like this from the dojo:
 
-`
+``` hoon
+
 > =note note(file 'test', title 'question', filename 'test')
 > =act &srrs-action [%new-stack %my-items 'my items' (my ~[[%my-items note]]) edit-config perm-config]
 > :srrs act
-`
+
+```
 
 where note is just a bunted `note:publish`.
   
@@ -57,8 +59,3 @@ where note is just a bunted `note:publish`.
 - clean up sur and lib, move to json in mar
 - update landscape UI to OS1 style, probably just a full rewrite
 - less shitty
-
-
-
-
-
