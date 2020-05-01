@@ -21,9 +21,6 @@ export class Review extends Component {
     for (var i=0; i<this.props.review.length; i++) {
       let index = this.props.review[i];
       let item = this.retrieveItem(index.item, index.stack, index.who);
-      if (item == null) {
-        break;
-      }
       let itemDate = new Date(item.content["date-created"]);
       let itemProps = this.buildItemPreviewProps(index.item, index.stack, index.who);
 

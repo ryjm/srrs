@@ -10,24 +10,13 @@ export default class SrrsTile extends Component {
 
   render(){
     let info = [];
-    if (this.props.data.invites > 0) {
-      let text = (this.props.data.invites == 1)
-        ?  "Invite"
-        :  "Invites"
+    if (this.props.data.review > 0) {
+      let text = (this.props.data.review == 1)
+        ?  "Review"
+        :  "Reviews"
       info.push(
         <p key={1}>
-          <span className="green-medium">{this.props.data.invites} </span>
-          <span>{text}</span>
-        </p>
-      );
-    }
-    if (this.props.data.new > 0) {
-      let text = (this.props.data.new == 1)
-        ?  "New Post"
-        :  "New Posts"
-      info.push(
-        <p key={2}>
-          <span className="green-medium">{this.props.data.new} </span>
+          <span className="green-medium">{this.props.data.review} </span>
           <span>{text}</span>
         </p>
       );
@@ -40,12 +29,6 @@ export default class SrrsTile extends Component {
             style={{left: 8, top: 4}}>
             Srrs
           </p>
-          <img
-            className="absolute"
-            style={{left: 60, top: 66}}
-            src="/~srrs/tile.png"
-            width={113}
-            height={102} />
           <div className="absolute w-100 flex-col body-regular white"
             style={{verticalAlign: "bottom", bottom: 8, left: 8}}>
             {info}

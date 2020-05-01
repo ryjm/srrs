@@ -59,11 +59,14 @@
   ++  on-init
     :_  this
     =/  rav  [%sing %t [%da now.bol] /app/srrs]
-    :~  [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
-        :*  %pass  /launch/srrs  %agent  [our.bol %launch]  %poke
-            %launch-action  !>([%srrs /srrstile '/~srrs/tile.js'])
-        ==
-        [%pass /read/paths %arvo %c %warp our.bol q.byk.bol `rav]
+    ;:  welp
+      make-tile-moves
+      :~  [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
+          :*  %pass  /launch/srrs  %agent  [our.bol %launch]  %poke
+               %launch-action  !>([%srrs /srrstile '/~srrs/tile.js'])
+          ==
+          [%pass /read/paths %arvo %c %warp our.bol q.byk.bol `rav]
+      ==
     ==
   ++  on-poke
     |=  [=mark =vase]
@@ -79,6 +82,8 @@
           %handle-http-request
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
         :_  state
+        %+  weld
+          make-tile-moves
         %+  give-simple-payload:app  eyre-id
         %+  require-authorization:app  inbound-request
         poke-handle-http-request:sc
@@ -355,7 +360,7 @@
   ^-  (quip card _state)
   ~&  wir+wire
   :_  state
-  [%give %fact ~ %json !>(make-tile-json)]~
+  [%give %fact ~[/srrstile] %json !>(make-tile-json)]~
 ::
 ++  peer-srrs-stack
   |=  wir=wire
@@ -420,6 +425,9 @@
       [~ *versioned-state]
         %clear-review
       [~ state(review review:*versioned-state)]
+        %tile
+      :_  state
+      make-tile-moves
     ==
 ::
 ++  state-to-json
@@ -512,12 +520,15 @@
   ^-  (quip card _state)
   =/  old-stack=stack  (~(got by pubs.state) stak)
   =/  item-status=learned-status  (~(got by status.old-stack) item)
+  =/  itm=^item  (~(got by items.old-stack) item)
   =/  ease=@rs  (next-ease recall-grade item-status)
   =/  box=@  (next-box recall-grade item-status)
   =/  interval=@dr  (next-interval [ease box item-status])
   =/  new-item-status=learned-status  (learned-status [ease interval box])
+  =/  new-item  itm(learn new-item-status)
   =/  new-status  (~(put by status.old-stack) item new-item-status)
-  =/  new-stack  old-stack(status new-status)
+  =/  new-stack  old-stack(status new-status, items (~(put by items.old-stack) item new-item))
+  ~&  new-stack+new-stack
   =/  review-date=@da  (add now.bol interval)
   =/  schedule-card  [%pass /review-schedule/(scot %tas stak)/(scot %tas item)/(scot %da review-date) %arvo %b %wait review-date]~
   [schedule-card state(pubs (~(put by pubs) stak new-stack))]
