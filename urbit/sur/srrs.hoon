@@ -5,14 +5,18 @@
   $%  $:  %new-stack
           name=@tas
           title=@t
-          items=(map @tas note:publish)
+          items=(map @tas item)
           edit=edit-config
           perm=perm-config
       ==
   ::
       $:  %new-item
+          who=@p
           stak=@tas
           name=@tas
+          title=@tas
+          perm=perm-config
+          content=@t
       ==
   ::
       $:  %schedule-item
@@ -56,24 +60,20 @@
 
 +$  edit-config     $?(%item %all %none)
 ::
-+$  rumor  delta
-::
-+$  srrs-dir  (map path srrs-file)
-::
-+$  srrs-file
-  $%  [%udon @t]
-      [%srrs-info stack-info]
-  ==
-::
 +$  stack
   $:  stack=(each stack-info tang)
       name=@tas
-      items=(map @tas note:publish)
+      items=(map @tas item)
       status=(map @tas learned-status)
       order=[pin=(list @tas) unpin=(list @tas)]
       contributors=[mod=?(%white %black) who=(set @p)]
       subscribers=(set @p)
       last-update=@da
+  ==
+::
++$  item
+  $:  content=note:publish
+      learn=learned-status
   ==
 ::
 +$  recall-grade  $?(%again %hard %good %easy)
@@ -84,14 +84,12 @@
       box=@
   ==
 ::
-+$  delta
-  $%  [%stack who=@p stack=@tas dat=(each stack-info tang)]
-      [%total who=@p stack=@tas dat=stack]
-      [%remove who=@p stack=@tas item=(unit @tas)]
++$  stack-delta
+  $%  [%add-item who=@p stack=@tas item=@tas data=item]
   ==
 ::
-+$  update
-  $%  [%invite add=? who=@p stack=@tas title=@t]
-      [%unread add=? keys=(set [who=@p stak=@tas item=@tas])]
++$  primary-delta
+  $%  stack-delta
+      [%read who=@p stack=@tas item=@tas]
   ==
 --

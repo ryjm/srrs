@@ -44,7 +44,7 @@ export class ItemPreview extends Component {
       <div className="w-336 relative"
         style={{height:195, marginBottom: 72, marginRight:16}}>
         <Link to={itemLink}>
-          <TitleSnippet badge={this.props.item.unread} title={this.props.item.itemTitle}/>
+          <TitleSnippet title={this.props.item.itemTitle}/>
           <ItemSnippet
             body={this.props.item.itemSnippet}
           />

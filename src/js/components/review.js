@@ -21,7 +21,10 @@ export class Review extends Component {
     for (var i=0; i<this.props.review.length; i++) {
       let index = this.props.review[i];
       let item = this.retrieveItem(index.item, index.stack, index.who);
-      let itemDate = new Date(item["date-created"]);
+      if (item == null) {
+        break;
+      }
+      let itemDate = new Date(item.content["date-created"]);
       let itemProps = this.buildItemPreviewProps(index.item, index.stack, index.who);
 
       if (group.items.length == 0) {
@@ -50,23 +53,15 @@ export class Review extends Component {
     let item = this.retrieveItem(it, st, who);
     let stack = this.retrieveStack(st, who);
 
-    let unread =  (-1 === _.findIndex(this.props.unread, {
-        item: item,
-        stack: stack,
-        who: who,
-      }))
-      ? false: true;
-
     return {
-      itemTitle: item.title,
-      itemName:  item['note-id'],
-      itemBody: item.file,
+      itemTitle: item.content.title,
+      itemName:  item.content['note-id'],
+      itemBody: item.content.file,
       stackTitle: stack.title,
       stackName:  stack.filename,
-      author: item.author.slice(1),
+      author: item.content.author.slice(1),
       stackOwner: who,
-      date: item["date-created"],
-      unread: unread,
+      date: item.content["date-created"]
     }
 
   }
@@ -74,9 +69,9 @@ export class Review extends Component {
 
   retrieveItem(item, stack, who) {
     if (who === window.ship) {
-      return this.props.pubs[stack].items[item].item;
+      return this.props.pubs[stack].items[item];
     } else {
-      return this.props.subs[who][stack].items[item].item;
+      return this.props.subs[who][stack].items[item];
     }
   }
 
@@ -152,12 +147,9 @@ export class Review extends Component {
       );
     });
 
-    let invites = (this.props.invites.length > 0);
-    let unread = (this.props.unread.length > 0);
-
     return (
       <div>
-        <HM invites={invites} unread={unread}/>
+        <HM />
         <div className="absolute w-100"
           style={{top:124, marginLeft: 16, marginRight: 16, marginTop: 32}}>
           <div className="flex-col">

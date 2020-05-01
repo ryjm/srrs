@@ -34,7 +34,7 @@ export class ReviewPreview extends Component {
 
   render() {
     let date = moment(this.props.item.date).fromNow();
-    let authorDate = `~${this.props.item.author} • ${date}`
+    let authorDate = `~${this.props.item.author} • ${date}!`
     let stackLink = "/~srrs/~" +
       this.props.item.stackOwner + "/" +
       this.props.item.stackName;

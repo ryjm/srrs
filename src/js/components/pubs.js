@@ -75,12 +75,10 @@ export class Pubs extends Component {
       );
     });
 
-    let invites = (this.props.invites.length > 0);
-    let unread = (this.props.unread.length > 0);
 
     return (
       <div>
-        <HM invites={invites} unread={unread}/>
+        <HM />
         <div className="absolute w-100" style={{top:124}}>
           <div className="flex-column">
             <div className="w-100">

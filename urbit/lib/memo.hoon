@@ -84,7 +84,7 @@
   :~
       [%pass /memo %agent [our.bowl %srrs] %poke %srrs-action books]
   ==
-  [(weld memo-cards cards) this]
+  [(weld cards memo-cards) this]
 
 ::
 ++  on-fail

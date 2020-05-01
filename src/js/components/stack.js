@@ -43,6 +43,7 @@ export class Stack extends Component {
   }
 
   handleEvent(diff) {
+    
     if (diff.data.total) {
       let stack = diff.data.total.data;
       this.stack = stack;
@@ -157,25 +158,18 @@ export class Stack extends Component {
   }
 
   buildItemPreviewProps(item, stack, pinned){
-    let unread =  (-1 === _.findIndex(this.props.unread, {
-        item: item.item["note-id"],
-        stack: stack.info.filename,
-        who: stack.info.owner.slice(1),
-      }))
-      ? false: true;
 
     return {
-      itemTitle: item.item.title,
-      itemName:  item.item["note-id"],
-      itemBody: item.item.file,
-      itemSnippet: item.item.snippet,
+      itemTitle: item.content.title,
+      itemName:  item.content["note-id"],
+      itemBody: item.content.file,
+      itemSnippet: item.content.snippet,
       stackTitle: stack.info.title,
       stackName:  stack.info.filename,
-      author: item.item.author,
+      author: item.content.author,
       stackOwner: stack.info.owner,
-      date: item.item["date-created"],
+      date: item.content["date-created"],
       pinned: pinned,
-      unread: unread,
     }
   }
 

@@ -3,6 +3,7 @@
   ::
 /?  309
 /-  srrs
+/+  publish
 =,  format
 ::
 |_  act=action:srrs
@@ -35,12 +36,6 @@
           raise-item+raise-item
           answered-item+answered-item
       ::
-          invite+invite
-          reject-invite+reject-invite
-      ::
-          serve+serve
-          unserve+unserve
-      ::
           subscribe+subscribe
           unsubscribe+unsubscribe
       ::
@@ -51,6 +46,7 @@
       %-  ot:dejs
       :~  name+so:dejs
           title+so:dejs
+          items+(om:dejs same)
           allow-edit+edit-config
           perm+perm-config
       ==

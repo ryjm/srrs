@@ -37,11 +37,7 @@
   $:  pubs=(map @tas stack)
       paths=(list path)
       subs=(map [ship @tas] stack)
-      awaiting=(map @tas [builds=(set wire) partial=(unit delta)])
-      latest=(list [who=ship stack=@tas item=@tas])
-      unread=(set [who=ship stack=@tas item=@tas])
       review=(set [who=ship stack=@tas item=@tas])
-      invites=(map [who=ship stack=@tas] title=@t)
   ==
 ::
 +$  card  card:agent:gall
@@ -97,6 +93,7 @@
         [%srrstile *]       (peer-srrstile:sc t.path)
         [%srrs-primary *]   (peer-srrs-primary:sc t.path)
         [%http-response *]  [~ state]
+        [%stack *]  (peer-srrs-stack:sc t.path)
       ==
     [cards this]
   ::
@@ -142,9 +139,45 @@
   --
 ::
 |_  bol=bowl:gall
+++  form-snippet
+  |=  file=@t
+  ^-  @t
+  =/  front-idx     (add 3 (need (find ";>" (trip file))))
+  =/  front-matter  (cat 3 (end 3 front-idx file) 'dummy text\0a')
+  =/  body  (cut 3 [front-idx (met 3 file)] file)
+  (of-wain:format (scag 1 (to-wain:format body)))
+++  add-front-matter
+  |=  [fro=(map knot cord) udon=@t]
+  ^-  @t
+  %-  of-wain:format
+  =/  tum  (trip udon)
+  =/  id  (find ";>" tum)
+  ?~  id
+    %+  weld  (front-to-wain fro)
+    (to-wain:format (crip :(weld ";>\0a" tum)))
+  %+  weld  (front-to-wain fro)
+  (to-wain:format (crip (slag u.id tum)))
+::
+++  front-to-wain
+  |=  a=(map knot cord)
+  ^-  wain
+  =/  entries=wain
+    %+  turn  ~(tap by a)
+    |=  b=[knot cord]
+    =/  c=[term cord]  (,[term cord] b)
+    (crip "  [{<-.c>} {<+.c>}]")
+  ::
+  ?~  entries  ~
+  ;:  weld
+    [':-  :~' ~]
+    entries
+    ['    ==' ~]
+  ==
+::
 ++  poke-sign-arvo
   |=  =sign-arvo
   ^-  (quip card _state)
+  ~&  arvo+sign-arvo
   [~ state]
 ::
 ++  poke-handle-http-request
@@ -250,7 +283,37 @@
     =^  cards  state  (add-stack conf items.act)
     [cards state]
       %new-item
-    [~ state]
+    =/  front=(map knot cord)
+      %-  my
+      :~  title+name.act
+          author+(scot %p src.bol)
+          date-created+(scot %da now.bol)
+          last-modified+(scot %da now.bol)
+      ==
+    =/  file  (add-front-matter front content.act)
+    =/  new-note=note:publish
+      :*  src.bol
+          title.act
+          name.act
+          now.bol
+          now.bol
+          %.y
+          file
+          (form-snippet file)
+          ~
+      ==
+    =/  new-item  (item new-note (learned-status [.2.5 0 0]))
+    =/  old-stack=stack  (~(got by pubs) stak.act)
+    =/  new-stack=stack
+    %=  old-stack
+      items  (~(uni by items.old-stack) (my ~[[name.act new-item]]))
+      status  (~(put by status.old-stack) name.act (learned-status [.2.5 0 0]))
+    ==
+    ~&  act+act
+    =/  del  [%add-item our.bol stak.act name.act new-item]
+    ~&  del+del
+    =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
+    [~[mov] state(pubs (~(put by pubs) stak.act new-stack))]
     ::
       %delete-stack
     ~&  delete-stack+act
@@ -294,6 +357,13 @@
   ~&  wir+wire
   :_  state
   [%give %fact ~ %json !>(make-tile-json)]~
+::
+++  peer-srrs-stack
+  |=  wir=wire
+  ^-  (quip card _state)
+  ~&  wir+wire
+  :_  state
+  [%give %fact ~ %json !>(*stack)]~
 ::
 ++  pull
   |=  wir=wire
@@ -384,15 +454,6 @@
       :-  %o
       (my [nom (total-build-to-json stack)] ~)
   ::
-      :+  %latest
-        %a
-      %+  turn  latest.sat
-      |=  [who=@p stack=@tas item=@tas]
-      %-  pairs:enjs:format
-      :~  who+(ship:enjs:format who)
-          stack+s+stack
-          item+s+item
-      ==
       :+  %review
         %a
       %+  turn  ~(tap in review.sat)
@@ -401,27 +462,6 @@
       :~  who+(ship:enjs:format who)
           stack+s+stack
           item+s+item
-      ==
-
-  ::
-      :+  %unread
-        %a
-      %+  turn  ~(tap in unread.sat)
-      |=  [who=@p stack=@tas item=@tas]
-      %-  pairs:enjs:format
-      :~  who+(ship:enjs:format who)
-          stack+s+stack
-          item+s+item
-      ==
-  ::
-      :+  %invites
-        %a
-      %+  turn  ~(tap in invites.sat)
-      |=  [[who=@p stack=@tas] title=@t]
-      %-  pairs:enjs:format
-      :~  who+(ship:enjs:format who)
-          stack+s+stack
-          title+s+title
       ==
   ==
 ::
@@ -432,12 +472,11 @@
 ++  make-tile-json
   ^-  json
   %-  pairs:enjs:format
-  :~  invites+(numb:enjs:format ~(wyt by invites))
-      new+(numb:enjs:format ~(wyt in unread))
+  :~  review+(numb:enjs:format ~(wyt by review))
   ==
 ::
 ++  add-stack
-  |=  [info=stack-info items=(map @tas note:publish)]
+  |=  [info=stack-info items=(map @tas item)]
   ^-  (quip card _state)
   =|  sta=stack
   =/  new-stack
@@ -445,7 +484,7 @@
     stack  [%.y info]
     name  filename.info
     last-update  last-modified.info
-    items  items
+    items  (~(uni by items) items.sta)
     status  (~(run by items) |*(a=* (learned-status [.2.5 0 0])))
   ==
   =/  new-pubs  (~(put by pubs.state) filename.info new-stack)
@@ -456,16 +495,14 @@
   ^-  (quip card _state)
   %+  roll  ~(tap by books)
   |=  [book=[@tas notebook:publish] cad=(list card) sty=_state]
-  ::  =/  exists=?
-  ::  ?|
-  ::    (~(has by pubs.sty) -.book)
-  ::    !=((find [pax]~ paths.sty) ~)
-  ::  ==
-  ::  ?:  exists
-  ::    [cad sty]
+  ?:  (~(has by pubs.sty) -.book)
+    [cad sty]
+  =/  items
+  (~(run by notes.book) |=(note=note:publish (item note (learned-status [.2.5 0 0]))))
   =/  act
-  [%new-stack -.book title.book notes.book %none read=*rule:clay write=*rule:clay]
+  [%new-stack -.book title.book items %none read=*rule:clay write=*rule:clay]
   =/  mov=card
+  ~&  add+act
   [%pass /stacks %agent [our.bol %srrs] %poke %srrs-action !>(act)]
   [(snoc cad mov) sty]
 ::

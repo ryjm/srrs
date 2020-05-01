@@ -39,15 +39,6 @@ export class Subs extends Component {
   }
 
   buildStackData() {
-    let invites = this.props.invites.map((inv) => {
-      return {
-        type: 'invite',
-        url: `/~srrs/~${inv.who}/${inv.stack}`,
-        host: `~${inv.who}`,
-        title: inv.title,
-        stackId: inv.stack,
-      };
-    })
 
     let data = Object.keys(this.props.subs).map((ship) => {
       let perShip = Object.keys(this.props.subs[ship]).map((stackId) => {
@@ -64,7 +55,7 @@ export class Subs extends Component {
       return perShip;
     });
     let merged = data.flat();
-    return invites.concat(merged);
+    return merged;
   }
 
   accept(host, stackId) {
@@ -128,47 +119,12 @@ export class Subs extends Component {
             </p>
           </div>
         );
-      } else if (data.type === 'invite') {
-        return (
-          <div className={cls} key={i}>
-            <div className="fl body-regular-400" style={{flexBasis: 336}}>
-              <Link to={data.url}>
-                <div className="mw-336 pr3">
-                  <span className="body-large green-medium"> • </span>
-                  <span className="body-regular-400">Invite to </span>
-                  <span className="body-regular">
-                    {data.title}
-                  </span>
-                </div>
-              </Link>
-            </div>
-            <p className="fl body-regular-400" style={{flexBasis:336}}>
-              {data.host}
-            </p>
-            <p className="fl body-regular-400" style={{flexBasis:336}}>
-            </p>
-            <p className="fl body-regular-400" style={{flexBasis:336}}>
-              <span className="green underline pointer"
-                onClick={this.accept.bind(this, data.host, data.stackId)}>
-                Accept
-              </span>
-              <span>   </span>
-              <span className="red underline pointer"
-                onClick={this.reject.bind(this, data.host, data.stackId)}>
-                Reject
-              </span>
-            </p>
-          </div>
-        );
       }
     });
 
-    let invites = (this.props.invites.length > 0);
-    let unread = (this.props.unread.length > 0);
-
     return (
       <div>
-        <HM invites={invites} unread={unread}/>
+        <HM />
         <div className="absolute w-100" style={{top:124}}>
           <div className="flex-column">
             <div className="w-100">

@@ -29,16 +29,11 @@ export class NewStack extends Component {
 
     this.state = {
       title: '',
-      invites: [],
-      page: 'main',
-      awaiting: false,
-      validInvites: true,
+      page: 'main'
     };
     this.titleChange = this.titleChange.bind(this);
-    this.invitesChange = this.invitesChange.bind(this);
     this.firstItem = this.firstItem.bind(this);
     this.returnHome = this.returnHome.bind(this);
-    this.addInvites = this.addInvites.bind(this);
     this.stackSubmit = this.stackSubmit.bind(this);
 
     this.titleHeight = 52;
@@ -68,18 +63,6 @@ export class NewStack extends Component {
         perm: permissions,
       },
     };
-
-    let sendInvites = {
-      invite: {
-        stack: stackId,
-        title: stackTitle,
-        who: this.state.invites,
-      }
-    }
-
-    this.setState({
-      awaiting: stackId
-    });
 
     this.props.setSpinner(true);
 
@@ -118,33 +101,10 @@ export class NewStack extends Component {
     this.setState({title: evt.target.value});
   }
 
-  invitesChange(evt){
-    let tokens = evt.target.value
-      .trim()
-      .split(/[\s,]+/)
-      .map(t => t.trim());
-
-    let valid = tokens.reduce((valid, s) =>
-      valid && (((s !== '~') && urbitOb.isValidPatp(s) && s.includes('~')) ||
-        (s === '')), true);
-
-    if (valid) {
-      this.setState({
-        validInvites: true,
-        invites: tokens.map(t => t.slice(1)),
-      });
-    } else {
-      this.setState({validInvites: false});
-    }
-  }
 
   firstItem() {
     this.setState({redirect: "new-item"});
     this.stackSubmit();
-  }
-
-  addInvites() {
-    this.setState({page: 'addInvites'});
   }
 
   returnHome() {
@@ -171,14 +131,6 @@ export class NewStack extends Component {
                   placeholder="Add a Title"
                   onChange={this.titleChange}>
                 </textarea>
-
-                <hr className="gray-30" style={{marginTop:32, marginBottom: 32}}/>
-
-                <FormLink
-                  enabled={(this.state.title !== '')}
-                  action={this.addInvites}
-                  body={"-> Send Invites"}
-                />
 
                 <hr className="gray-30" style={{marginTop:32, marginBottom: 32}}/>
 
@@ -221,18 +173,6 @@ export class NewStack extends Component {
                   placeholder="Add a Title"
                   onChange={this.titleChange}>
                 </textarea>
-
-                <p className="body-regular-400" style={{marginTop:25, marginBottom:27}}>
-                  Who is invited to read this notebook?
-                </p>
-
-                <input className={invitesStyle}
-                  style={{caretColor: "black"}}
-                  type="text"
-                  name="invites"
-                  placeholder="~ship-name, ~ship-name"
-                  onChange={this.invitesChange}
-                />
 
                 <hr className="gray-30" style={{marginTop:32, marginBottom: 32}}/>
 

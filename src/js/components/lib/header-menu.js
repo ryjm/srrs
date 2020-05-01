@@ -8,19 +8,8 @@ const PC = withRouter(SrrsCreate);
 
 export class HeaderMenu extends Component {
   render () {
-    let reviewText = (this.props.unread)
-      ? <p className="label-regular">
-          <span className="green-medium body-large"> • </span>
-          <span>Review</span>
-        </p>
-      : <p className="label-regular">Review</p>;
-
-    let subsText = (this.props.invites)
-      ? <p className="label-regular">
-          <span className="green-medium body-large"> • </span>
-          <span>Subscriptions</span>
-        </p>
-      : <p className="label-regular">Subscriptions</p>;
+    let reviewText = <p className="label-regular">Review</p>;
+    let subsText = <p className="label-regular">Subscriptions</p>;
 
     return (
       <div className="fixed w-100 bg-white cf h-srrs-header z-4"

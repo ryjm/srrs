@@ -50,6 +50,14 @@
     (add 32 a)
   '-'
 ::
+++  item-to-json
+  |=  =item
+  ^-  json
+  %-  pairs:enjs:format
+  :~  content+(note-full-json:publish filename.content.item content.item)
+      learn+(status-to-json learn.item)
+  ==
+::
 ++  stack-build-to-json
   |=  bud=(each stack-info tang)
   ^-  json
@@ -88,13 +96,9 @@
     %+  roll  ~(tap in ~(key by items.stack))
     |=  [item=@tas out=(map @t json)]
     =/  item-build  (~(got by items.stack) item)
-    =/  status-build  (~(got by status.stack) item)
     %+  ~(put by out)
       item
-    %-  pairs:enjs:format
-    :~  item+(note-full-json:publish item item-build)
-        learn+(status-to-json status-build)
-    ==
+    (item-to-json item-build)
   ::
     :-  %order
     %-  pairs:enjs:format

@@ -35,15 +35,15 @@ class Preview extends Component {
   buildProps(itemId){
     let item = this.props.stack.items[itemId];
     return {
-      itemTitle: item.item.title,
-      itemName: item.item["note-id"],
-      itemBody: item.item.file,
-      itemSnippet: item.item.snippet,
+      itemTitle: item.content.title,
+      itemName: item.content["note-id"],
+      itemBody: item.content.file,
+      itemSnippet: item.content.snippet,
       stackTitle: this.props.stack.info.title,
       stackName: this.props.stack.info.filename,
-      author: item.item.author,
+      author: item.content.author,
       stackOwner: this.props.stack.info.owner,
-      date: item.item["date-created"],
+      date: item.content["date-created"],
       pinned: false,
     }
   }

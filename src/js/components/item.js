@@ -284,20 +284,19 @@ export class Item extends Component {
     let itemId = this.props.itemId;
 
     if (ship !== window.ship) {
-
       let stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
 
       if (stack) {
-        let item = _.get(stack, `items["${itemId}"].item`, false);
+        let item = _.get(stack, `items["${itemId}"]`, false);
         let learn = _.get(stack, `items["${itemId}"].learn`, false);
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item["note-id"]}`;
+        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
         this.setState({
-          titleOriginal: item.title,
-          bodyOriginal: item.file,
-          title: item.title,
-          body: item.file,
+          titleOriginal: item.content.title,
+          bodyOriginal: item.content.file,
+          title: item.content.title,
+          body: item.content.file,
           stack: stack,
           item: item,
           learn: learn,
@@ -335,7 +334,7 @@ export class Item extends Component {
       }
     } else {
       let stack = _.get(this.props, `pubs["${stackId}"]`, false);
-      let item = _.get(stack, `items["${itemId}"].item`, false);
+      let item = _.get(stack, `items["${itemId}"]`, false);
       let learn = _.get(stack, `items["${itemId}"].learn`, false);
 
       if (!stack || !item) {
@@ -343,20 +342,20 @@ export class Item extends Component {
         return;
       } else {
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item["note-id"]}`;
+        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
         this.setState({
-          titleOriginal: item.title,
-          bodyOriginal: item.file,
-          title: item.title,
-          body: item.file,
+          titleOriginal: item.content.title,
+          bodyOriginal: item.content.file,
+          title: item.content.title,
+          body: item.content.file,
           stack: stack,
           item: item,
           learn: learn,
           pathData: [
             { text: "Home", url: "/~srrs/review" },
             { text: stack.info.title, url: stackUrl },
-            { text: item.title, url: itemUrl },
+            { text: item.content.title, url: itemUrl },
           ],
         });
       }
@@ -370,14 +369,14 @@ export class Item extends Component {
       let stack = diff.data.total.data;
       let item = stack.items[this.state.itemId].item;
       let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-      let itemUrl = `${stackUrl}/${item["note-id"]}`;
+      let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
       this.setState({
         awaitingLoad: false,
-        titleOriginal: item.title,
-        bodyOriginal: item.file,
-        title: item.title,
-        body: item.file,
+        titleOriginal: item.content.title,
+        bodyOriginal: item.content.file,
+        title: item.content.title,
+        body: item.content.file,
         stack: stack,
         item: item,
         pathData: [
@@ -426,11 +425,11 @@ export class Item extends Component {
 
     if (ship === window.ship) {
       stack = _.get(this.props, `pubs["${stackId}"]`, false);
-      item = _.get(stack, `items["${itemId}"].item`, false);
+      item = _.get(stack, `items["${itemId}"]`, false);
       learn = _.get(stack, `items["${itemId}"].learn`, false);
     } else {
       stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
-      item = _.get(stack, `items["${itemId}"].item`, false);
+      item = _.get(stack, `items["${itemId}"]`, false);
       learn = _.get(stack, `items["${itemId}"].learn`, false);
     }
 
@@ -450,24 +449,24 @@ export class Item extends Component {
     }
 
     if (this.state.awaitingEdit &&
-       ((itemtitle != oldItem.title) ||
-        (item.raw != oldItem.raw))) {
+       ((item.content.title != oldItem.title) ||
+        (item.content.raw != oldItem.raw))) {
 
       let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-      let itemUrl = `${stackUrl}/${item["note-id"]}`;
+      let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
       this.setState({
         mode: 'view',
-        titleOriginal: item.title,
-        bodyOriginal: item.file,
-        title: item.title,
-        body: item.file,
+        titleOriginal: item.content.title,
+        bodyOriginal: item.content.file,
+        title: item.content.title,
+        body: item.content.file,
         awaitingEdit: false,
         item: item,
         pathData: [
           { text: "Home", url: "/~srrs/review" },
           { text: stack.info.title, url: stackUrl },
-          { text: item.title, url: itemUrl },
+          { text: item.content.title, url: itemUrl },
         ],
       });
 
@@ -485,20 +484,20 @@ export class Item extends Component {
 
     if (this.state.awaitingGrade ) {
      let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-     let itemUrl = `${stackUrl}/${item["note-id"]}`;
-     this.props.api.fetchStatus(stack.info.filename, item.title)
+     let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+     this.props.api.fetchStatus(stack.info.filename, item.content.title)
      this.setState({
        mode: 'view',
-       titleOriginal: item.title,
-       bodyOriginal: item.file,
-       title: item.title,
-       body: item.file,
+       titleOriginal: item.content.title,
+       bodyOriginal: item.content.file,
+       title: item.content.title,
+       body: item.content.file,
        awaitingGrade: false,
        item: item,
        pathData: [
          { text: "Home", url: "/~srrs/review" },
          { text: stack.info.title, url: stackUrl },
-         { text: item.title, url: itemUrl },
+         { text: item.content.title, url: itemUrl },
        ],
      });
 
@@ -516,18 +515,18 @@ export class Item extends Component {
     if (!this.state.temporary){
       if (oldItem != item) {
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item["note-id"]}`;
+        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
         this.setState({
-          titleOriginal: item.title,
-          bodyOriginal: item.file,
+          titleOriginal: item.content.title,
+          bodyOriginal: item.content.file,
           item: item,
-          title: item.title,
-          body: item.file,
+          title: item.content.title,
+          body: item.content.file,
           pathData: [
             { text: "Home", url: "/~srrs/review" },
             { text: stack.info.title, url: stackUrl },
-            { text: item.title, url: itemUrl },
+            { text: item.content.title, url: itemUrl },
           ],
         });
 
@@ -593,8 +592,8 @@ export class Item extends Component {
       let stackLink = `/~srrs/~${this.state.ship}/${this.props.stackId}`;
       let stackLinkText = `<- Back to ${this.state.stack.info.title}`;
 
-      let date = moment(this.state.item["date-created"]).fromNow();
-      let authorDate = `${this.state.item.author} • ${date}`;
+      let date = moment(this.state.item.content["date-created"]).fromNow();
+      let authorDate = `${this.state.item.content.author} • ${date}`;
       let create = (this.props.ship === window.ship);
       return (
         <div>
@@ -626,7 +625,7 @@ export class Item extends Component {
 
               <div className="cb">
                 <ItemBody
-                  body={this.state.item.file}
+                  body={this.state.item.content.file}
                 />
               </div>
 
@@ -641,8 +640,8 @@ export class Item extends Component {
       let stackLink = `/~srrs/~${this.state.ship}/${this.props.stackId}`;
       let stackLinkText = `<- Back to ${this.state.stack.info.title}`;
 
-      let date = moment(this.state.item["date-created"]).fromNow();
-      let authorDate = `${this.state.item.author} • ${date}`;
+      let date = moment(this.state.item.content["date-created"]).fromNow();
+      let authorDate = `${this.state.item.content.author} • ${date}`;
       let create = (this.props.ship === window.ship);
       return (
         <div>

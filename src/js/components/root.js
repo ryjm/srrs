@@ -89,8 +89,8 @@ export class Root extends Component {
                   spinner={this.state.spinner}
                   children={
                     <NewItem api={api}
-                      setSpinner={this.setSpinner}
                       {...this.state}
+                      setSpinner={this.setSpinner}
                       {...props}/>
                   }
                 />
