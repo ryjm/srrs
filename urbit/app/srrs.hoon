@@ -61,7 +61,7 @@
     =/  rav  [%sing %t [%da now.bol] /app/srrs]
     :~  [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
         :*  %pass  /launch/srrs  %agent  [our.bol %launch]  %poke
-             %launch-action  !>([%srrs /srrstile '/~srrs/tile.js'])
+             %launch-action  !>([%add %srrs /srrstile '/~srrs/tile.js'])
         ==
         [%pass /read/paths %arvo %c %warp our.bol q.byk.bol `rav]
     ==
