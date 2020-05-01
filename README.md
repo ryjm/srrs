@@ -2,6 +2,7 @@ spaced repetition repetition system
 
 **WIP**
 ![Tile view](tile.png)
+---
 ![Item view](screenshot.png)
 
 *warning*: this was originally written on top of the old publish app, so there is a
