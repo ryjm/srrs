@@ -1,6 +1,7 @@
 spaced repetition repetition system
 
 **WIP**
+---
 ![Tile view](tile.png)
 ---
 ![Item view](screenshot.png)
