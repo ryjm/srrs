@@ -311,7 +311,6 @@
     ==
     ~&  act+act
     =/  del  [%add-item our.bol stak.act name.act new-item]
-    ~&  del+del
     =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
     [~[mov] state(pubs (~(put by pubs) stak.act new-stack))]
     ::
@@ -488,7 +487,9 @@
     status  (~(run by items) |*(a=* (learned-status [.2.5 0 0])))
   ==
   =/  new-pubs  (~(put by pubs.state) filename.info new-stack)
-  [~ state(pubs new-pubs)]
+  =/  del  [%add-stack our.bol filename.info new-stack]
+    =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
+  [~[mov] state(pubs new-pubs)]
 ::
 ++  add-books
   |=  books=(map @tas notebook:publish)

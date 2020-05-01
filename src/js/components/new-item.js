@@ -169,14 +169,10 @@ export class NewItem extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    console.log("update")
     if (this.state.awaiting) {
       let ship = this.state.awaiting.ship;
       let stackId = this.state.awaiting.stackId;
       let itemId = this.state.awaiting.itemId;
-      console.log(ship)
-      console.log(stackId)
-      console.log(itemId)
       let item;
 
       if (ship == window.ship) {
@@ -189,8 +185,6 @@ export class NewItem extends Component {
             `subs["${ship}"]["${stackId}"].items["${itemId}"]`, false) || false;
 
       }
-      console.log(item)
-      console.log(this.item)
       if (!_.isEqual(this.item, item)) {
         if (typeof(item) === 'string') {
           this.props.setSpinner(false);

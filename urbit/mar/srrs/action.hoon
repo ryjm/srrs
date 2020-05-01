@@ -46,8 +46,8 @@
       %-  ot:dejs
       :~  name+so:dejs
           title+so:dejs
-          items+(om:dejs same)
-          allow-edit+edit-config
+          items+item
+          edit+edit-config
           perm+perm-config
       ==
     ::
@@ -128,6 +128,11 @@
             :~  mod+(su:dejs ;~(pose (jest %black) (jest %white)))
                 who+whoms
         ==  ==
+    ++  item
+      |=  jon=^json
+      ?~  jon
+        ~
+      ((om:dejs same) jon)
     ::
     ++  whoms
       |=  jon=^json

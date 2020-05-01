@@ -86,6 +86,7 @@
 ::
 +$  stack-delta
   $%  [%add-item who=@p stack=@tas item=@tas data=item]
+      [%add-stack who=@p stack=@tas data=stack]
   ==
 ::
 +$  primary-delta

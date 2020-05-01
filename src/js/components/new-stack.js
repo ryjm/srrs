@@ -29,7 +29,8 @@ export class NewStack extends Component {
 
     this.state = {
       title: '',
-      page: 'main'
+      page: 'main',
+      awaiting: false
     };
     this.titleChange = this.titleChange.bind(this);
     this.firstItem = this.firstItem.bind(this);
@@ -59,11 +60,16 @@ export class NewStack extends Component {
       "new-stack" : {
         name: stackId,
         title: stackTitle,
-        "allow-edit": "all",
-        perm: permissions,
+        items: null,
+        edit: "all",
+        perm: permissions
       },
     };
 
+    this.setState({
+      awaiting: stackId
+    });
+    
     this.props.setSpinner(true);
 
     this.props.api.action("srrs", "srrs-action", makeStack);
@@ -137,7 +143,7 @@ export class NewStack extends Component {
                 <FormLink
                   enabled={(this.state.title !== '')}
                   action={this.firstItem}
-                  body={"-> Create a first note"}
+                  body={"-> Create"}
                 />
 
                 <hr className="gray-30" style={{marginTop:32, marginBottom: 32}}/>
@@ -179,7 +185,7 @@ export class NewStack extends Component {
                 <FormLink
                   enabled={enableButtons}
                   action={this.firstItem}
-                  body={"-> Save and create a first note"}
+                  body={"-> Save"}
                 />
 
                 <hr className="gray-30" style={{marginTop:32, marginBottom: 32}}/>
