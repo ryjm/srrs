@@ -9,7 +9,12 @@ spaced repetition repetition system
 *warning*: this was originally written on top of the old publish app, so there is a
 lot of that code in here, especially on the front end. 
 
-run with `npm serve`
+install node and npm
+run with `npm serve` 
+
+#### Troubleshooting
+
+if you're having issues with the tile not showing up, run `:launch &launch-action [%add %srrs /srrstile '/~srrs/tile.js']` in the dojo
 
 ### Hooking into app/publish
 
