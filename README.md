@@ -1,7 +1,7 @@
 spaced repetition repetition system
 
 **WIP**
-
+![Tile view](tile.png)
 ![Item view](screenshot.png)
 
 *warning*: this was originally written on top of the old publish app, so there is a
@@ -43,7 +43,7 @@ srrs with a poke. better support for that path soon.
 **TODO:**
 - ~~handle the scheduling of review items~~
 - ~~support creating stacks/items through frontend~~
-- tile
+- ~~tile~~
 - remove old publish artifacts
 - clean up sur and lib, move to json in mar
 - update landscape UI to OS1 style, probably just a full rewrite
