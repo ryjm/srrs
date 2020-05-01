@@ -59,15 +59,13 @@
   ++  on-init
     :_  this
     =/  rav  [%sing %t [%da now.bol] /app/srrs]
-    ;:  welp
-      make-tile-moves
-      :~  [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
-          :*  %pass  /launch/srrs  %agent  [our.bol %launch]  %poke
-               %launch-action  !>([%srrs /srrstile '/~srrs/tile.js'])
-          ==
-          [%pass /read/paths %arvo %c %warp our.bol q.byk.bol `rav]
-      ==
+    :~  [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
+        :*  %pass  /launch/srrs  %agent  [our.bol %launch]  %poke
+             %launch-action  !>([%srrs /srrstile '/~srrs/tile.js'])
+        ==
+        [%pass /read/paths %arvo %c %warp our.bol q.byk.bol `rav]
     ==
+  ::
   ++  on-poke
     |=  [=mark =vase]
     ^-  (quip card _this)
