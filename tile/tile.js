@@ -23,13 +23,13 @@ export default class SrrsTile extends Component {
     }
 
     return (
-      <div className="w-100 h-100 relative" style={{background: "#1a1a1a"}}>
+      <div className="w-100 h-100 relative" style={{background: "white"}}>
         <a className="w-100 h-100 db no-underline" href="/~srrs">
           <p className="gray label-regular b absolute"
             style={{left: 8, top: 4}}>
             Srrs
           </p>
-          <div className="absolute w-100 flex-col body-regular white"
+          <div className="absolute w-100 flex-col body-regular black"
             style={{verticalAlign: "bottom", bottom: 8, left: 8}}>
             {info}
           </div>
