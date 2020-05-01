@@ -306,6 +306,7 @@
           file
           (form-snippet file)
           ~
+          %.n
       ==
     =/  new-item  (item new-note (learned-status [.2.5 0 0]))
     =/  old-stack=stack  (~(got by pubs) stak.act)
