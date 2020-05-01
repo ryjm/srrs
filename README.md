@@ -11,7 +11,10 @@ run with `npm serve`
 
 ### Hooking into app/publish
 
-currently piggybacks off of publish notebooks - put 
+can piggyback off of publish notebooks - title of notes are questions, bodies of
+notes are answers.
+
+put
 
 `%+  memo  |`
 
@@ -29,31 +32,17 @@ in app/publish, like this:
 ...
 ```
 and run `:publish +memo` - this will hook into the publish app and add all
-notebooks to srrs (you need to add a new post or notebook to trigger it). title
-of notes are questions, bodies of notes are answers.
+notebooks to srrs (you need to add a new post or notebook to trigger it). 
+
+
 
 you can also try scrying into app/publish to get the books, and then send to
 srrs with a poke. better support for that path soon. 
 
 
-- creating items directly from the srrs UI doesn't work
-
-
-to create a new stack with a single item, you can do something like this from the dojo:
-
-``` hoon
-
-> =note note(file 'test', title 'question', filename 'test')
-> =act &srrs-action [%new-stack %my-items 'my items' (my ~[[%my-items note]]) edit-config perm-config]
-> :srrs act
-
-```
-
-where note is just a bunted `note:publish`.
-  
 **TODO:**
 - ~~handle the scheduling of review items~~
-- support creating stacks/items through frontend
+- ~~support creating stacks/items through frontend~~
 - tile
 - remove old publish artifacts
 - clean up sur and lib, move to json in mar
