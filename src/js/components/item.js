@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import classnames from 'classnames';
 import cx from 'classnames-es';
 import moment from 'moment';
+import { SrrsCreate } from '/components/lib/srrs-create';
 import { Link } from 'react-router-dom';
 import { ItemBody } from '/components/lib/item-body';
 import { PathControl } from '/components/lib/path-control';
@@ -12,7 +13,7 @@ import Choices from 'react-choices'
 import _ from 'lodash';
 
 const NF = withRouter(NotFound);
-
+const PC = withRouter(SrrsCreate);
 class Admin extends Component {
   constructor(props) {
     super(props);
@@ -47,7 +48,7 @@ class Admin extends Component {
       );
     } else if (this.props.mode === 'edit'){
       return (
-        <div className="body-regular flex-col fr">
+        <div className="flex">
           <p className="pointer"
              onClick={this.props.saveItem}>
             -> Save
@@ -61,7 +62,7 @@ class Admin extends Component {
     } else if (this.props.mode === 'grade'){
       let modifyButtonClasses = "mt4 db f9 ba pa2 white-d bg-gray0-d b--black b--gray2-d pointer";
       return (
-        <div className="body-regular flex-col fr">
+        <div className="flex">
         
         <Choices
             name="recall_grade"
@@ -595,19 +596,11 @@ export class Item extends Component {
       let date = moment(this.state.item.content["date-created"]).fromNow();
       let authorDate = `${this.state.item.content.author} • ${date}`;
       let create = (this.props.ship === window.ship);
+
       return (
+        
         <div>
-          <PathControl pathData={this.state.pathData} create={create}/>
-          <div className="absolute w-100" style={{top:124}}>
-            <div className="mw-688 center mt4 flex-col" style={{flexBasis: 688}}>
-              <Link to={stackLink}>
-                <p className="body-regular one-line mw-688">
-                  {stackLinkText}
-                </p>
-              </Link>
-
-              <h2 style={{wordWrap: "break-word"}}>{this.state.titleOriginal}</h2>
-
+           <PC create="item"/>
               <div className="mb4">
                 <p className="fl label-small gray-50">{authorDate}</p>
                 <Admin
@@ -623,17 +616,10 @@ export class Item extends Component {
                 />
               </div>
 
-              <div className="cb">
                 <ItemBody
                   body={this.state.item.content.file}
                 />
-              </div>
-
-              <hr className="gray-50 w-680 mt4"/>
-              <NextPrev stack={this.state.stack} itemId={this.props.itemId} />
             </div>
-          </div>
-        </div>
       );
 
     } else if (this.state.mode == 'edit') {
@@ -643,9 +629,10 @@ export class Item extends Component {
       let date = moment(this.state.item.content["date-created"]).fromNow();
       let authorDate = `${this.state.item.content.author} • ${date}`;
       let create = (this.props.ship === window.ship);
+   
       return (
+      
         <div>
-          <PathControl pathData={this.state.pathData} create={create}/>
           <div className="absolute w-100" style={{top:124}}>
             <div className="mw-688 center mt4 flex-col" style={{flexBasis: 688}}>
               <Link to={stackLink}>
@@ -678,10 +665,6 @@ export class Item extends Component {
                 onChange={this.bodyChange}
                 defaultValue={this.state.bodyOriginal}>
               </textarea>
-
-              <hr className="gray-50 w-680 mt4"/>
-              <NextPrev stack={this.state.stack} itemId={this.props.itemId} />
-
             </div>
           </div>
         </div>

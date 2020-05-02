@@ -1,67 +1,54 @@
+import { SidebarSwitcher } from './icons/icon-sidebar-switch';
 import React, { Component } from 'react';
 import classnames from 'classnames';
-import { NavLink } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { SrrsCreate } from '/components/lib/srrs-create';
 import { withRouter } from 'react-router';
 
 const PC = withRouter(SrrsCreate);
 
 export class HeaderMenu extends Component {
+    constructor(props){
+    super(props)
+  }
+
   render () {
     let reviewText = <p className="label-regular">Review</p>;
     let subsText = <p className="label-regular">Subscriptions</p>;
+    let tabStyles = {
+      review: "bb b--gray4 b--gray2-d gray2 pv4 ph2",
+      stacks: "bb b--gray4 b--gray2-d gray2 pv4 ph2",
+      settings: "bb b--gray4 b--gray2-d pr2 gray2 pv4 ph2",
+    };
+    // tabStyles[props.view] = "bb b--black b--white-d black white-d pv4 ph2";
 
-    return (
-      <div className="fixed w-100 bg-white cf h-srrs-header z-4"
-        style={{top:48}}>
-        <PC create={"stack"}/>
-        <div className="w-100 flex">
-          <div className="fl bb b-gray-30 w-16" >
-          </div>
+        return (
+            <div
+        className="overflow-y-scroll"
+        style={{ paddingLeft: 16, paddingRight: 16 }}
+        onScroll={this.onScroll}
+        ref={el => {
+          this.scrollElement = el;
+              }}>
+              <PC create={"stack"}/>
 
-          <NavLink exact
-            className="header-menu-item"
-            to="/~srrs/review"
-            activeStyle={{
-              color: "black",
-              borderColor: "black",
-            }}
-            style={{flexBasis:148}}>
-            Review
-          </NavLink>
+        <div className="center mw6 f9 h-100"
+          style={{ paddingLeft: 16, paddingRight: 16 }}>
 
-          <div className="fl bb b-gray-30 w-16" >
-          </div>
+            <div className="flex" style={{ marginBottom: 24 }}>
+              <Link to="/~srrs/review" className={tabStyles.review}>
+                Review
+              </Link>
+              <Link to="/~srrs/pubs" className={tabStyles.stacks}>
+                Stacks
+              </Link>
+              <div className="bb b--gray4 b--gray2-d gray2 pv4 ph2"
+                style={{ flexGrow: 1 }}></div>
+            </div>
 
-          <NavLink exact
-            className="header-menu-item"
-            to="/~srrs/subs"
-            activeStyle={{
-              color: "black",
-              borderColor: "black",
-            }}
-            style={{flexBasis:148}}>
-            {subsText}
-          </NavLink>
-
-          <div className="fl bb b-gray-30 w-16" >
-          </div>
-
-          <NavLink exact
-            className="header-menu-item"
-            to="/~srrs/pubs"
-            activeStyle={{
-              color: "black",
-              borderColor: "black",
-            }}
-            style={{flexBasis:148}}>
-            Stacks
-          </NavLink>
-
-          <div className="fl bb b-gray-30 w-16" style={{flexGrow:1}}>
           </div>
         </div>
-      </div>
+
     );
   }
 }

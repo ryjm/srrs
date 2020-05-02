@@ -29,7 +29,7 @@ export class Root extends Component {
   }
 
   render() {
-
+    const { props, state} = this;
     return (
       <BrowserRouter>
         <Switch>
@@ -37,7 +37,9 @@ export class Root extends Component {
             render={ (props) => {
               return (
                 <Skeleton
+                pubs={state.pubs}
                   spinner={this.state.spinner}
+                  active="sidebar"
                   children={
                     <Review {...this.state} />
                   }
@@ -49,6 +51,7 @@ export class Root extends Component {
               return (
                 <Skeleton
                   spinner={this.state.spinner}
+                  active="sidebar"
                   children={
                     <Subs {...this.state} api={api}/>
                   }
@@ -60,8 +63,10 @@ export class Root extends Component {
               return (
                 <Skeleton
                   spinner={this.state.spinner}
+                  pubs={state.pubs}
+                  active="sidebar"
                   children={
-                    <Pubs {...this.state} />
+                    <Pubs {...state} />
                   }
                 />
               );
@@ -72,6 +77,7 @@ export class Root extends Component {
               return (
                 <Skeleton
                   spinner={this.state.spinner}
+                  pubs={state.pubs}
                   children={
                     <NewStack api={api}
                       {...this.state}
@@ -87,9 +93,30 @@ export class Root extends Component {
               return (
                 <Skeleton
                   spinner={this.state.spinner}
+                  pubs={state.pubs}
+                  active="sidebar"
                   children={
                     <NewItem api={api}
                       {...this.state}
+                      setSpinner={this.setSpinner}
+                      {...props}/>
+                  }
+                />
+              );
+           }} />
+
+<Route exact path="/~srrs/:ship/:stack/new-item"
+            render={ (props) => {
+              return (
+                <Skeleton
+                  spinner={this.state.spinner}
+                  pubs={state.pubs}
+                  active="sidebar"
+                  children={
+                    <NewItem api={api}
+                      {...this.state}
+                      stack={props.match.params.stack}
+                      ship={props.match.params.ship}
                       setSpinner={this.setSpinner}
                       {...props}/>
                   }
@@ -102,8 +129,12 @@ export class Root extends Component {
               return (
                 <Skeleton
                   spinner={this.state.spinner}
+                  pubs={state.pubs}
+                  path={props.match.params.stack}
+                  active="sidebar"
                   children={
                     <Stack
+                      view="notes"
                       stackId = {props.match.params.stack}
                       ship = {props.match.params.ship.slice(1)}
                       api = {api}
@@ -121,6 +152,8 @@ export class Root extends Component {
               return (
                 <Skeleton
                   spinner={this.state.spinner}
+                  pubs={state.pubs}
+                  active="sidebar"
                   children={
                     <Item
                       stackId = {props.match.params.stack}

@@ -1,3 +1,4 @@
+
 import React, { Component } from 'react';
 import classnames from 'classnames';
 import { Link } from 'react-router-dom';
@@ -98,6 +99,10 @@ export class NewItem extends Component {
     if (last){
       ship = (' ' + last.lastParams.ship.slice(1)).slice(1);
       stackId = (' ' + last.lastParams.stack).slice(1);
+    } else {
+      stackId = this.props.stack
+      console.log(stackId)
+      console.log(this.props)
     }
 
     let itemTitle = this.state.title;
@@ -253,11 +258,8 @@ export class NewItem extends Component {
 
     return (
       <div className="relative w-100" style={{top:124}}>
-        <PC pathData={false} {...this.props}/>
         <Error error={this.state.error}/>
         <div>
-          <div className="w-100" style={{height: mt}}></div>
-
           <div className="flex w-100 z-2" style={{position: 'sticky', top: 132}}>
             <div className="w1 z-0" style={{flexGrow:1}}></div>
             <div className="mw-688 w-100 z-0" style={{pointerEvents:'none'}}></div>

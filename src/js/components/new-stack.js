@@ -1,3 +1,4 @@
+
 import React, { Component } from 'react';
 import classnames from 'classnames';
 import { Link } from 'react-router-dom';
@@ -120,41 +121,45 @@ export class NewStack extends Component {
 
   render() {
     if (this.state.page === 'main') {
+      let createClasses = "pointer db f9 green2 bg-gray0-d ba pv3 ph4 mv7 b--green2";
+    if (!this.state.idName || this.state.disabled) {
+      createClasses = "db f9 gray2 ba bg-gray0-d pa2 pv3 ph4 mv7 b--gray3";
+    }
       return (
-        <div>
+        <div
+        className={
+          "h-100 w-100 mw6 pa3 pt4 overflow-x-hidden flex flex-column white-d"
+        }>
+        <div className="w-100 dn-m dn-l dn-xl inter pt1 pb6 f8">
+        <Link to="/~srrs/">{"⟵ All Stacks"}</Link>
+        </div>
           <PC pathData={false} {...this.props}/>
-          <div className="absolute w-100"
-               style={{height: 'calc(100% - 124px)', top: 124}}>
-            <div className="h-inner dt center mw-688 w-100">
-              <div className="flex-col dtc v-mid">
+              <div className="w-100">
+              <p className="f8 mt3 lh-copy db">Name</p>
+             <p className="  f9 gray2 db mb2 pt1">
+            Stack Name
+          </p>
                 <textarea autoFocus
                   ref={(el) => {this.titleInput = el}}
-                  className="header-2 b--none w-100"
-                  style={{resize:"none", height: this.titleHeight}}
+                  className={"f7 ba bg-gray0-d white-d pa3 db w-100 " +
+                  "focus-b--black focus-b--white-d b--gray3 b--gray2-d"}
+                  style={{resize:"none"}}
                   rows={1}
-                  type="text"
                   name="stackName"
                   placeholder="Add a Title"
                   onChange={this.titleChange}>
                 </textarea>
 
-                <hr className="gray-30" style={{marginTop:32, marginBottom: 32}}/>
+                <button
+                  disabled={(this.state.title == '')}
+                  onClick={this.firstItem}
+                  className={createClasses}
+>Create</button>
 
-                <FormLink
-                  enabled={(this.state.title !== '')}
-                  action={this.firstItem}
-                  body={"-> Create"}
-                />
-
-                <hr className="gray-30" style={{marginTop:32, marginBottom: 32}}/>
-
-                <Link to="/~srrs/review" className="body-large b">
-                  Cancel
-                </Link>
               </div>
             </div>
-          </div>
-        </div>
+
+            
       );
     } else if (this.state.page === 'addInvites') {
       let enableButtons = ((this.state.title !== '') && this.state.validInvites);

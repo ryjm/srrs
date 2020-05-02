@@ -41,17 +41,19 @@ export class ItemPreview extends Component {
     let itemLink = stackLink + "/" + this.props.item.itemName;
 
     return (
-      <div className="w-336 relative"
-        style={{height:195, marginBottom: 72, marginRight:16}}>
+      <div className="h-100">
+              <div className="h-100 flex flex-column items-center pa4">
+              <div className="w-100 mw6">
+            <div className="flex flex-column">
         <Link to={itemLink}>
           <TitleSnippet title={this.props.item.itemTitle}/>
           <ItemSnippet
             body={this.props.item.itemSnippet}
           />
         </Link>
-        <p className="label-small gray-50 absolute" style={{bottom:0}}>
-          {authorDate}
-        </p>
+                </div>
+      </div>
+      </div>
       </div>
     );
   }

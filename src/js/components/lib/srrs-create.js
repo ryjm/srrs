@@ -11,8 +11,7 @@ export class SrrsCreate extends Component {
   render () {
     if (!this.props.create) {
       return (
-        <div className="w-100">
-          <p className="srrs">Srrs</p>
+        <div className="flex">
         </div>
       );
     } else if (this.props.create == 'stack') {
@@ -25,10 +24,9 @@ export class SrrsCreate extends Component {
         },
       };
       return (
-        <div className="w-100">
-          <p className="srrs">Srrs</p>
+        <div className="flex">
           <Link to={link}>
-            <p className="create">+New Stack</p>
+            <p className="bg-light-green green2 StackButton">New Stack</p>
           </Link>
         </div>
       );
@@ -42,10 +40,9 @@ export class SrrsCreate extends Component {
         },
       };
       return (
-        <div className="w-100">
-          <p className="srrs">Srrs</p>
+        <div className="flex">
           <Link to={link}>
-            <p className="create">+New Item</p>
+            <p className="bg-light-green green2 StackButton">New Item</p>
           </Link>
         </div>
       );

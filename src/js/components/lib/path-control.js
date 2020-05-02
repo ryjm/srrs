@@ -92,12 +92,8 @@ export class PathControl extends Component {
       :  'item';
 
     return (
-      <div className="fixed w-100 bg-white cf h-srrs-header z-4"
-        style={{top: 48}}>
+      <div>
         <PC create={create}/>
-        <div className="path-control">
-          {path}
-        </div>
       </div>
     );
   }

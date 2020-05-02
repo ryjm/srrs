@@ -6,6 +6,7 @@ import { HeaderMenu } from '/components/lib/header-menu';
 
 const HM = withRouter(HeaderMenu);
 
+
 export class Review extends Component {
   constructor(props){
     super(props)
@@ -146,13 +147,9 @@ export class Review extends Component {
 
     return (
       <div>
-        <HM />
-        <div className="absolute w-100"
-          style={{top:124, marginLeft: 16, marginRight: 16, marginTop: 32}}>
-          <div className="flex-col">
-            {body}
-          </div>
-        </div>
+
+              {body}
+
       </div>
     );
   }

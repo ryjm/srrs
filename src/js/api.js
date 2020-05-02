@@ -57,6 +57,19 @@ class UrbitApi {
       });
     });
   }
+    sidebarToggle() {
+    let sidebarBoolean = true;
+    if (store.state.sidebarShown === true) {
+      sidebarBoolean = false;
+    }
+    store.handleEvent({
+      type: "local",
+      data: {
+        'sidebarToggle': sidebarBoolean
+      }
+    });
+  }
+
 }
 export let api = new UrbitApi();
 window.api = api;

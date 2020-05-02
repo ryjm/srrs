@@ -6,27 +6,26 @@ export class Sigil extends Component {
   render() {
     const { props } = this;
 
+    let classes = props.classes || "";
+
     if (props.ship.length > 14) {
       return (
-        <div className="bg-black" style={{width: 44, height: 44}}>
+        <div
+          className={"bg-black dib " + classes}
+          style={{ width: props.size, height: props.size }}>
         </div>
       );
     } else {
       return (
-        <div
-          className="bg-black"
-          style={{ flexBasis: 35, padding: 4 }}>
-        {
-          sigil({
+        <div className={"dib " + classes} style={{ flexBasis: 32, backgroundColor: props.color }}>
+          {sigil({
             patp: props.ship,
             renderer: reactRenderer,
             size: props.size,
-            colors: ['black', 'white'],
-          })
-        }
+            colors: [props.color, "white"]
+          })}
         </div>
       );
     }
   }
 }
-
