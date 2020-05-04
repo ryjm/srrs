@@ -274,7 +274,7 @@ export class Stack extends Component {
           this.scrollElement = el;
         }}>
         <div className="w-100 dn-m dn-l dn-xl inter pt4 pb6 f9">
-          <Link to="/~srrs">{"<- All Stacks"}</Link>
+          <Link to="/~srrs/review">{"<- Review"}</Link>
         </div>
         <div className="center mw6 f9 h-100"
           style={{ paddingLeft: 16, paddingRight: 16 }}>
@@ -293,7 +293,7 @@ export class Stack extends Component {
                 </span>
               </div>
               <div className="flex">
-                <Link to={`/~srrs/~${this.props.ship}/${data.stackTitle}/new-item`} className="StackButton bg-light-green green2">
+                <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
                   New Item
             </Link>
               </div>
@@ -303,7 +303,7 @@ export class Stack extends Component {
             <Link to="/~srrs/review" className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
                 Review
               </Link>
-              <Link to={`/~srrs/~${this.props.ship}/${data.stackTitle}`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
+              <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
                 Stack Items
               </Link>
               

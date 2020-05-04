@@ -25,8 +25,10 @@
           scheduled=@da
       ==
   ::
-      [%raise-item stak=@tas item=@tas]
+      [%raise-item who=@p stak=@tas item=@tas]
       [%answered-item stak=@tas item=@tas answer=recall-grade]
+      ::  [%update-review who=@p stack=@tas item=@tas]
+
   ::
       [%delete-stack stak=@tas]
       [%delete-item stak=@tas item=@tas]
@@ -75,7 +77,7 @@
   $:  content=note:publish
       learn=learned-status
   ==
-::
+
 +$  recall-grade  $?(%again %hard %good %easy)
 ::
 +$  learned-status
@@ -83,10 +85,17 @@
       interval=@dr
       box=@
   ==
++$  update
+  $:  who=@p
+      stack=@tas
+      item=@tas
+  ==
 ::
 +$  stack-delta
   $%  [%add-item who=@p stack=@tas item=@tas data=item]
       [%add-stack who=@p stack=@tas data=stack]
+      [%raise-item who=@p stak=@tas item=@tas]
+      [%update-review (set update)]
   ==
 ::
 +$  primary-delta

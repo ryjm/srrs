@@ -125,4 +125,13 @@
   ::
     [%last-update (time:enjs:format last-update.stack)]
   ==
+::
+++  update-to-json
+  |=  update=update
+  ^-  json
+  %-  pairs:enjs:format
+    :~  who+s+(scot %p who.update)
+        stack+s+stack.update
+        item+s+item.update
+    ==
 --

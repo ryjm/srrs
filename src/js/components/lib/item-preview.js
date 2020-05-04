@@ -11,50 +11,71 @@ export class ItemPreview extends Component {
 
     moment.updateLocale('en', {
       relativeTime: {
-        past: function(input) {
+        past: function (input) {
           return input === 'just now'
             ? input
             : input + ' ago'
         },
-        s : 'just now',
-        future : 'in %s',
-        m  : '1m',
-        mm : '%dm',
-        h  : '1h',
-        hh : '%dh',
-        d  : '1d',
-        dd : '%dd',
-        M  : '1 month',
-        MM : '%d months',
-        y  : '1 year',
-        yy : '%d years',
+        s: 'just now',
+        future: 'in %s',
+        m: '1m',
+        mm: '%dm',
+        h: '1h',
+        hh: '%dh',
+        d: '1d',
+        dd: '%dd',
+        M: '1 month',
+        MM: '%d months',
+        y: '1 year',
+        yy: '%d years',
       }
     });
+    this.saveGrade = this.saveGrade.bind(this);
   }
-
+  
+  saveGrade() {
+    this.props.setSpinner(true);
+    let data = {
+      "answered-item": {
+        stak: this.props.stackId,
+        item: this.props.itemId,
+        answer: this.state.recallGrade
+      },
+    };
+    this.setState({
+      awaitingGrade: {
+        ship: this.state.ship,
+        stackId: this.props.stackId,
+        itemId: this.props.itemId,
+      }
+    }, () => {
+      this.props.api.action("srrs", "srrs-action", data)
+    });
+  };
   render() {
     let date = moment(this.props.item.date).fromNow();
-    let authorDate = `${this.props.item.author} • ${date}`
+    let author = this.props.item.author
+
     let stackLink = "/~srrs/" +
       this.props.item.stackOwner + "/" +
       this.props.item.stackName;
     let itemLink = stackLink + "/" + this.props.item.itemName;
 
     return (
-      <div className="h-100">
-              <div className="h-100 flex flex-column items-center pa4">
-              <div className="w-100 mw6">
-            <div className="flex flex-column">
+      <div className="mv6">
         <Link to={itemLink}>
-          <TitleSnippet title={this.props.item.itemTitle}/>
+          <TitleSnippet title={this.props.item.itemTitle} />
           <ItemSnippet
             body={this.props.item.itemSnippet}
           />
         </Link>
-                </div>
+        <div className="flex">
+          <div className="gray2 mr3">{author}</div>
+          <div className="gray2 mr2">{date}</div>
+        </div>
+
       </div>
-      </div>
-      </div>
+
     );
   }
 }

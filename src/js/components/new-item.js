@@ -101,8 +101,6 @@ export class NewItem extends Component {
       stackId = (' ' + last.lastParams.stack).slice(1);
     } else {
       stackId = this.props.stack
-      console.log(stackId)
-      console.log(this.props)
     }
 
     let itemTitle = this.state.title;
@@ -138,18 +136,30 @@ export class NewItem extends Component {
         },
       };
 
+      let raiseItem = {
+        "raise-item" : {
+          who: ship,
+          stak: stackId,
+          item: itemId,
+        },
+      };
+
       this.props.setSpinner(true);
 
       this.setState({
         awaiting: awaiting,
         itemed: {
-          ship: ship,
+          who: ship,
           stackId: stackId,
           itemId: itemId,
         }
       }, () => {
-        this.props.api.action("srrs", "srrs-action", newItem);
-      });
+
+        this.props.api.action("srrs", "srrs-action", newItem)        
+        this.props.api.action("srrs", "srrs-action", raiseItem);
+      }
+
+                   );
 
     } else {
       let editItem = {
