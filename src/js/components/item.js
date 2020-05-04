@@ -2,167 +2,43 @@ import React, { Component } from 'react';
 import classnames from 'classnames';
 import cx from 'classnames-es';
 import moment from 'moment';
+import { SrrsCreate } from '/components/lib/srrs-create';
 import { Link } from 'react-router-dom';
 import { ItemBody } from '/components/lib/item-body';
 import { PathControl } from '/components/lib/path-control';
 import { NextPrev } from '/components/lib/next-prev';
+import { Recall } from '/components/recall';
 import { NotFound } from '/components/not-found';
 import { withRouter } from 'react-router';
-import Choices from 'react-choices'
+
 import _ from 'lodash';
 
 const NF = withRouter(NotFound);
-
-class Admin extends Component {
-  constructor(props) {
-    super(props);
-  }
-
-  render() {
-    if (!this.props.enabled){
-      return null;
-    } else if (this.props.mode === 'view'){
-      return (
-
-        <div className="flex-col fr">
-
-          <p className="label-regular gray-50 pointer tr b"
-            onClick={this.props.gradeItem}>
-            Grade
-          </p>
-
-          <p className="label-regular gray-50 pointer tr b"
-             onClick={this.props.editItem}>
-            Edit
-          </p>
-          <p className="label-regular red pointer tr b"
-             onClick={this.props.deleteItem}>
-            Delete
-          </p>
-          <p className="label-regular gray-50 pointer tr b"
-             onClick={this.props.toggleAdvanced}>
-            Advanced
-          </p>
-        </div>
-      );
-    } else if (this.props.mode === 'edit'){
-      return (
-        <div className="body-regular flex-col fr">
-          <p className="pointer"
-             onClick={this.props.saveItem}>
-            -> Save
-          </p>
-          <p className="pointer"
-             onClick={this.props.deleteItem}>
-            Delete item
-          </p>
-        </div>
-      );
-    } else if (this.props.mode === 'grade'){
-      let modifyButtonClasses = "mt4 db f9 ba pa2 white-d bg-gray0-d b--black b--gray2-d pointer";
-      return (
-        <div className="body-regular flex-col fr">
-        
-        <Choices
-            name="recall_grade"
-            label="grade"
-            availableStates={[
-              { value: 'again' },
-              { value: 'hard' },
-              { value: 'good' },
-              { value: 'easy' }
-            ]}
-            defaultValue="again"
-          >
-            {({
-              name,
-              label,
-              states,
-              selectedValue,
-              setValue,
-              hoverValue
-            }) => (
-                 
-                <div
-                  className="choices"
-                >
-                  <p className="pointer"
-                    onClick={this.props.saveGrade}>
-                    ->  Save Grade
-                  </p>
-
-                  <div className="choices__items">
-                    {states.map((state, idx) => (
-                      <button
-                        key={`choice-${idx}`}
-                        id={`choice-${state.value}`}
-                        tabIndex={state.selected ? 0 : -1}
-                        className={classnames('choice', state.inputClassName, {
-                          'choice--focused': state.focused,
-                          'outline-m': state.hovered,
-                          'bg-green': state.selected
-                        }, modifyButtonClasses)}
-                        onMouseOver={hoverValue.bind(null, state.value)}
-                        onClick={() => {
-                          setValue(state.value);
-                          this.props.setGrade(state.value);
-                        }
-                        }
-                      >
-                        {state.label}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-          </Choices>
-          </div>
-      );
-    } else if (this.props.mode === 'advanced') {
-      let ease = `ease: ${this.props.learn.ease}`;
-      let interval = `interval: ${this.props.learn.interval}`;
-      let box = `box: ${this.props.learn.box}`;
-      let backString = `<- Back`
-
-      return (
-        <div className="body-regular flex-col fr">
-          <p className="pointer"
-            onClick={this.props.toggleAdvanced}>
-            {backString}
-          </p>
-          <p className="label-small gray-50">{ease}</p>
-          <p className="label-small gray-50">{interval}</p>
-          <p className="label-small gray-50">{box}</p>
-        </div>
-      );
-    }
-
-  }
-}
+const PC = withRouter(SrrsCreate);
 
 export class Item extends Component {
-  constructor(props){
+  constructor(props) {
     super(props);
 
     moment.updateLocale('en', {
       relativeTime: {
-        past: function(input) {
+        past: function (input) {
           return input === 'just now'
             ? input
             : input + ' ago'
         },
-        s : 'just now',
-        future : 'in %s',
-        m  : '1m',
-        mm : '%dm',
-        h  : '1h',
-        hh : '%dh',
-        d  : '1d',
-        dd : '%dd',
-        M  : '1 month',
-        MM : '%d months',
-        y  : '1 year',
-        yy : '%d years',
+        s: 'just now',
+        future: 'in %s',
+        m: '1m',
+        mm: '%dm',
+        h: '1h',
+        hh: '%dh',
+        d: '1d',
+        dd: '%dd',
+        M: '1 month',
+        MM: '%d months',
+        y: '1 year',
+        yy: '%d years',
       }
     });
 
@@ -201,26 +77,26 @@ export class Item extends Component {
   }
 
   editItem() {
-    this.setState({mode: 'edit'});
+    this.setState({ mode: 'edit' });
   }
 
   gradeItem() {
-    this.setState({mode: 'grade'});
+    this.setState({ mode: 'grade' });
   }
   setGrade(value) {
-    this.setState({recallGrade: value});
+    this.setState({ recallGrade: value });
   }
   toggleAdvanced() {
     if (this.state.mode == 'advanced') {
-      this.setState({mode: 'view'});
+      this.setState({ mode: 'view' });
     } else {
-      this.setState({mode: 'advanced'});
+      this.setState({ mode: 'advanced' });
     }
   }
   saveItem() {
     if (this.state.title == this.state.titleOriginal &&
-        this.state.body == this.state.bodyOriginal) {
-      this.setState({mode: 'view'});
+      this.state.body == this.state.bodyOriginal) {
+      this.setState({ mode: 'view' });
       return;
     }
 
@@ -338,7 +214,7 @@ export class Item extends Component {
       let learn = _.get(stack, `items["${itemId}"].learn`, false);
 
       if (!stack || !item) {
-        this.setState({notFound: true});
+        this.setState({ notFound: true });
         return;
       } else {
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
@@ -363,8 +239,6 @@ export class Item extends Component {
   }
 
   handleEvent(diff) {
-    console.log("handle event")
-    console.log(diff)
     if (diff.data.total) {
       let stack = diff.data.total.data;
       let item = stack.items[this.state.itemId].item;
@@ -405,13 +279,13 @@ export class Item extends Component {
 
   handleError(err) {
     this.props.setSpinner(false);
-    this.setState({notFound: true});
+    this.setState({ notFound: true });
   }
 
   componentDidUpdate(prevProps, prevState) {
     if (this.state.notFound) return;
 
-    let ship   = this.props.ship;
+    let ship = this.props.ship;
     let stackId = this.props.stackId;
     let itemId = this.props.itemId;
 
@@ -444,12 +318,12 @@ export class Item extends Component {
     }
 
     if (!stack || !item) {
-      this.setState({notFound: true});
+      this.setState({ notFound: true });
       return;
     }
 
     if (this.state.awaitingEdit &&
-       ((item.content.title != oldItem.title) ||
+      ((item.content.title != oldItem.title) ||
         (item.content.raw != oldItem.raw))) {
 
       let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
@@ -482,37 +356,23 @@ export class Item extends Component {
       this.props.api.action("srrs", "srrs-action", read);
     }
 
-    if (this.state.awaitingGrade ) {
-     let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-     let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
-     this.props.api.fetchStatus(stack.info.filename, item.content.title)
-     this.setState({
-       mode: 'view',
-       titleOriginal: item.content.title,
-       bodyOriginal: item.content.file,
-       title: item.content.title,
-       body: item.content.file,
-       awaitingGrade: false,
-       item: item,
-       pathData: [
-         { text: "Home", url: "/~srrs/review" },
-         { text: stack.info.title, url: stackUrl },
-         { text: item.content.title, url: itemUrl },
-       ],
-     });
+    if (this.state.awaitingGrade) {
+      let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+      let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+      let redirect = `/~srrs/review`;
+      this.setState({
+        awaitingGrade: false,
+        mode: 'view',
+        item: item
+        
+      }, () => {
+        this.props.api.fetchStatus(stack.info.filename, item.content.title) 
+        this.props.history.push(redirect)
+      })
 
-     this.props.setSpinner(false);
-
-     let read = {
-       read: {
-         who: ship,
-         stak: stackId,
-         item: itemId,
-       }
-     };
-     this.props.api.action("srrs", "srrs-action", read);
-   }
-    if (!this.state.temporary){
+      
+    }
+    if (!this.state.temporary) {
       if (oldItem != item) {
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
         let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
@@ -539,14 +399,14 @@ export class Item extends Component {
         };
         this.props.api.action("srrs", "srrs-action", read);
       }
-      
+
       if (oldStack != stack) {
-        this.setState({stack: stack});
+        this.setState({ stack: stack });
       }
     }
   }
 
-  deleteItem(){
+  deleteItem() {
     let del = {
       "delete-item": {
         stak: this.props.stackId,
@@ -565,16 +425,16 @@ export class Item extends Component {
     });
   }
 
-  titleChange(evt){
-    this.setState({title: evt.target.value});
+  titleChange(evt) {
+    this.setState({ title: evt.target.value });
   }
 
-  bodyChange(evt){
-    this.setState({body: evt.target.value});
+  bodyChange(evt) {
+    this.setState({ body: evt.target.value });
   }
 
-  gradeChange(evt){
-    this.setState({recallGrade: evt.target.value});
+  gradeChange(evt) {
+    this.setState({ recallGrade: evt.target.value });
   }
 
   render() {
@@ -582,58 +442,65 @@ export class Item extends Component {
 
     if (this.state.notFound) {
       return (
-        <NF/>
+        <NF />
       );
     } else if (this.state.awaitingLoad) {
       return null;
     } else if (this.state.awaitingEdit) {
       return null;
     } else if (this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
-      let stackLink = `/~srrs/~${this.state.ship}/${this.props.stackId}`;
-      let stackLinkText = `<- Back to ${this.state.stack.info.title}`;
-
+      let stackLink = `/~srrs/~${this.props.ship}/${this.state.stack.name}/`;
+      let title = this.state.item.content.title;
+      let stackTitle = this.props.stackId;
+      let stackLinkText = `<- Back to ${this.state.stack.name}`;
+      let host = this.props.ship;
       let date = moment(this.state.item.content["date-created"]).fromNow();
       let authorDate = `${this.state.item.content.author} • ${date}`;
       let create = (this.props.ship === window.ship);
+
       return (
-        <div>
-          <PathControl pathData={this.state.pathData} create={create}/>
-          <div className="absolute w-100" style={{top:124}}>
-            <div className="mw-688 center mt4 flex-col" style={{flexBasis: 688}}>
-              <Link to={stackLink}>
-                <p className="body-regular one-line mw-688">
-                  {stackLinkText}
-                </p>
-              </Link>
 
-              <h2 style={{wordWrap: "break-word"}}>{this.state.titleOriginal}</h2>
-
-              <div className="mb4">
-                <p className="fl label-small gray-50">{authorDate}</p>
-                <Admin
-                  enabled={adminEnabled}
-                  mode={this.state.mode}
-                  editItem={this.editItem}
-                  deleteItem={this.deleteItem}
-                  gradeItem={this.gradeItem}
-                  setGrade={this.setGrade}
-                  saveGrade={this.saveGrade}
-                  toggleAdvanced={this.toggleAdvanced}
-                  learn={this.state.learn}
-                />
+        <div className="center mw6 f9 h-100"
+          style={{ paddingLeft: 16, paddingRight: 16 }}>
+          <div className="h-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
+    
+          <div
+              className="flex justify-between"
+              style={{ marginBottom: 32 }}>
+              <div className="flex-col">
+              <div className="mb1">{title}</div>
+                <span>
+                  <span className="gray3 mr1">by</span>
+                  <span className={"mono"}
+                    title={host}>
+                    {host}
+                  </span>
+                </span>
               </div>
-
-              <div className="cb">
-                <ItemBody
-                  body={this.state.item.content.file}
-                />
+              <div className="flex">
+                <Link to={`/~srrs/~${host}/${stackTitle}/new-item`} className="StackButton bg-light-green green2">
+                  New Item
+            </Link>
               </div>
-
-              <hr className="gray-50 w-680 mt4"/>
-              <NextPrev stack={this.state.stack} itemId={this.props.itemId} />
             </div>
+            <Recall
+              enabled={adminEnabled}
+              mode={this.state.mode}
+              editItem={this.editItem}
+              deleteItem={this.deleteItem}
+              gradeItem={this.gradeItem}
+              setGrade={this.setGrade}
+              saveGrade={this.saveGrade}
+              toggleAdvanced={this.toggleAdvanced}
+              learn={this.state.learn}
+            />
+
+            <ItemBody
+              body={this.state.item.content.file}
+            />
           </div>
         </div>
+
       );
 
     } else if (this.state.mode == 'edit') {
@@ -643,11 +510,12 @@ export class Item extends Component {
       let date = moment(this.state.item.content["date-created"]).fromNow();
       let authorDate = `${this.state.item.content.author} • ${date}`;
       let create = (this.props.ship === window.ship);
+
       return (
+
         <div>
-          <PathControl pathData={this.state.pathData} create={create}/>
-          <div className="absolute w-100" style={{top:124}}>
-            <div className="mw-688 center mt4 flex-col" style={{flexBasis: 688}}>
+          <div className="absolute w-100" style={{ top: 124 }}>
+            <div className="mw-688 center mt4 flex-col" style={{ flexBasis: 688 }}>
               <Link to={stackLink}>
                 <p className="body-regular">
                   {stackLinkText}
@@ -663,7 +531,7 @@ export class Item extends Component {
 
               <div className="mb4">
                 <p className="fl label-small gray-50">{authorDate}</p>
-                <Admin
+                <Recall
                   enabled={adminEnabled}
                   mode="edit"
                   saveItem={this.saveItem}
@@ -672,16 +540,12 @@ export class Item extends Component {
               </div>
 
               <textarea className="cb b--none body-regular-400 w-100 h5"
-                style={{resize:"none"}}
+                style={{ resize: "none" }}
                 type="text"
                 name="itemBody"
                 onChange={this.bodyChange}
                 defaultValue={this.state.bodyOriginal}>
               </textarea>
-
-              <hr className="gray-50 w-680 mt4"/>
-              <NextPrev stack={this.state.stack} itemId={this.props.itemId} />
-
             </div>
           </div>
         </div>

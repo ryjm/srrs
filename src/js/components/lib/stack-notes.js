@@ -9,31 +9,6 @@ export class StackNotes extends Component {
   }
 
   render() {
-    if (!this.props.items ||
-        ((this.props.items.length === 0) &&
-         (this.props.ship === window.ship))) {
-      let link = {
-        pathname: "/~srrs/new-item",
-        state: {
-          lastPath: this.props.location.pathname,
-          lastMatch: this.props.match.path,
-          lastParams: this.props.match.params,
-        }
-      }
-
-      return (
-        <div className="flex flex-wrap">
-          <div className="w-336 relative">
-            <hr className="gray-10" style={{marginTop: 48, marginBottom:25}}/>
-            <Link to={link}>
-              <p className="body-large b">
-                -> Create First item
-              </p>
-            </Link>
-          </div>
-        </div>
-      );
-    }
 
     let items = this.props.items.map((item, key) => {
       return (
@@ -42,7 +17,7 @@ export class StackNotes extends Component {
     });
 
     return (
-      <div className="flex flex-wrap" style={{marginTop: 48}}>
+      <div className="flex-col" >
         {items}
       </div>
     );

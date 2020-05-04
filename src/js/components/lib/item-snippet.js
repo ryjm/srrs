@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import classnames from 'classnames';
+import ReactMarkdown from 'react-markdown'
 
 export class ItemSnippet extends Component {
   constructor(props) {
@@ -8,10 +9,14 @@ export class ItemSnippet extends Component {
 
   render() {
     return (
-      <p className="body-regular-400 five-lines"
-        style={{WebkitBoxOrient: "vertical"}}>
-        {this.props.body}
+      <p className="mb1"
+        style={{ overflowWrap: "break-word" }}>
+        <ReactMarkdown
+          unwrapDisallowed
+          allowedTypes={['text', 'root', 'break', 'paragraph']}
+          source={this.props.body} />
       </p>
+
     );
   }
 }

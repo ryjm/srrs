@@ -2,7 +2,9 @@ import React, { Component } from 'react';
 import classnames from 'classnames';
 import _ from 'lodash';
 import { PathControl } from '/components/lib/path-control';
-import { StackData } from '/components/lib/stack-data';
+import {
+  StackData
+} from '/components/lib/stack-data';
 import { StackNotes } from '/components/lib/stack-notes';
 import { StackSubs } from '/components/lib/stack-subs';
 import { StackSettings } from '/components/lib/stack-settings';
@@ -17,7 +19,7 @@ const BS = withRouter(StackSettings)
 
 
 export class Stack extends Component {
-  constructor(props){
+  constructor(props) {
     super(props);
 
     this.state = {
@@ -43,7 +45,7 @@ export class Stack extends Component {
   }
 
   handleEvent(diff) {
-    
+
     if (diff.data.total) {
       let stack = diff.data.total.data;
       this.stack = stack;
@@ -55,15 +57,17 @@ export class Stack extends Component {
         awaiting: false,
         pathData: [
           { text: "Home", url: "/~srrs/review" },
-          { text: stack.info.title,
-            url: `/~srrs/${stack.info.owner}/${stack.info.filename}` }
+          {
+            text: stack.info.title,
+            url: `/~srrs/${stack.info.owner}/${stack.info.filename}`
+          }
         ],
       });
 
       this.props.setSpinner(false);
     } else if (diff.data.remove) {
       if (diff.data.remove.item) {
-       // XX TODO
+        // XX TODO
       } else {
         this.props.history.push("/~srrs/review");
       }
@@ -72,7 +76,7 @@ export class Stack extends Component {
 
   handleError(err) {
     this.props.setSpinner(false);
-    this.setState({notFound: true});
+    this.setState({ notFound: true });
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -82,12 +86,12 @@ export class Stack extends Component {
     let stackId = this.props.stackId;
 
     let stack = (ship === window.ship)
-      ?  _.get(this.props, `pubs["${stackId}"]`, false)
-      :  _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
+      ? _.get(this.props, `pubs["${stackId}"]`, false)
+      : _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
 
 
     if (!(stack) && (ship === window.ship)) {
-      this.setState({notFound: true});
+      this.setState({ notFound: true });
       return;
     } else if (this.stack && !stack) {
       this.props.history.push("/~srrs/review");
@@ -110,15 +114,16 @@ export class Stack extends Component {
     let ship = this.props.ship;
     let stackId = this.props.stackId;
     let stack = (ship == window.ship)
-      ?  _.get(this.props, `pubs["${stackId}"]`, false)
-      :  _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
+      ? _.get(this.props, `pubs["${stackId}"]`, false)
+      : _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
 
     if (!(stack) && (ship === window.ship)) {
-      this.setState({notFound: true});
+      this.setState({ notFound: true });
       return;
     };
 
     let temporary = (!(stack) && (ship != window.ship));
+
 
     if (temporary) {
       this.setState({
@@ -139,11 +144,11 @@ export class Stack extends Component {
     }
   }
 
-  buildItems(stack){
+  buildItems(stack) {
     if (!stack) {
       return [];
     }
-    
+
     let pinProps = stack.order.pin.map((itemId) => {
       let item = stack.items[itemId];
       return this.buildItemPreviewProps(item, stack, true);
@@ -157,15 +162,15 @@ export class Stack extends Component {
     return pinProps.concat(unpinProps);
   }
 
-  buildItemPreviewProps(item, stack, pinned){
+  buildItemPreviewProps(item, stack, pinned) {
 
     return {
       itemTitle: item.content.title,
-      itemName:  item.content["note-id"],
+      itemName: item.content["note-id"],
       itemBody: item.content.file,
       itemSnippet: item.content.snippet,
       stackTitle: stack.info.title,
-      stackName:  stack.info.filename,
+      stackName: stack.info.filename,
       author: item.content.author,
       stackOwner: stack.info.owner,
       date: item.content["date-created"],
@@ -173,10 +178,10 @@ export class Stack extends Component {
     }
   }
 
-  buildData(){
+  buildData() {
     let stack = (this.props.ship == window.ship)
-      ?  _.get(this.props, `pubs["${this.props.stackId}"]`, false)
-      :  _.get(this.props, `subs["${this.props.ship}"]["${this.props.stackId}"]`, false);
+      ? _.get(this.props, `pubs["${this.props.stackId}"]`, false)
+      : _.get(this.props, `subs["${this.props.ship}"]["${this.props.stackId}"]`, false);
 
     if (this.state.temporary) {
       return {
@@ -197,8 +202,10 @@ export class Stack extends Component {
         stackHost: stack.info.owner,
         pathData: [
           { text: "Home", url: "/~srrs/review" },
-          { text: stack.info.title,
-            url: `/~srrs/${stack.info.owner}/${stack.info.filename}` }
+          {
+            text: stack.info.title,
+            url: `/~srrs/${stack.info.owner}/${stack.info.filename}`
+          }
         ],
       };
     }
@@ -212,7 +219,7 @@ export class Stack extends Component {
       }
     }
     this.props.setSpinner(true);
-    this.setState({awaitingSubscribe: true}, () => {
+    this.setState({ awaitingSubscribe: true }, () => {
       this.props.api.action("srrs", "srrs-action", sub);
     });
   }
@@ -229,139 +236,93 @@ export class Stack extends Component {
   }
 
   viewSubs() {
-    this.setState({view: 'subs'});
+    this.setState({ view: 'subs' });
   }
 
   viewSettings() {
-    this.setState({view: 'settings'});
+    this.setState({ view: 'settings' });
   }
 
   viewNotes() {
-    this.setState({view: 'notes'});
+    this.setState({ view: 'notes' });
   }
 
   render() {
+    const { props } = this;
+
 
     if (this.state.notFound) {
       return (
-        <NF/>
+        <NF />
       );
     } else if (this.state.awaiting) {
       return null;
     } else {
       let data = this.buildData();
-
-      let contributors = `~${this.props.ship}`;
-      let create = (this.props.ship === window.ship);
-
-      let subNum = _.get(data.stack, 'subscribers.length', 0);
-
-      let foreign = _.get(this.props,
-        `subs["${this.props.ship}"]["${this.props.stackId}"]`, false);
-
-      let actionType = false;
-      if (this.state.temporary) {
-        actionType = 'subscribe';
-      } else if ((this.props.ship !== window.ship) && foreign) {
-        actionType = 'unsubscribe';
+      let inner = null
+      switch (props.view) {
+        case "notes":
+          inner = <BN ship={this.props.ship} items={data.itemProps} />
       }
 
-      let viewSubs = (this.props.ship === window.ship)
-        ? this.viewSubs
-        : null;
+      return (
+      <div
+        className="overflow-y-scroll"
+        style={{ paddingLeft: 16, paddingRight: 16 }}
+        onScroll={this.onScroll}
+        ref={el => {
+          this.scrollElement = el;
+        }}>
+        <div className="w-100 dn-m dn-l dn-xl inter pt4 pb6 f9">
+          <Link to="/~srrs/review">{"<- Review"}</Link>
+        </div>
+        <div className="center mw6 f9 h-100"
+          style={{ paddingLeft: 16, paddingRight: 16 }}>
+          <div className="h-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
+            <div
+              className="flex justify-between"
+              style={{ marginBottom: 32 }}>
+              <div className="flex-col">
+                <div className="mb1">{data.stackTitle}</div>
+                <span>
+                  <span className="gray3 mr1">by</span>
+                  <span className={"mono"}
+                    title={data.stackHost}>
+                    {data.stackHost}
+                  </span>
+                </span>
+              </div>
+              <div className="flex">
+                <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
+                  New Item
+            </Link>
+              </div>
+            </div>
 
-      let viewSettings = (this.props.ship === window.ship)
-        ? this.viewSettings
-        : null;
+            <div className="flex" style={{ marginBottom: 24 }}>
+            <Link to="/~srrs/review" className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
+                Review
+              </Link>
+              <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
+                Stack Items
+              </Link>
+              
+              <div className="bb b--gray4 b--gray2-d gray2 pv4 ph2"
+                style={{ flexGrow: 1 }}></div>
+            </div>
 
-      if (this.state.view === 'notes') {
-        return (
-          <div>
-            <PC pathData={data.pathData} create={create}/>
-            <div className="absolute w-100"
-              style={{top:124, paddingLeft: 16, paddingRight: 16, paddingTop: 32}}>
-              <div className="flex-col">
-                <h2 style={{wordBreak: "break-word"}}>
-                  {data.stackTitle}
-                </h2>
-                <div className="flex" style={{marginTop: 22}}>
-                  <StackData
-                    host={this.props.ship}
-                    viewSubs={viewSubs}
-                    subNum={subNum}
-                    viewSettings={viewSettings}
-                    subscribeAction={actionType}
-                    subscribe={this.subscribe}
-                    unsubscribe={this.unsubscribe}
-                  />
-                </div>
-                <BN ship={this.props.ship} items={data.itemProps} />
-              </div>
+            <div style={{ height: "calc(100% - 188px)" }} className="f9 lh-solid">
+              {inner}
             </div>
           </div>
-        );
-      } else if (this.state.view === 'subs') {
-        let subscribers = _.get(data, 'stack.subscribers', []);
-        return (
-          <div>
-            <PC pathData={data.pathData} create={create}/>
-            <div className="absolute w-100"
-              style={{top:124, paddingLeft: 16, paddingRight: 16, paddingTop: 32}}>
-              <div className="flex-col">
-                <h2 style={{wordBreak: "break-word"}}>
-                  {data.stackTitle}
-                </h2>
-                <div className="flex" style={{marginTop: 22}}>
-                  <StackData
-                    host={this.props.ship}
-                    viewSubs={viewSubs}
-                    subNum={subNum}
-                    viewSettings={viewSettings}
-                    subscribeAction={actionType}
-                    subscribe={this.subscribe}
-                    unsubscribe={this.unsubscribe}
-                  />
-                </div>
-                <StackSubs back={this.viewNotes}
-                  subs={subscribers}
-                  stackId={this.props.stackId}
-                  title={data.stackTitle}
-                  api={this.props.api}/>
-              </div>
-            </div>
-          </div>
-        );
-      } else if (this.state.view === 'settings') {
-        return (
-          <div>
-            <PC pathData={data.pathData} create={create}/>
-            <div className="absolute w-100"
-              style={{top:124, paddingLeft: 16, paddingRight: 16, paddingTop: 32}}>
-              <div className="flex-col">
-                <h2 style={{wordBreak: "break-word"}}>
-                  {data.stackTitle}
-                </h2>
-                <div className="flex" style={{marginTop: 22}}>
-                  <StackData
-                    host={this.props.ship}
-                    viewSubs={viewSubs}
-                    subNum={subNum}
-                    viewSettings={viewSettings}
-                    subscribeAction={actionType}
-                    subscribe={this.subscribe}
-                    unsubscribe={this.unsubscribe}
-                  />
-                </div>
-                <BS back={this.viewNotes}
-                  stackId={this.props.stackId}
-                  title={data.stackTitle}
-                  api={this.props.api}/>
-              </div>
-            </div>
-          </div>
-        );
-      }
+        </div>
+      </div>
+      );
     }
+
+
+
+
   }
 }
 

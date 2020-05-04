@@ -231,6 +231,7 @@
   ::
       [[~ [%'~srrs' %review ~]] ~]
     =/  hym=manx  (index (state-to-json state))
+
     (manx-response:gen hym)
   ::  subscriptions
   ::
@@ -316,7 +317,10 @@
     ~&  act+act
     =/  del  [%add-item our.bol stak.act name.act new-item]
     =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-    [~[mov] state(pubs (~(put by pubs) stak.act new-stack))]
+    =/  raise  [%raise-item our.bol stak.act name.act]
+    =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
+    ~&  raise-card+raise-card
+    [~[mov raise-card] state(pubs (~(put by pubs) stak.act new-stack))]
     ::
       %delete-stack
     ~&  delete-stack+act
@@ -426,6 +430,7 @@
       [~ state(review review:*versioned-state)]
         %tile
       :_  state
+      ~&  tile+make-tile-moves
       make-tile-moves
     ==
 ::
@@ -473,7 +478,11 @@
 ::
 ++  make-tile-moves
   ^-  (list card)
-  [%give %fact ~[/srrstile] %json !>(make-tile-json)]~
+  =/  del  [%update-review review.state]
+  ~&  del+del
+  :~  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
+      [%give %fact ~[/srrstile] %json !>(make-tile-json)]
+  ==
 ::
 ++  make-tile-json
   ^-  json
@@ -527,7 +536,6 @@
   =/  new-item  itm(learn new-item-status)
   =/  new-status  (~(put by status.old-stack) item new-item-status)
   =/  new-stack  old-stack(status new-status, items (~(put by items.old-stack) item new-item))
-  ~&  new-stack+new-stack
   =/  review-date=@da  (add now.bol interval)
   =/  schedule-card  [%pass /review-schedule/(scot %tas stak)/(scot %tas item)/(scot %da review-date) %arvo %b %wait review-date]~
   [schedule-card state(pubs (~(put by pubs) stak new-stack))]
