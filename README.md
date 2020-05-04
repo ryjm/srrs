@@ -5,6 +5,8 @@ spaced repetition repetition system
 ![Tile view](tile.png)
 ---
 ![Item view](screenshot.png)
+---
+![Review page](review.png)
 
 *warning*: this was originally written on top of the old publish app, so there is a
 lot of that code in here, especially on the front end. 
