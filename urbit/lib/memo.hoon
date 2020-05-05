@@ -75,7 +75,6 @@
   ^-  (quip card:agent:gall agent:gall)
   %-  (print bowl "{<dap.bowl>}: on-arvo on wire {<wire>}, {<[- +<]:sign-arvo>}")
   %-  (print bowl "{<dap.bowl>}: state: {<on-save:ag>}")
-  ~&  [%test 'test']
   =^  cards  agent  (on-arvo:ag wire sign-arvo)
   =/  publish-state  on-save:ag
   =/  books=vase

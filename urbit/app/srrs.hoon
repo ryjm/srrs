@@ -314,12 +314,10 @@
       items  (~(uni by items.old-stack) (my ~[[name.act new-item]]))
       status  (~(put by status.old-stack) name.act (learned-status [.2.5 0 0]))
     ==
-    ~&  act+act
     =/  del  [%add-item our.bol stak.act name.act new-item]
     =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
     =/  raise  [%raise-item our.bol stak.act name.act]
     =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
-    ~&  raise-card+raise-card
     [~[mov raise-card] state(pubs (~(put by pubs) stak.act new-stack))]
     ::
       %delete-stack
@@ -361,15 +359,13 @@
 ++  peer-srrstile
   |=  wir=wire
   ^-  (quip card _state)
-  ~&  wir+wire
   :_  state
   [%give %fact ~[/srrstile] %json !>(make-tile-json)]~
 ::
 ++  peer-srrs-stack
   |=  wir=wire
   ^-  (quip card _state)
-  ~&  wir+wire
-  :_  state
+    :_  state
   [%give %fact ~ %json !>(*stack)]~
 ::
 ++  pull
@@ -421,16 +417,13 @@
     ?+  a
       [~ state]
         %print-json
-      ~&  (state-to-json state)
       [~ state]
         %clear-state
-      ~&  state+state
       [~ *versioned-state]
         %clear-review
       [~ state(review review:*versioned-state)]
         %tile
       :_  state
-      ~&  tile+make-tile-moves
       make-tile-moves
     ==
 ::
@@ -479,7 +472,6 @@
 ++  make-tile-moves
   ^-  (list card)
   =/  del  [%update-review review.state]
-  ~&  del+del
   :~  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
       [%give %fact ~[/srrstile] %json !>(make-tile-json)]
   ==
@@ -519,7 +511,6 @@
   =/  act
   [%new-stack -.book title.book items %none read=*rule:clay write=*rule:clay]
   =/  mov=card
-  ~&  add+act
   [%pass /stacks %agent [our.bol %srrs] %poke %srrs-action !>(act)]
   [(snoc cad mov) sty]
 ::
