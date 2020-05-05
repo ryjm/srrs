@@ -32,14 +32,16 @@ export class Sidebar extends Component {
         groupedStacks["/~/"] = [stack];
       };
     });
-    
-    let groupedItems =
-      groupedStacks["/~/"]
+
+    let groupedItems = [];
+
+    if (groupedStacks["/~/"]) {
+      groupedItems = groupedStacks["/~/"]
         .map(stack => {
           let owner = stacks[stack].info.owner
           let path = `${owner}/${stacks[stack].info.filename}`
-          
-          let selected = props.path === path 
+
+          let selected = props.path === path
           return (
             <StackEntry
               key={groupedStacks["/~/"].indexOf(stack)}
@@ -49,6 +51,7 @@ export class Sidebar extends Component {
             />
           )
         })
+    }
 
 
     return (
