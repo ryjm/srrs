@@ -70,7 +70,8 @@
     ::
     ++  raise-item
       %-  ot:dejs
-      :~  stak+so:dejs
+      :~  who+(su:dejs fed:ag)
+          rstak+so:dejs
           item+so:dejs
       ==
     ::
