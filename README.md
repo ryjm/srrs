@@ -53,7 +53,7 @@ srrs with a poke. better support for that path soon.
 - ~~handle the scheduling of review items~~
 - ~~support creating stacks/items through frontend~~
 - ~~tile~~
-- remove old publish artifacts
-- clean up sur and lib, move to json in mar
-- update landscape UI to OS1 style, probably just a full rewrite
+- remove old publish artifacts (almost done)
+- clean up sur and lib, move to json in mar (started)
+- ~~update landscape UI to OS1 style, probably just a full rewrite~~
 - less shitty
