@@ -40,6 +40,7 @@
           unsubscribe+unsubscribe
       ::
           read+read
+          update-review+update-review
       ==
     ::
     ++  new-stack
@@ -71,7 +72,7 @@
     ++  raise-item
       %-  ot:dejs
       :~  who+(su:dejs fed:ag)
-          rstak+so:dejs
+          stak+so:dejs
           item+so:dejs
       ==
     ::
@@ -130,6 +131,12 @@
                 who+whoms
         ==  ==
     ++  item
+      |=  jon=^json
+      ?~  jon
+        ~
+      ((om:dejs same) jon)
+    ::
+    ++  update-review
       |=  jon=^json
       ?~  jon
         ~

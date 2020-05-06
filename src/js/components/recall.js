@@ -8,46 +8,47 @@ export class Recall extends Component {
     }
     
     render() {
-        if (!this.props.enabled) {
+        const { props, state} = this;
+        if (!props.enabled) {
             return null;
-        } else if (this.props.mode === 'view') {
+        } else if (props.mode === 'view') {
             return (
 
                 <div className="flex-col fr">
 
                     <p className="label-regular gray-50 pointer tr b"
-                        onClick={this.props.gradeItem}>
+                        onClick={props.gradeItem}>
                         Grade
             </p>
 
                     <p className="label-regular gray-50 pointer tr b"
-                        onClick={this.props.editItem}>
+                        onClick={props.editItem}>
                         Edit
             </p>
                     <p className="label-regular red pointer tr b"
-                        onClick={this.props.deleteItem}>
+                        onClick={props.deleteItem}>
                         Delete
             </p>
                     <p className="label-regular gray-50 pointer tr b"
-                        onClick={this.props.toggleAdvanced}>
+                        onClick={props.toggleAdvanced}>
                         Advanced
             </p>
                 </div>
             );
-        } else if (this.props.mode === 'edit') {
+        } else if (props.mode === 'edit') {
             return (
                 <div className="flex-col fr">
                     <p className="pointer"
-                        onClick={this.props.saveItem}>
+                        onClick={props.saveItem}>
                         -> Save
             </p>
                     <p className="pointer"
-                        onClick={this.props.deleteItem}>
+                        onClick={props.deleteItem}>
                         Delete item
             </p>
                 </div>
             );
-        } else if (this.props.mode === 'grade') {
+        } else if (props.mode === 'grade' || props.mode === 'review') {
             let modifyButtonClasses = "mt4 db f9 ba pa2 white-d bg-gray0-d b--black b--gray2-d pointer mb1";
             return (
                 <div className="flex fr">
@@ -60,7 +61,7 @@ export class Recall extends Component {
                             { value: 'good' },
                             { value: 'easy' }
                         ]}
-                        defaultValue="again"
+                        defaultValue='again'
                     >
                         {({
                             name,
@@ -73,10 +74,6 @@ export class Recall extends Component {
                                 <div
                                     className="choices fr"
                                 >
-                                    <p className="pointer"
-                                        onClick={this.props.saveGrade}>
-                                        ->  Save Grade
-                                    </p>
                                     <div className="choices__items">
                                         {states.map((state, idx) => (
                                             <button
@@ -91,7 +88,8 @@ export class Recall extends Component {
                                                 onMouseOver={hoverValue.bind(null, state.value)}
                                                 onClick={() => {
                                                     setValue(state.value);
-                                                    this.props.setGrade(state.value);
+                                                    props.setGrade(state.value);
+                                                    props.saveGrade(state.value);
                                                 }
                                                 }
                                             >
@@ -104,16 +102,16 @@ export class Recall extends Component {
                     </Choices>
                 </div>
             );
-        } else if (this.props.mode === 'advanced') {
-            let ease = `ease: ${this.props.learn.ease}`;
-            let interval = `interval: ${this.props.learn.interval}`;
-            let box = `box: ${this.props.learn.box}`;
+        } else if (props.mode === 'advanced') {
+            let ease = `ease: ${props.learn.ease}`;
+            let interval = `interval: ${props.learn.interval}`;
+            let box = `box: ${props.learn.box}`;
             let backString = `<- Back`
 
             return (
                 <div className="body-regular flex-col fr">
                     <p className="pointer"
-                        onClick={this.props.toggleAdvanced}>
+                        onClick={props.toggleAdvanced}>
                         {backString}
                     </p>
                     <p className="label-small gray-50">{ease}</p>

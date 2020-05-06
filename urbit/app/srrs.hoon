@@ -80,8 +80,6 @@
           %handle-http-request
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
         :_  state
-        %+  weld
-          make-tile-moves
         %+  give-simple-payload:app  eyre-id
         %+  require-authorization:app  inbound-request
         poke-handle-http-request:sc
@@ -209,6 +207,11 @@
   ::
       [[[~ %js] [%'~srrs' %tile ~]] ~]
     (js-response:gen tile-js)
+      [[[~ %json] [%'~srrs' %update-review ~]] ~]
+    %-  json-response:gen
+    %-  json-to-octs
+    =/  updates  %+  turn  ~(tap in review.state)  update-to-json
+    a+updates
   ::  learned status as json for given stack
       [[[~ %json] [%'~srrs' %learn @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
@@ -331,13 +334,32 @@
     [~ state]
       %edit-item
     ~&  edit-item+act
-    [~ state]
+    =/  stack  (~(got by pubs) stak.act)
+    =/  item=item  (~(got by items.stack) name.act)
+    =/  front=(map knot cord)
+    %-  my
+    :~  title+name.act
+        author+(scot %p src.bol)
+        date-created+(scot %da date-created.content.item)
+        last-modified+(scot %da now.bol)
+    ==
+    =/  file  (add-front-matter front content.act)
+    =/  new-content  content.item(file file, snippet (form-snippet file))
+    =/  new-item  item(content new-content)
+    =/  new-stack
+    %=  stack
+      items  (~(put by items.stack) name.act new-item)
+    ==
+    :-  ~
+    %=  state
+      pubs  (~(put by pubs.state) stak.act new-stack)
+    ==
       %schedule-item
     ~&  schedule-item+act
     [~ state]
       %raise-item
     ~&  raise-item+act
-    :-  ~
+    :-  make-tile-moves
     %=  state
       review  (~(put in review.state) [our.bol stak.act item.act])
     ==
@@ -347,13 +369,17 @@
       %answered-item
     ~&  answered-item+act
     =^  cards  state  (update-learned-status stak.act item.act answer.act)
-    :-  cards
+    :-  %+  weld
+      make-tile-moves
+    cards
     %=  state
       review  (~(del in review.state) [our.bol stak.act item.act])
     ==
       %read
     ~&  read+act
     [~ state]
+      %update-review
+    [make-tile-moves state]
   ==
 ::
 ++  peer-srrstile

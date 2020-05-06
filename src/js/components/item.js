@@ -1,3 +1,4 @@
+import { Controlled as CodeMirror } from 'react-codemirror2';
 import React, { Component } from 'react';
 import classnames from 'classnames';
 import cx from 'classnames-es';
@@ -5,14 +6,16 @@ import moment from 'moment';
 import { SrrsCreate } from '/components/lib/srrs-create';
 import { Link } from 'react-router-dom';
 import { ItemBody } from '/components/lib/item-body';
+import { EditItem } from '/components/edit-item';
 import { PathControl } from '/components/lib/path-control';
 import { NextPrev } from '/components/lib/next-prev';
 import { Recall } from '/components/recall';
 import { NotFound } from '/components/not-found';
 import { withRouter } from 'react-router';
-
+import { Spinner } from '/components/lib/icons/icon-spinner';
+import { dateToDa } from '/lib/util';
 import _ from 'lodash';
-
+import 'codemirror/mode/markdown/markdown';
 const NF = withRouter(NotFound);
 const PC = withRouter(SrrsCreate);
 
@@ -48,12 +51,12 @@ export class Item extends Component {
       bodyOriginal: '',
       title: '',
       body: '',
-      recallGrade: '',
       learn: [],
       awaitingEdit: false,
       awaitingGrade: false,
       awaitingLoad: false,
       awaitingDelete: false,
+      submit: false,
       ship: this.props.ship,
       stackId: this.props.stackId,
       itemId: this.props.itemId,
@@ -64,11 +67,17 @@ export class Item extends Component {
       notFound: false,
     }
 
+    if (this.props.location.state) {
+      let mode = this.props.location.state.mode;
+      if (mode) {
+        this.state.mode = mode;
+      }
+    }
+
+
     this.editItem = this.editItem.bind(this);
     this.deleteItem = this.deleteItem.bind(this);
-    this.saveItem = this.saveItem.bind(this);
     this.titleChange = this.titleChange.bind(this);
-    this.bodyChange = this.bodyChange.bind(this);
     this.gradeItem = this.gradeItem.bind(this);
     this.setGrade = this.setGrade.bind(this);
     this.saveGrade = this.saveGrade.bind(this);
@@ -93,54 +102,14 @@ export class Item extends Component {
       this.setState({ mode: 'advanced' });
     }
   }
-  saveItem() {
-    if (this.state.title == this.state.titleOriginal &&
-      this.state.body == this.state.bodyOriginal) {
-      this.setState({ mode: 'view' });
-      return;
-    }
 
-    this.props.setSpinner(true);
-    let permissions = {
-      read: {
-        mod: 'black',
-        who: [],
-      },
-      write: {
-        mod: 'white',
-        who: [],
-      }
-    };
-
-    let data = {
-      "edit-item": {
-        who: this.state.ship,
-        stack: this.props.stackId,
-        name: this.props.itemId,
-        title: this.state.title,
-        perm: permissions,
-        content: this.state.body,
-
-      },
-    };
-
-    this.setState({
-      awaitingEdit: {
-        ship: this.state.ship,
-        stackId: this.props.stackId,
-        itemId: this.props.itemId,
-      }
-    }, () => {
-      this.props.api.action("srrs", "srrs-action", data)
-    });
-  }
-  saveGrade() {
+  saveGrade(value) {
     this.props.setSpinner(true);
     let data = {
       "answered-item": {
         stak: this.props.stackId,
         item: this.props.itemId,
-        answer: this.state.recallGrade
+        answer: value
       },
     };
     this.setState({
@@ -158,7 +127,6 @@ export class Item extends Component {
     let ship = this.props.ship;
     let stackId = this.props.stackId;
     let itemId = this.props.itemId;
-
     if (ship !== window.ship) {
       let stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
 
@@ -307,8 +275,8 @@ export class Item extends Component {
       learn = _.get(stack, `items["${itemId}"].learn`, false);
     }
 
-    if (this.state.learn !== this.props.learn) {
-      this.state.learn = this.props.learn;
+    if (this.state.learn !== learn) {
+      this.state.learn = learn;
     }
     if (this.state.awaitingDelete && (item === false) && oldItem) {
       this.props.setSpinner(false);
@@ -359,18 +327,22 @@ export class Item extends Component {
     if (this.state.awaitingGrade) {
       let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
       let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
-      let redirect = `/~srrs/review`;
+      let redirect = itemUrl;
+      if (this.state.mode === 'review') {
+        redirect = `/~srrs/review`;
+      }
+
       this.setState({
         awaitingGrade: false,
         mode: 'view',
         item: item
-        
+
       }, () => {
-        this.props.api.fetchStatus(stack.info.filename, item.content.title) 
+        this.props.api.fetchStatus(stack.info.filename, item.content["note-id"])
         this.props.history.push(redirect)
       })
 
-      
+
     }
     if (!this.state.temporary) {
       if (oldItem != item) {
@@ -429,15 +401,12 @@ export class Item extends Component {
     this.setState({ title: evt.target.value });
   }
 
-  bodyChange(evt) {
-    this.setState({ body: evt.target.value });
-  }
-
   gradeChange(evt) {
     this.setState({ recallGrade: evt.target.value });
   }
 
   render() {
+    const { props, state} = this;
     let adminEnabled = (this.props.ship === window.ship);
 
     if (this.state.notFound) {
@@ -448,12 +417,12 @@ export class Item extends Component {
       return null;
     } else if (this.state.awaitingEdit) {
       return null;
-    } else if (this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
+    } else if (this.state.mode == 'review' || this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
       let stackLink = `/~srrs/~${this.props.ship}/${this.state.stack.name}/`;
       let title = this.state.item.content.title;
       let stackTitle = this.props.stackId;
       let stackLinkText = `<- Back to ${this.state.stack.name}`;
-      let host = this.props.ship;
+      let host = this.state.stack.info.owner;
       let date = moment(this.state.item.content["date-created"]).fromNow();
       let authorDate = `${this.state.item.content.author} • ${date}`;
       let create = (this.props.ship === window.ship);
@@ -463,12 +432,12 @@ export class Item extends Component {
         <div className="center mw6 f9 h-100"
           style={{ paddingLeft: 16, paddingRight: 16 }}>
           <div className="h-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
-    
-          <div
+
+            <div
               className="flex justify-between"
               style={{ marginBottom: 32 }}>
               <div className="flex-col">
-              <div className="mb1">{title}</div>
+                <div className="mb1">{title}</div>
                 <span>
                   <span className="gray3 mr1">by</span>
                   <span className={"mono"}
@@ -478,7 +447,7 @@ export class Item extends Component {
                 </span>
               </div>
               <div className="flex">
-                <Link to={`/~srrs/~${host}/${stackTitle}/new-item`} className="StackButton bg-light-green green2">
+                <Link to={`/~srrs/${host}/${stackTitle}/new-item`} className="StackButton bg-light-green green2">
                   New Item
             </Link>
               </div>
@@ -506,49 +475,60 @@ export class Item extends Component {
     } else if (this.state.mode == 'edit') {
       let stackLink = `/~srrs/~${this.state.ship}/${this.props.stackId}`;
       let stackLinkText = `<- Back to ${this.state.stack.info.title}`;
-
-      let date = moment(this.state.item.content["date-created"]).fromNow();
+      let title = state.stack.info.title;
+      let date = dateToDa(new Date(state.item.content["date-created"]));
+      date = date.slice(1, -10);
       let authorDate = `${this.state.item.content.author} • ${date}`;
       let create = (this.props.ship === window.ship);
+      let submitStyle = (state.submit)
+      ? { color: '#2AA779', cursor: "pointer" }
+      : { color: '#B1B2B3', cursor: "auto" };
+
+    let hrefIndex = props.location.pathname.indexOf("/note/");
+    let file = state.item.content.file;
+    let body = file.slice(file.indexOf(';>') + 3);
 
       return (
-
         <div>
-          <div className="absolute w-100" style={{ top: 124 }}>
-            <div className="mw-688 center mt4 flex-col" style={{ flexBasis: 688 }}>
-              <Link to={stackLink}>
-                <p className="body-regular">
-                  {stackLinkText}
-                </p>
-              </Link>
-
-              <input autoFocus className="header-2 b--none w-100"
-                type="text"
-                name="itemName"
-                defaultValue={this.state.titleOriginal}
-                onChange={this.titleChange}
-              />
-
-              <div className="mb4">
-                <p className="fl label-small gray-50">{authorDate}</p>
-                <Recall
-                  enabled={adminEnabled}
-                  mode="edit"
-                  saveItem={this.saveItem}
-                  deleteItem={this.deleteItem}
-                />
-              </div>
-
-              <textarea className="cb b--none body-regular-400 w-100 h5"
-                style={{ resize: "none" }}
-                type="text"
-                name="itemBody"
-                onChange={this.bodyChange}
-                defaultValue={this.state.bodyOriginal}>
-              </textarea>
-            </div>
-          </div>
+        <EditItem
+        {...state}
+        {...props}/>
         </div>
+      /*   <div className="flex relative" style={{ top: -74 }}>
+          <div className="w1 z-0" style={{ flexGrow: 1 }}></div>
+          <div className="flex-col w-100 mw-688 w-100 z-2"></div>
+
+          <Link to={stackLink}>
+            <p className="body-regular">
+              {stackLinkText}
+            </p>
+          </Link>
+
+          <input autoFocus className="header-2 w-100 b--none overflow-y-hidden"
+            type="text"
+            name="itemName"
+            defaultValue={this.state.titleOriginal}
+            onChange={this.titleChange}
+          />
+
+          <div className="mb4">
+            <p className="fl label-small gray-50">{authorDate}</p>
+            <Recall
+              enabled={adminEnabled}
+              mode="edit"
+              saveItem={this.saveItem}
+              deleteItem={this.deleteItem}
+            />
+          </div>
+
+          <textarea className="body-regular-400 w-100 z-2 b--none overflow-y-hidden"
+            style={{ resize: "none", height: this.bodyHeight }}
+            type="text"
+            name="itemBody"
+            onChange={this.bodyChange}
+            defaultValue={this.state.bodyOriginal}>
+          </textarea>
+        </div> */
       );
     }
   }

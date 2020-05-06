@@ -10,7 +10,6 @@ export class PrimaryReducer {
       this.addStack(json["add-stack"], state);
       break
     case "update-review":
-
       this.updateReview(json["update-review"], state);
       break
     default:
@@ -41,8 +40,9 @@ export class PrimaryReducer {
   }
 
   updateReview(json, state) {
-
-    json
+    console.log("in update")
+    console.log(json)
+    state.review=json
   }
 
 }

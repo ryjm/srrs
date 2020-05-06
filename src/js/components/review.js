@@ -4,6 +4,7 @@ import { ReviewPreview } from "/components/lib/review-preview";
 import { withRouter } from "react-router";
 import { HeaderMenu } from "/components/lib/header-menu";
 import { MessageScreen } from "/components/message-screen";
+import { api } from "../api";
 
 export class Review extends Component {
   constructor(props) {
@@ -59,14 +60,14 @@ export class Review extends Component {
       itemBody: item.content.file,
       stackTitle: stack.title,
       stackName: stack.filename,
-      author: item.content.author.slice(1),
+      author: item.content.author,
       stackOwner: who,
       date: item.content["date-created"],
     };
   }
 
   retrieveItem(item, stack, who) {
-    if (who === window.ship) {
+    if (who === window.ship || who.slice(1) === window.ship) {
       return this.props.pubs[stack].items[item];
     } else {
       return this.props.subs[who][stack].items[item];
@@ -74,7 +75,7 @@ export class Review extends Component {
   }
 
   retrieveStack(stack, who) {
-    if (who === window.ship) {
+    if (who === window.ship || who.slice(1) === window.ship) {
       return this.props.pubs[stack].info;
     } else {
       return this.props.subs[who][stack].info;
@@ -118,12 +119,12 @@ export class Review extends Component {
     }
   }
 
-  componentDidUpdate(prevProps, prevState) {
-    let review = this.buildReview();
-
-      }
-
+  shouldComponentUpdate(prevProps, nextContext) {
+    let change = prevProps.review.length === this.props.review.length
+    return !change
+  }
   render() {
+    this.props.api.action("srrs", "srrs-action", {"update-review": null});
     let review = this.buildReview();
 
     let body = review.map((group, i) => {

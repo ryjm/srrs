@@ -34,13 +34,17 @@ export class ReviewPreview extends Component {
     let date = moment(this.props.item.date).fromNow();
     let author = this.props.item.author;
     let stackLink =
-      "/~srrs/~" + this.props.item.stackOwner + "/" + this.props.item.stackName;
-    let itemLink = stackLink + "/" + this.props.item.itemName;
+      "/~srrs/" + this.props.item.author + "/" + this.props.item.stackName;
+    let itemLink = stackLink + "/" + this.props.item.itemName
+    const location = {
+      pathname: itemLink,
+      state: { mode: "review" }
+    }
     return (
       <div className="f9 lh-solid ml3">
         <div className="flex-col">
           <div className="mv6">
-            <Link to={itemLink}>
+            <Link to={location}>
               <TitleSnippet title={this.props.item.itemTitle} />
             </Link>
             <div className="flex">

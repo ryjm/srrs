@@ -6,16 +6,12 @@ import { SrrsCreate } from '/components/lib/srrs-create';
 import { Sidebar } from '/components/lib/sidebar';
 import { withRouter } from 'react-router';
 
-const PC = withRouter(SrrsCreate);
-const HM = withRouter(HeaderMenu);
 
 export class Skeleton extends Component {
-  render() {
-    const { props, state } = this;
+render() {
 
-    /* let rightPanelHide = props.rightPanelHide
-      ? "dn-s" : "";
- */
+  const { props, state } = this;
+    
     let rightPanelHide = true
     let popout = !!props.popout
       ? props.popout : false;

@@ -45,6 +45,7 @@
       ==
   ::
       [%read who=@p stak=@tas item=@tas]
+      [%update-review ~]
       [%add-books books=(map @tas notebook:publish)]
   ==
 ::

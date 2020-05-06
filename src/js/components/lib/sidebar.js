@@ -62,9 +62,11 @@ export class Sidebar extends Component {
           "overflow-y-hidden " + activeClasses +
           (hiddenClasses ? "flex-basis-100-s flex-basis-250-ns" : "dn")
         }>
-        <a className="db dn-m dn-l dn-xl f9 pb3 pl3" href="/">
-          ⟵ Landscape
-        </a>
+        <div className="w-100 f9">
+          <Link to="/~srrs/review" className="blue2 pa4 f9 dib">
+            Review
+          </Link>
+        </div>
         <div className="w-100 f9">
           <Link to="/~srrs/new-stack" className="green2 pa4 f9 dib">
             New Stack

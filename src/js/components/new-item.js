@@ -155,7 +155,7 @@ export class NewItem extends Component {
         }
       }, () => {
 
-        this.props.api.action("srrs", "srrs-action", newItem)        
+        this.props.api.action("srrs", "srrs-action", newItem)     
         this.props.api.action("srrs", "srrs-action", raiseItem);
       }
 
