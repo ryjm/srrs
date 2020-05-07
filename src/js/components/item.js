@@ -445,6 +445,10 @@ export class Item extends Component {
                     {host}
                   </span>
                 </span>
+                <Link to={`/~srrs/${host}/${stackTitle}`} className="blue3 ml2">
+                  {`<- ${stackTitle}`}
+            </Link>
+
               </div>
               <div className="flex">
                 <Link to={`/~srrs/${host}/${stackTitle}/new-item`} className="StackButton bg-light-green green2">
