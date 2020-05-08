@@ -54,7 +54,7 @@
   |=  =item
   ^-  json
   %-  pairs:enjs:format
-  :~  content+(note-full-json:publish filename.content.item content.item)
+  :~  content+(content-full-json filename.content.item content.item)
       learn+(status-to-json learn.item)
   ==
 ::
@@ -134,4 +134,52 @@
         stack+s+stack.update
         item+s+item.update
     ==
+::
+++  content-full-json
+  |=  [content-name=@tas =content]
+  ^-  json
+  =,  enjs:format
+  %-  pairs
+  :~  note-id+s+content-name
+      author+s+(scot %p author.content)
+      title+s+title.content
+      date-created+(time date-created.content)
+      snippet+s+snippet.content
+      front+s+front.content
+      back+s+back.content
+      num-comments+(numb ~(wyt by comments.content))
+      comments+(comments-page comments.content 0 50)
+      read+b+read.content
+      pending+b+pending.content
+  ==
+::
+++  comments-page
+  |=  [comments=(map @da comment) start=@ud end=@ud]
+  ^-  json
+  =/  coms=(list [@da comment])
+    %+  sort  ~(tap by comments)
+    |=  [[d1=@da comment] [d2=@da comment]]
+    (gte d1 d2)
+  %-  comments-list-json
+  (scag end (slag start coms))
+::
+++  comments-list-json
+  |=  comments=(list [@da comment])
+  ^-  json
+  =,  enjs:format
+  :-  %a
+  (turn comments comment-json)
+::
+++  comment-json
+  |=  [date=@da com=comment]
+  ^-  json
+  =,  enjs:format
+  %+  frond:enjs:format
+    (scot %da date)
+  %-  pairs
+  :~  author+s+(scot %p author.com)
+      date-created+(time date-created.com)
+      content+s+content.com
+      pending+b+pending.com
+  ==
 --

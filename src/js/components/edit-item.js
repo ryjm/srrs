@@ -1,10 +1,6 @@
-import { Controlled as CodeMirror } from 'react-codemirror2';
 import React, { Component } from 'react';
+import { Controlled as CodeMirror } from 'react-codemirror2';
 import { Link } from 'react-router-dom';
-import classnames from 'classnames';
-import cx from 'classnames-es';
-import moment from 'moment';
-import { Spinner } from '/components/lib/icons/icon-spinner';
 import { dateToDa } from '/lib/util';
 import _ from 'lodash';
 import 'codemirror/mode/markdown/markdown';
@@ -13,16 +9,22 @@ export class EditItem extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            body: '',
+            bodyFront: '',
+            bodyBack: '',
             submit: false,
             awaiting: false
         }
         this.saveItem = this.saveItem.bind(this);
-        this.bodyChange = this.bodyChange.bind(this);
+        this.bodyFrontChange = this.bodyFrontChange.bind(this);
+        this.bodyBackChange = this.bodyBackChange.bind(this);
     }
-    bodyChange(editor, data, value) {
+    bodyFrontChange(editor, data, value) {
         let submit = !(value === '');
-        this.setState({ body: value, submit: submit });
+        this.setState({ bodyFront: value, submit: submit });
+    }
+    bodyBackChange(editor, data, value) {
+        let submit = !(value === '');
+        this.setState({ bodyBack: value, submit: submit });
     }
 
     saveItem() {
@@ -47,7 +49,8 @@ export class EditItem extends Component {
                 name: props.itemId,
                 title: props.title,
                 perm: permissions,
-                content: state.body,
+                front: state.bodyFront,
+                back: state.bodyBack,
 
 
             },
@@ -67,9 +70,11 @@ export class EditItem extends Component {
         const { props } = this;
         let stack = props.pubs[props.stackId];
         let content = stack.items[props.itemId].content;
-        let file = content.file;
-        let body = file.slice(file.indexOf(';>') + 3);
-        this.setState({ body: body, stack: stack });
+        let front = content.front;
+        let back = content.back;
+        let bodyFront = front.slice(front.indexOf(';>') + 3);
+        let bodyBack = back.slice(back.indexOf(';>') + 3);
+        this.setState({ bodyFront: bodyFront, bodyBack: bodyBack, stack: stack });
     }
 
 
@@ -80,7 +85,6 @@ export class EditItem extends Component {
             theme: 'tlon',
             lineNumbers: false,
             lineWrapping: true,
-            scrollbarStyle: null,
             cursorHeight: 0.85
         };
 
@@ -112,12 +116,19 @@ export class EditItem extends Component {
                     </div>
                     <div className="EditItem">
                         <CodeMirror
-                            value={state.body}
+                            value={state.bodyFront}
                             options={options}
-                            onBeforeChange={(e, d, v) => this.bodyChange(e, d, v)}
+                            onBeforeChange={(e, d, v) => this.bodyFrontChange(e, d, v)}
                             onChange={(editor, data, value) => { }}
                         />
-                        <Spinner text="Editing item..." awaiting={this.state.awaiting} classes="absolute bottom-1 right-1 ba b--gray1-d pa2" />
+                    </div>
+                    <div className="EditItem">
+                        <CodeMirror
+                            value={state.bodyBack}
+                            options={options}
+                            onBeforeChange={(e, d, v) => this.bodyBackChange(e, d, v)}
+                            onChange={(editor, data, value) => { }}
+                        />
                     </div>
                 </div>
             </div>

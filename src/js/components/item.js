@@ -47,10 +47,9 @@ export class Item extends Component {
 
     this.state = {
       mode: 'view',
-      titleOriginal: '',
-      bodyOriginal: '',
       title: '',
-      body: '',
+      bodyFront: '',
+      bodyBack: '',
       learn: [],
       awaitingEdit: false,
       awaitingGrade: false,
@@ -82,6 +81,7 @@ export class Item extends Component {
     this.setGrade = this.setGrade.bind(this);
     this.saveGrade = this.saveGrade.bind(this);
     this.toggleAdvanced = this.toggleAdvanced.bind(this);
+    this.toggleShowBack = this.toggleShowBack.bind(this);
 
   }
 
@@ -100,6 +100,13 @@ export class Item extends Component {
       this.setState({ mode: 'view' });
     } else {
       this.setState({ mode: 'advanced' });
+    }
+  }
+  toggleShowBack() {
+    if (this.state.showBack) {
+      this.setState({ showBack: false });
+    } else {
+      this.setState({ showBack: true });
     }
   }
 
@@ -137,10 +144,9 @@ export class Item extends Component {
         let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
         this.setState({
-          titleOriginal: item.content.title,
-          bodyOriginal: item.content.file,
           title: item.content.title,
-          body: item.content.file,
+          bodyFront: item.content.front,
+          bodyBack: item.content.back,
           stack: stack,
           item: item,
           learn: learn,
@@ -189,10 +195,9 @@ export class Item extends Component {
         let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
         this.setState({
-          titleOriginal: item.content.title,
-          bodyOriginal: item.content.file,
           title: item.content.title,
-          body: item.content.file,
+          bodyFront: item.content.front,
+          bodyBack: item.content.back,
           stack: stack,
           item: item,
           learn: learn,
@@ -215,10 +220,9 @@ export class Item extends Component {
 
       this.setState({
         awaitingLoad: false,
-        titleOriginal: item.content.title,
-        bodyOriginal: item.content.file,
         title: item.content.title,
-        body: item.content.file,
+        bodyFront: item.content.front,
+        bodyBack: item.content.back,
         stack: stack,
         item: item,
         pathData: [
@@ -291,18 +295,16 @@ export class Item extends Component {
     }
 
     if (this.state.awaitingEdit &&
-      ((item.content.title != oldItem.title) ||
-        (item.content.raw != oldItem.raw))) {
+      ((item.content.title != oldItem.title))) {
 
       let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
       let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
       this.setState({
         mode: 'view',
-        titleOriginal: item.content.title,
-        bodyOriginal: item.content.file,
         title: item.content.title,
-        body: item.content.file,
+        bodyFront: item.content.front,
+        bodyBack: item.content.back,
         awaitingEdit: false,
         item: item,
         pathData: [
@@ -350,11 +352,10 @@ export class Item extends Component {
         let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
 
         this.setState({
-          titleOriginal: item.content.title,
-          bodyOriginal: item.content.file,
           item: item,
           title: item.content.title,
-          body: item.content.file,
+          bodyFront: item.content.front,
+          bodyBack: item.content.back,
           pathData: [
             { text: "Home", url: "/~srrs/review" },
             { text: stack.info.title, url: stackUrl },
@@ -406,7 +407,7 @@ export class Item extends Component {
   }
 
   render() {
-    const { props, state} = this;
+    const { props, state } = this;
     let adminEnabled = (this.props.ship === window.ship);
 
     if (this.state.notFound) {
@@ -418,14 +419,10 @@ export class Item extends Component {
     } else if (this.state.awaitingEdit) {
       return null;
     } else if (this.state.mode == 'review' || this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
-      let stackLink = `/~srrs/~${this.props.ship}/${this.state.stack.name}/`;
       let title = this.state.item.content.title;
       let stackTitle = this.props.stackId;
-      let stackLinkText = `<- Back to ${this.state.stack.name}`;
       let host = this.state.stack.info.owner;
       let date = moment(this.state.item.content["date-created"]).fromNow();
-      let authorDate = `${this.state.item.content.author} • ${date}`;
-      let create = (this.props.ship === window.ship);
 
       return (
 
@@ -447,7 +444,7 @@ export class Item extends Component {
                 </span>
                 <Link to={`/~srrs/${host}/${stackTitle}`} className="blue3 ml2">
                   {`<- ${stackTitle}`}
-            </Link>
+                </Link>
 
               </div>
               <div className="flex">
@@ -469,68 +466,24 @@ export class Item extends Component {
             />
 
             <ItemBody
-              body={this.state.item.content.file}
+              bodyFront={this.state.item.content.front}
+              bodyBack={this.state.item.content.back}
+              showBack={this.state.showBack}
+              toggleShowBack={this.toggleShowBack}
             />
+
+            
           </div>
         </div>
 
       );
 
     } else if (this.state.mode == 'edit') {
-      let stackLink = `/~srrs/~${this.state.ship}/${this.props.stackId}`;
-      let stackLinkText = `<- Back to ${this.state.stack.info.title}`;
-      let title = state.stack.info.title;
-      let date = dateToDa(new Date(state.item.content["date-created"]));
-      date = date.slice(1, -10);
-      let authorDate = `${this.state.item.content.author} • ${date}`;
-      let create = (this.props.ship === window.ship);
-      let submitStyle = (state.submit)
-      ? { color: '#2AA779', cursor: "pointer" }
-      : { color: '#B1B2B3', cursor: "auto" };
-
-    let hrefIndex = props.location.pathname.indexOf("/note/");
-    let file = state.item.content.file;
-    let body = file.slice(file.indexOf(';>') + 3);
-
       return (
         <EditItem
-        {...state}
-        {...props}/>
-      /*   <div className="flex relative" style={{ top: -74 }}>
-          <div className="w1 z-0" style={{ flexGrow: 1 }}></div>
-          <div className="flex-col w-100 mw-688 w-100 z-2"></div>
+          {...state}
+          {...props} />
 
-          <Link to={stackLink}>
-            <p className="body-regular">
-              {stackLinkText}
-            </p>
-          </Link>
-
-          <input autoFocus className="header-2 w-100 b--none overflow-y-hidden"
-            type="text"
-            name="itemName"
-            defaultValue={this.state.titleOriginal}
-            onChange={this.titleChange}
-          />
-
-          <div className="mb4">
-            <p className="fl label-small gray-50">{authorDate}</p>
-            <Recall
-              enabled={adminEnabled}
-              mode="edit"
-              saveItem={this.saveItem}
-              deleteItem={this.deleteItem}
-            />
-          </div>
-
-          <textarea className="body-regular-400 w-100 z-2 b--none overflow-y-hidden"
-            style={{ resize: "none", height: this.bodyHeight }}
-            type="text"
-            name="itemBody"
-            onChange={this.bodyChange}
-            defaultValue={this.state.bodyOriginal}>
-          </textarea>
-        </div> */
       );
     }
   }

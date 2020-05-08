@@ -140,6 +140,7 @@
   --
 ::
 |_  bol=bowl:gall
+::
 ++  form-snippet
   |=  file=@t
   ^-  @t
@@ -147,6 +148,7 @@
   =/  front-matter  (cat 3 (end 3 front-idx file) 'dummy text\0a')
   =/  body  (cut 3 [front-idx (met 3 file)] file)
   (of-wain:format (scag 1 (to-wain:format body)))
+::
 ++  add-front-matter
   |=  [fro=(map knot cord) udon=@t]
   ^-  @t
@@ -207,6 +209,8 @@
   ::
       [[[~ %js] [%'~srrs' %tile ~]] ~]
     (js-response:gen tile-js)
+  ::  send review state as json
+  ::
       [[[~ %json] [%'~srrs' %update-review ~]] ~]
     %-  json-response:gen
     %-  json-to-octs
@@ -218,6 +222,7 @@
     %-  json-response:gen
     %-  json-to-octs
     %-  stack-status-to-json  (~(got by pubs) stack-name)
+  ::  learned status as json for given stack and item
       [[[~ %json] [%'~srrs' %learn @ @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     =/  item-name  i.t.t.t.site.request-line
@@ -290,23 +295,25 @@
     =^  cards  state  (add-stack conf items.act)
     [cards state]
       %new-item
-    =/  front=(map knot cord)
+    =/  front-matter=(map knot cord)
       %-  my
       :~  title+name.act
           author+(scot %p src.bol)
           date-created+(scot %da now.bol)
           last-modified+(scot %da now.bol)
       ==
-    =/  file  (add-front-matter front content.act)
-    =/  new-note=note:publish
+    =/  front  (add-front-matter front-matter front.act)
+    =/  back  (add-front-matter front-matter back.act)
+    =/  new-note=content
       :*  src.bol
           title.act
           name.act
           now.bol
           now.bol
           %.y
-          file
-          (form-snippet file)
+          front
+          back
+          (form-snippet front)
           ~
           %.n
       ==
@@ -336,15 +343,16 @@
     ~&  edit-item+act
     =/  stack  (~(got by pubs) stak.act)
     =/  item=item  (~(got by items.stack) name.act)
-    =/  front=(map knot cord)
+    =/  front-matter=(map knot cord)
     %-  my
     :~  title+name.act
         author+(scot %p src.bol)
         date-created+(scot %da date-created.content.item)
         last-modified+(scot %da now.bol)
     ==
-    =/  file  (add-front-matter front content.act)
-    =/  new-content  content.item(file file, snippet (form-snippet file))
+    =/  front  (add-front-matter front-matter front.act)
+    =/  back  (add-front-matter front-matter back.act)
+    =/  new-content  content.item(front front, back back, snippet (form-snippet front))
     =/  new-item  item(content new-content)
     =/  new-stack
     %=  stack

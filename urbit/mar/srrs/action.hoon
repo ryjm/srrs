@@ -3,7 +3,6 @@
   ::
 /?  309
 /-  srrs
-/+  publish
 =,  format
 ::
 |_  act=action:srrs
@@ -59,7 +58,8 @@
           name+so:dejs
           title+so:dejs
           perm+perm-config
-          content+so:dejs
+          front+so:dejs
+          back+so:dejs
       ==
     ::
     ++  schedule-item
@@ -107,7 +107,8 @@
           name+so:dejs
           title+so:dejs
           perm+perm-config
-          content+so:dejs
+          front+so:dejs
+          back+so:dejs
       ==
     ::
     ++  recall-grade

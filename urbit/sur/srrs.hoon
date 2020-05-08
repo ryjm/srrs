@@ -16,7 +16,8 @@
           name=@tas
           title=@tas
           perm=perm-config
-          content=@t
+          front=@t
+          back=@t
       ==
   ::
       $:  %schedule-item
@@ -41,7 +42,8 @@
           name=@tas
           title=@t
           perm=perm-config
-          content=@t
+          front=@t
+          back=@t
       ==
   ::
       [%read who=@p stak=@tas item=@tas]
@@ -75,10 +77,31 @@
   ==
 ::
 +$  item
-  $:  content=note:publish
+  $:  content=content
       learn=learned-status
   ==
-
+::
++$  content
+  $:  author=@p
+      title=@t
+      filename=@tas
+      date-created=@da
+      last-edit=@da
+      read=?
+      front=@t
+      back=@t
+      snippet=@t
+      comments=(map @da comment)
+      pending=?
+  ==
+::
++$  comment
+  $:  author=@p
+      date-created=@da
+      content=@t
+      pending=?
+  ==
+::
 +$  recall-grade  $?(%again %hard %good %easy)
 ::
 +$  learned-status

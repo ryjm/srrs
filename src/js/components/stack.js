@@ -167,7 +167,7 @@ export class Stack extends Component {
     return {
       itemTitle: item.content.title,
       itemName: item.content["note-id"],
-      itemBody: item.content.file,
+      itemBody: item.content.front,
       itemSnippet: item.content.snippet,
       stackTitle: stack.info.title,
       stackName: stack.info.filename,

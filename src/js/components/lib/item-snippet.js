@@ -9,13 +9,13 @@ export class ItemSnippet extends Component {
 
   render() {
     return (
-      <p className="mb1"
+      <div className="mb1"
         style={{ overflowWrap: "break-word" }}>
         <ReactMarkdown
           unwrapDisallowed
           allowedTypes={['text', 'root', 'break', 'paragraph']}
           source={this.props.body} />
-      </p>
+      </div>
 
     );
   }

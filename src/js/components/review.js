@@ -57,7 +57,7 @@ export class Review extends Component {
     return {
       itemTitle: item.content.title,
       itemName: item.content["note-id"],
-      itemBody: item.content.file,
+      itemBody: item.content.front,
       stackTitle: stack.title,
       stackName: stack.filename,
       author: item.content.author,

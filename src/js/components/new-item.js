@@ -15,12 +15,12 @@ class SideTab extends Component {
   }
 
   render() {
-    if (this.props.enabled){
+    if (this.props.enabled) {
       return (
         <div className="w1 z-2 body-regular"
           style={{
-            flexGrow:1,
-        }}>
+            flexGrow: 1,
+          }}>
           <p className="pointer" onClick={this.props.itemSubmit}>
             -> Item
           </p>
@@ -31,7 +31,7 @@ class SideTab extends Component {
       );
     }
     return (
-      <div style={{flexGrow: 1, height:48}}></div>
+      <div style={{ flexGrow: 1, height: 48 }}></div>
     );
   }
 }
@@ -66,19 +66,21 @@ class Error extends Component {
 }
 
 export class NewItem extends Component {
-  constructor(props){
+  constructor(props) {
     super(props);
 
     this.state = {
       title: "",
-      body: "",
+      bodyFront: "",
+      bodyBack: "",
       awaiting: false,
       error: false,
       itemed: false,
     };
 
     this.titleChange = this.titleChange.bind(this);
-    this.bodyChange = this.bodyChange.bind(this);
+    this.bodyFrontChange = this.bodyFrontChange.bind(this);
+    this.bodyBackChange = this.bodyBackChange.bind(this);
     this.itemSubmit = this.itemSubmit.bind(this);
     this.discardItem = this.discardItem.bind(this);
 
@@ -96,7 +98,7 @@ export class NewItem extends Component {
     let ship = window.ship;
     let stackId = null;
 
-    if (last){
+    if (last) {
       ship = (' ' + last.lastParams.ship.slice(1)).slice(1);
       stackId = (' ' + last.lastParams.stack).slice(1);
     } else {
@@ -122,22 +124,24 @@ export class NewItem extends Component {
         who: [],
       }
     };
-    let content = this.state.body;
+    let front = this.state.bodyFront;
+    let back = this.state.bodyBack;
 
     if (!this.state.error) {
       let newItem = {
-        "new-item" : {
+        "new-item": {
           who: ship,
           stak: stackId,
           name: itemId,
           title: itemTitle,
           perm: permissions,
-          content: content,
+          front: front,
+          back: back
         },
       };
 
       let raiseItem = {
-        "raise-item" : {
+        "raise-item": {
           who: ship,
           stak: stackId,
           item: itemId,
@@ -154,22 +158,21 @@ export class NewItem extends Component {
           itemId: itemId,
         }
       }, () => {
-
-        this.props.api.action("srrs", "srrs-action", newItem)     
+        this.props.api.action("srrs", "srrs-action", newItem)
         this.props.api.action("srrs", "srrs-action", raiseItem);
       }
-
-                   );
+      );
 
     } else {
       let editItem = {
-        "edit-item" : {
+        "edit-item": {
           who: ship,
           stack: stackId,
           name: itemId,
           title: itemTitle,
           perm: permissions,
-          content: content,
+          front: front,
+          back: back
         },
       };
 
@@ -201,7 +204,7 @@ export class NewItem extends Component {
 
       }
       if (!_.isEqual(this.item, item)) {
-        if (typeof(item) === 'string') {
+        if (typeof (item) === 'string') {
           this.props.setSpinner(false);
           this.setState({
             awaiting: false,
@@ -224,7 +227,7 @@ export class NewItem extends Component {
     let ship = window.ship;
     let stackId = null;
 
-    if (last){
+    if (last) {
       ship = (' ' + last.lastParams.ship.slice(1)).slice(1);
       stackId = (' ' + last.lastParams.stack).slice(1);
     }
@@ -244,35 +247,42 @@ export class NewItem extends Component {
     this.props.history.push(redirect);
   }
 
-  titleChange(evt){
+  titleChange(evt) {
     this.titleInput.style.height = 'auto';
-    this.titleInput.style.height = this.titleInput.scrollHeight+2+'px';
+    this.titleInput.style.height = this.titleInput.scrollHeight + 2 + 'px';
     this.titleHeight = this.titleInput.style.height;
 
-    this.setState({title: evt.target.value});
+    this.setState({ title: evt.target.value });
   }
 
-  bodyChange(evt){
+  bodyFrontChange(evt) {
     this.bodyInput.style.height = 'auto';
-    this.bodyInput.style.height = this.bodyInput.scrollHeight+2+'px';
+    this.bodyInput.style.height = this.bodyInput.scrollHeight + 2 + 'px';
     this.bodyHeight = this.bodyInput.style.height;
 
-    this.setState({body: evt.target.value});
+    this.setState({ bodyFront: evt.target.value });
+  }
+  bodyBackChange(evt) {
+    this.bodyInput.style.height = 'auto';
+    this.bodyInput.style.height = this.bodyInput.scrollHeight + 2 + 'px';
+    this.bodyHeight = this.bodyInput.style.height;
+
+    this.setState({ bodyBack: evt.target.value });
   }
 
   render() {
-    let enabledTab = ((this.state.title !== "") && (this.state.body !== ""));
+    let enabledTab = ((this.state.title !== "") && (this.state.bodyFront !== ""));
 
-    let mt = (this.windowHeight/2) - 110;
-    let mb = (this.windowHeight/2) - 90;
+    let mt = (this.windowHeight / 2) - 110;
+    let mb = (this.windowHeight / 2) - 90;
 
     return (
-      <div className="relative w-100" style={{top:124}}>
-        <Error error={this.state.error}/>
+      <div className="relative w-100" style={{ top: 124 }}>
+        <Error error={this.state.error} />
         <div>
-          <div className="flex w-100 z-2" style={{position: 'sticky', top: 132}}>
-            <div className="w1 z-0" style={{flexGrow:1}}></div>
-            <div className="mw-688 w-100 z-0" style={{pointerEvents:'none'}}></div>
+          <div className="flex w-100 z-2" style={{ position: 'sticky', top: 132 }}>
+            <div className="w1 z-0" style={{ flexGrow: 1 }}></div>
+            <div className="mw-688 w-100 z-0" style={{ pointerEvents: 'none' }}></div>
             <SideTab
               enabled={enabledTab}
               itemSubmit={this.itemSubmit}
@@ -280,28 +290,35 @@ export class NewItem extends Component {
             />
           </div>
 
-          <div className="flex relative" style={{top:-74}}>
-            <div className="w1 z-0" style={{flexGrow:1}}></div>
+          <div className="flex relative" style={{ top: -74 }}>
+            <div className="w1 z-0" style={{ flexGrow: 1 }}></div>
             <div className="flex-col w-100 mw-688 w-100 z-2">
               <textarea autoFocus
                 className="header-2 w-100 b--none overflow-y-hidden"
-                ref={(el) => {this.titleInput = el}}
-                style={{resize:"none", marginBottom:8, height: this.titleHeight}}
+                ref={(el) => { this.titleInput = el }}
+                style={{ resize: "none", marginBottom: 8, height: this.titleHeight }}
                 placeholder="Add a Title"
                 onChange={this.titleChange.bind(this)}>
               </textarea>
               <textarea
                 className="body-regular-400 w-100 z-2 b--none overflow-y-hidden"
-                ref={(el) => {this.bodyInput = el}}
-                style={{resize:"none", height: this.bodyHeight}}
-                placeholder="And type away."
-                onChange={this.bodyChange.bind(this)}>
+                ref={(el) => { this.bodyInput = el }}
+                style={{ resize: "none", height: this.bodyHeight }}
+                placeholder="Front"
+                onChange={this.bodyFrontChange.bind(this)}>
+              </textarea>
+              <textarea
+                className="body-regular-400 w-100 z-2 b--none overflow-y-hidden"
+                ref={(el) => { this.bodyInput = el }}
+                style={{ resize: "none", height: this.bodyHeight }}
+                placeholder="Back"
+                onChange={this.bodyBackChange.bind(this)}>
               </textarea>
             </div>
-            <div className="w1 z-0" style={{flexGrow:1}}></div>
+            <div className="w1 z-0" style={{ flexGrow: 1 }}></div>
           </div>
 
-          <div className="w-100" style={{height: mb}}></div>
+          <div className="w-100" style={{ height: mb }}></div>
         </div>
       </div>
     );
