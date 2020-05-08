@@ -40,8 +40,6 @@ export class PrimaryReducer {
   }
 
   updateReview(json, state) {
-    console.log("in update")
-    console.log(json)
     state.review=json
   }
 

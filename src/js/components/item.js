@@ -493,11 +493,9 @@ export class Item extends Component {
     let body = file.slice(file.indexOf(';>') + 3);
 
       return (
-        <div>
         <EditItem
         {...state}
         {...props}/>
-        </div>
       /*   <div className="flex relative" style={{ top: -74 }}>
           <div className="w1 z-0" style={{ flexGrow: 1 }}></div>
           <div className="flex-col w-100 mw-688 w-100 z-2"></div>

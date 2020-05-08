@@ -1,5 +1,6 @@
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import React, { Component } from 'react';
+import { Link } from 'react-router-dom';
 import classnames from 'classnames';
 import cx from 'classnames-es';
 import moment from 'moment';
@@ -22,10 +23,10 @@ export class EditItem extends Component {
     bodyChange(editor, data, value) {
         let submit = !(value === '');
         this.setState({ body: value, submit: submit });
-      }
-    
+    }
+
     saveItem() {
-        let { props, state} = this;
+        let { props, state } = this;
 
         this.props.setSpinner(true);
         let permissions = {
@@ -81,8 +82,8 @@ export class EditItem extends Component {
             lineWrapping: true,
             scrollbarStyle: null,
             cursorHeight: 0.85
-          };
-      
+        };
+
         /* let stackLinkText = `<- Back to ${this.state.stack.info.title}`; */
         let title = props.stack.info.title;
         let date = dateToDa(new Date(props.item.content["date-created"]));
@@ -100,7 +101,10 @@ export class EditItem extends Component {
                         style={submitStyle}
                         onClick={this.saveItem}>
                         Save "{title}"
-    </button>
+                    </button>
+                    <Link to={`/~srrs/${props.stack.info.owner}/${props.stack.info.filename}`} className="blue3 ml2">
+                        {`<- ${props.stack.info.filename}`}
+                    </Link>
                 </div>
                 <div className="mw6 center">
                     <div className="pl4">
