@@ -335,7 +335,17 @@
     [~ state]
       %delete-item
     ~&  delete-item+act
-    [~ state]
+    =/  old-stack=stack  (~(got by pubs) stak.act)
+    =/  new-stack=stack
+    %=  old-stack
+      items  (~(del by items.old-stack) item.act)
+      status  (~(del by status.old-stack) item.act)
+    ==
+    :-  ~
+    %=  state
+      review  (~(del in review.state) [our.bol stak.act item.act])
+      pubs  (~(put by pubs.state) stak.act new-stack)
+    ==
       %edit-stack
     ~&  edit-stack+act
     [~ state]

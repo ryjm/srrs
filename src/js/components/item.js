@@ -1,23 +1,14 @@
-import { Controlled as CodeMirror } from 'react-codemirror2';
 import React, { Component } from 'react';
-import classnames from 'classnames';
-import cx from 'classnames-es';
 import moment from 'moment';
-import { SrrsCreate } from '/components/lib/srrs-create';
 import { Link } from 'react-router-dom';
 import { ItemBody } from '/components/lib/item-body';
 import { EditItem } from '/components/edit-item';
-import { PathControl } from '/components/lib/path-control';
-import { NextPrev } from '/components/lib/next-prev';
 import { Recall } from '/components/recall';
 import { NotFound } from '/components/not-found';
 import { withRouter } from 'react-router';
-import { Spinner } from '/components/lib/icons/icon-spinner';
-import { dateToDa } from '/lib/util';
 import _ from 'lodash';
 import 'codemirror/mode/markdown/markdown';
 const NF = withRouter(NotFound);
-const PC = withRouter(SrrsCreate);
 
 export class Item extends Component {
   constructor(props) {
@@ -295,7 +286,7 @@ export class Item extends Component {
     }
 
     if (this.state.awaitingEdit &&
-      ((item.content.title != oldItem.title))) {
+      ((item.content.title != oldItem.title) || (item.content.front != oldItem.content.front) || (item.content.back != oldItem.content.back))) {
 
       let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
       let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
@@ -394,7 +385,10 @@ export class Item extends Component {
         itemId: this.props.itemId,
       }
     }, () => {
-      this.props.api.action("srrs", "srrs-action", del);
+      this.props.api.action("srrs", "srrs-action", del).then(() => {
+       let redirect = `/~srrs/~${this.props.ship}/${this.props.stackId}`;
+        this.props.history.push(redirect);
+      });
     });
   }
 
@@ -472,7 +466,7 @@ export class Item extends Component {
               toggleShowBack={this.toggleShowBack}
             />
 
-            
+
           </div>
         </div>
 
