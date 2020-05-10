@@ -1,6 +1,43 @@
 /-  *srrs
 /+  elem-to-react-json, publish
 |%
+::
+++  form-snippet
+  |=  file=@t
+  ^-  @t
+  =/  front-idx     (add 3 (need (find ";>" (trip file))))
+  =/  front-matter  (cat 3 (end 3 front-idx file) 'dummy text\0a')
+  =/  body  (cut 3 [front-idx (met 3 file)] file)
+  (of-wain:format (scag 1 (to-wain:format body)))
+::
+++  add-front-matter
+  |=  [fro=(map knot cord) udon=@t]
+  ^-  @t
+  %-  of-wain:format
+  =/  tum  (trip udon)
+  =/  id  (find ";>" tum)
+  ?~  id
+    %+  weld  (front-to-wain fro)
+    (to-wain:format (crip :(weld ";>\0a" tum)))
+  %+  weld  (front-to-wain fro)
+  (to-wain:format (crip (slag u.id tum)))
+::
+++  front-to-wain
+  |=  a=(map knot cord)
+  ^-  wain
+  =/  entries=wain
+    %+  turn  ~(tap by a)
+    |=  b=[knot cord]
+    =/  c=[term cord]  (,[term cord] b)
+    (crip "  [{<-.c>} {<+.c>}]")
+  ::
+  ?~  entries  ~
+  ;:  weld
+    [':-  :~' ~]
+    entries
+    ['    ==' ~]
+  ==
+::
 ++  time-to-atom
   |=  time=@d
   ^-  @
@@ -79,11 +116,11 @@
   ^-  json
   :-  %o
   %+  roll  ~(tap in ~(key by items.stack))
-  |=  [item=@tas out=(map @t json)]
-  =/  status-build  (~(got by status.stack) item)
+  |=  [item-name=@tas out=(map @t json)]
+  =/  =item  (~(got by items.stack) item-name)
   %+  ~(put by out)
-    item
-  (status-to-json status-build)
+    item-name
+  (status-to-json learn.item)
 ::
 ++  total-build-to-json
   |=  stack=stack

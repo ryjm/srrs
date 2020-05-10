@@ -140,42 +140,7 @@
 ::
 |_  bol=bowl:gall
 ::
-++  form-snippet
-  |=  file=@t
-  ^-  @t
-  =/  front-idx     (add 3 (need (find ";>" (trip file))))
-  =/  front-matter  (cat 3 (end 3 front-idx file) 'dummy text\0a')
-  =/  body  (cut 3 [front-idx (met 3 file)] file)
-  (of-wain:format (scag 1 (to-wain:format body)))
-::
-++  add-front-matter
-  |=  [fro=(map knot cord) udon=@t]
-  ^-  @t
-  %-  of-wain:format
-  =/  tum  (trip udon)
-  =/  id  (find ";>" tum)
-  ?~  id
-    %+  weld  (front-to-wain fro)
-    (to-wain:format (crip :(weld ";>\0a" tum)))
-  %+  weld  (front-to-wain fro)
-  (to-wain:format (crip (slag u.id tum)))
-::
-++  front-to-wain
-  |=  a=(map knot cord)
-  ^-  wain
-  =/  entries=wain
-    %+  turn  ~(tap by a)
-    |=  b=[knot cord]
-    =/  c=[term cord]  (,[term cord] b)
-    (crip "  [{<-.c>} {<+.c>}]")
-  ::
-  ?~  entries  ~
-  ;:  weld
-    [':-  :~' ~]
-    entries
-    ['    ==' ~]
-  ==
-::
+
 ++  poke-sign-arvo
   |=  =sign-arvo
   ^-  (quip card _state)
@@ -213,8 +178,10 @@
       [[[~ %json] [%'~srrs' %update-review ~]] ~]
     %-  json-response:gen
     %-  json-to-octs
-    =/  updates  %+  turn  ~(tap in review.state)  update-to-json
-    a+updates
+    :-  %a
+    %+  turn
+      ~(tap in review.state)
+    update-to-json
   ::  learned status as json for given stack
       [[[~ %json] [%'~srrs' %learn @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
@@ -225,10 +192,11 @@
       [[[~ %json] [%'~srrs' %learn @ @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     =/  item-name  i.t.t.t.site.request-line
-    =/  stack=stack  (~(got by pubs) stack-name)
+    =/  =stack  (~(got by pubs) stack-name)
+    =/  =item  (~(got by items.stack) item-name)
     %-  json-response:gen
     %-  json-to-octs
-    %-  status-to-json  (~(got by status.stack) item-name)
+    %-  status-to-json  learn.item
   ::  home page; redirect
   ::
       [[~ [%'~srrs' ~]] ~]
@@ -255,17 +223,17 @@
       [[~ [%'~srrs' %new-item ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
-  ::  new blog
+  ::  new stack
   ::
       [[~ [%'~srrs' %new-stack ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
-  ::  blog
+  ::  stack
   ::
       [[~ [%'~srrs' @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
-  ::  blog item
+  ::  stack item
   ::
       [[~ [%'~srrs' @t @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
@@ -321,7 +289,6 @@
     =/  new-stack=stack
     %=  old-stack
       items  (~(uni by items.old-stack) (my ~[[name.act new-item]]))
-      status  (~(put by status.old-stack) name.act (learned-status [.2.5 0 0]))
     ==
     =/  del  [%add-item our.bol stak.act name.act new-item]
     =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
@@ -341,7 +308,6 @@
     =/  new-stack=stack
     %=  old-stack
       items  (~(del by items.old-stack) item.act)
-      status  (~(del by status.old-stack) item.act)
     ==
     :-  ~
     %=  state
@@ -532,7 +498,6 @@
     name  filename.info
     last-update  last-modified.info
     items  (~(uni by items) items.sta)
-    status  (~(run by items) |*(a=* (learned-status [.2.5 0 0])))
   ==
   =/  new-pubs  (~(put by pubs.state) filename.info new-stack)
   =/  del  [%add-stack our.bol filename.info new-stack]
@@ -555,20 +520,20 @@
   [(snoc cad mov) sty]
 ::
 ++  update-learned-status
-  |=  [stak=@tas item=@tas =recall-grade]
+  |=  [stak=@tas item-name=@tas =recall-grade]
   ^-  (quip card _state)
   =/  old-stack=stack  (~(got by pubs.state) stak)
-  =/  item-status=learned-status  (~(got by status.old-stack) item)
-  =/  itm=^item  (~(got by items.old-stack) item)
+  =/  =item  (~(got by items.old-stack) item-name)
+  =/  item-status=learned-status  learn.item
   =/  ease=@rs  (next-ease recall-grade item-status)
   =/  box=@  (next-box recall-grade item-status)
   =/  interval=@dr  (next-interval [ease box item-status])
   =/  new-item-status=learned-status  (learned-status [ease interval box])
-  =/  new-item  itm(learn new-item-status)
-  =/  new-status  (~(put by status.old-stack) item new-item-status)
-  =/  new-stack  old-stack(status new-status, items (~(put by items.old-stack) item new-item))
+  =/  new-item  item(learn new-item-status)
+  =/  new-stack
+    old-stack(items (~(put by items.old-stack) item-name new-item))
   =/  review-date=@da  (add now.bol interval)
-  =/  schedule-card  [%pass /review-schedule/(scot %tas stak)/(scot %tas item)/(scot %da review-date) %arvo %b %wait review-date]~
+  =/  schedule-card  [%pass /review-schedule/(scot %tas stak)/(scot %tas item-name)/(scot %da review-date) %arvo %b %wait review-date]~
   [schedule-card state(pubs (~(put by pubs) stak new-stack))]
 ::
 ++  next-ease

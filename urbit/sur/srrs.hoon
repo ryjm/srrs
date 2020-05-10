@@ -66,7 +66,6 @@
   $:  stack=(each stack-info tang)
       name=@tas
       items=(map @tas item)
-      status=(map @tas learned-status)
       order=[pin=(list @tas) unpin=(list @tas)]
       contributors=[mod=?(%white %black) who=(set @p)]
       subscribers=(set @p)
