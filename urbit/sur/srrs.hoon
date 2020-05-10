@@ -28,8 +28,6 @@
   ::
       [%raise-item who=@p stak=@tas item=@tas]
       [%answered-item stak=@tas item=@tas answer=recall-grade]
-      ::  [%update-review who=@p stack=@tas item=@tas]
-
   ::
       [%delete-stack stak=@tas]
       [%delete-item stak=@tas item=@tas]
@@ -62,7 +60,6 @@
 ::
 +$  perm-config  [read=rule:clay write=rule:clay]
 ::
-
 +$  edit-config     $?(%item %all %none)
 ::
 +$  stack
