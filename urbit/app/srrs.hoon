@@ -134,7 +134,17 @@
       [~ this(state p.old-state)]
     [~ this]
   ++  on-leave  on-leave:def
-  ++  on-peek   on-peek:def
+  ++  on-peek
+    |=  =path
+    ^-  (unit (unit cage))
+    ?+  path  (on-peek:def path)
+        [%x %review ~]        ``noun+!>(review.state)
+        [%x %all ~]        ``noun+!>(pubs.state)
+        [%x %stacks *]
+      ?~  t.t.path
+        ~
+      ``noun+!>((~(get by pubs.state) `@tas`i.t.t.path))
+    ==
   ++  on-fail   on-fail:def
   --
 ::
