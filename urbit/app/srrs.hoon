@@ -332,7 +332,10 @@
     ::
       %delete-stack
     ~&  delete-stack+act
-    [~ state]
+    :-  ~
+    %=  state
+      pubs  (~(del by pubs) stak.act)
+    ==
       %delete-item
     ~&  delete-item+act
     =/  old-stack=stack  (~(got by pubs) stak.act)
