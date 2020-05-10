@@ -94,7 +94,6 @@
         [%srrstile *]       (peer-srrstile:sc t.path)
         [%srrs-primary *]   (peer-srrs-primary:sc t.path)
         [%http-response *]  [~ state]
-        [%stack *]  (peer-srrs-stack:sc t.path)
       ==
     [cards this]
   ::
@@ -408,12 +407,6 @@
   ^-  (quip card _state)
   :_  state
   [%give %fact ~[/srrstile] %json !>(make-tile-json)]~
-::
-++  peer-srrs-stack
-  |=  wir=wire
-  ^-  (quip card _state)
-    :_  state
-  [%give %fact ~ %json !>(*stack)]~
 ::
 ++  pull
   |=  wir=wire
