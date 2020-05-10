@@ -374,23 +374,6 @@
   :_  state
   [%give %fact ~[/srrstile] %json !>(make-tile-json)]~
 ::
-++  pull
-  |=  wir=wire
-  ^-  (quip card _state)
-  ?+  wir
-    [~ state]
-  ::
-      [%stack @t ~]
-    =/  stak=@tas  i.t.wir
-    =/  stk=(unit stack)  (~(get by pubs) stak)
-    ?~  stk
-      [~ state]
-    =/  new=stack
-      u.stk(subscribers (~(del in subscribers.u.stk) src.bol))
-    [~ state(pubs (~(put by pubs) stak new))]
-  ::
-  ==
-::
 ++  peer-srrs-primary
   |=  wir=wire
   ^-  (quip card _state)
