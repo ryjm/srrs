@@ -1,5 +1,5 @@
 /-  *srrs, publish
-/+  *server, *srrs, default-agent, verb, dbug, publish
+/+  *server, *srrs, *srrs-json, default-agent, verb, dbug, publish
 /=  index
   /^  $-(json manx)
   /:  /===/app/srrs/index  /!noun/
