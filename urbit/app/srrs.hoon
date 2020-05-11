@@ -302,7 +302,7 @@
     ==
     =/  del  [%add-item our.bol stak.act name.act new-item]
     =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-    =/  raise  [%raise-item our.bol stak.act name.act]
+    =/  raise  [%add-raised-item our.bol stak.act name.act]
     =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
     [~[mov raise-card] state(pubs (~(put by pubs) stak.act new-stack))]
     ::

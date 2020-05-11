@@ -15,7 +15,7 @@
     %+  frond  (scot %p who.del)
     %+  frond  stack.del
     (total-build-to-json data.del)
-      %raise-item
+      %add-raised-item
     %+  frond  (scot %p who.del)
     %-  pairs
     :~  stak+s+stak.del
