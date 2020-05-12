@@ -6,7 +6,7 @@ spaced repetition repetition system
 ---
 ![Item view](screenshot.png)
 ---
-![Review page](review.png)
+![UI](ui.gif)
 
 *warning*: this was originally written on top of the old publish app, so there is a
 lot of that code in here, especially on the front end. 

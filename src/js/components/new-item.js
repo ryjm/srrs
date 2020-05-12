@@ -243,21 +243,21 @@ export class NewItem extends Component {
                       <CodeMirror
                         value=""
                         options={{...options, ...{placeholder: "Title"}}}
-                        onBeforeChange={(e, d, v) => this.titleChange(e, d, v)}                          
+                        onChange={(e, d, v) => this.titleChange(e, d, v)}                          
                         />
                     </div>
                     <div className="EditItem">
                         <CodeMirror
                             value=""
                           options={{...options, ...{placeholder: "Front"}}}                            
-                            onBeforeChange={(e, d, v) => this.bodyFrontChange(e, d, v)}
+                            onChange={(e, d, v) => this.bodyFrontChange(e, d, v)}
                         />
                     </div>
                     <div className="EditItem">
                       <CodeMirror
                         value=""                        
                           options={{...options, ...{placeholder: "Back"}}}
-                            onBeforeChange={(e, d, v) => this.bodyBackChange(e, d, v)}
+                            onChange={(e, d, v) => this.bodyBackChange(e, d, v)}
                             
                         />
                     </div>
