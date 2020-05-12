@@ -114,7 +114,8 @@
 +$  stack-delta
   $%  [%add-item who=@p stack=@tas item=@tas data=item]
       [%add-stack who=@p stack=@tas data=stack]
-      [%add-raised-item who=@p stak=@tas item=@tas]
+      [%add-raised-item who=@p stack=@tas item=@tas]
+      [%delete-review-item who=@p stack=@tas item=@tas]
       [%update-review (set update)]
   ==
 ::

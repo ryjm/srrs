@@ -7,7 +7,7 @@ import { Recall } from '/components/recall';
 import { NotFound } from '/components/not-found';
 import { withRouter } from 'react-router';
 import _ from 'lodash';
-import 'codemirror/mode/markdown/markdown';
+
 const NF = withRouter(NotFound);
 
 export class Item extends Component {
@@ -74,6 +74,68 @@ export class Item extends Component {
     this.toggleAdvanced = this.toggleAdvanced.bind(this);
     this.toggleShowBack = this.toggleShowBack.bind(this);
 
+    let ship = this.props.ship;
+    let stackId = this.props.stackId;
+    let itemId = this.props.itemId;
+    if (ship !== window.ship) {
+      let stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
+
+      if (stack) {
+        let item = _.get(stack, `items["${itemId}"]`, false);
+        let learn = _.get(stack, `items["${itemId}"].learn`, false);
+        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+
+        let tempState = {
+          title: item.content.title,
+          bodyFront: item.content.front,
+          bodyBack: item.content.back,
+          stack: stack,
+          item: item,
+          learn: learn,
+          pathData: [
+            { text: "Home", url: "/~srrs/review" },
+            { text: stack.info.title, url: stackUrl },
+            { text: item.title, url: itemUrl },
+          ],
+        }
+        this.state = {...this.state, ...tempState}
+
+      } else {
+        this.state = {...this.state, ...{
+          awaitingLoad: {
+            ship: ship,
+            stackId: stackId,
+            itemId: itemId,
+          }, ...{temporary: true}}}
+      }
+    } else {
+      let stack = _.get(this.props, `pubs["${stackId}"]`, false);
+      let item = _.get(stack, `items["${itemId}"]`, false);
+      let learn = _.get(stack, `items["${itemId}"].learn`, false);
+
+      if (!stack || !item) {
+        this.state = {...this.state, ...{ notFound: true }}
+        return;
+      } else {
+        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+
+        this.state = {...this.state, ...{
+          title: item.content.title,
+          bodyFront: item.content.front,
+          bodyBack: item.content.back,
+          stack: stack,
+          item: item,
+          learn: learn,
+          pathData: [
+            { text: "Home", url: "/~srrs/review" },
+            { text: stack.info.title, url: stackUrl },
+            { text: item.content.title, url: itemUrl },
+          ],
+        }};
+      }
+    }
   }
 
   editItem() {
@@ -120,131 +182,7 @@ export class Item extends Component {
       this.props.api.action("srrs", "srrs-action", data)
     });
   }
-
-  componentWillMount() {
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-    let itemId = this.props.itemId;
-    if (ship !== window.ship) {
-      let stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
-
-      if (stack) {
-        let item = _.get(stack, `items["${itemId}"]`, false);
-        let learn = _.get(stack, `items["${itemId}"].learn`, false);
-        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
-
-        this.setState({
-          title: item.content.title,
-          bodyFront: item.content.front,
-          bodyBack: item.content.back,
-          stack: stack,
-          item: item,
-          learn: learn,
-          pathData: [
-            { text: "Home", url: "/~srrs/review" },
-            { text: stack.info.title, url: stackUrl },
-            { text: item.title, url: itemUrl },
-          ],
-        });
-
-        let read = {
-          read: {
-            who: ship,
-            stack: stackId,
-            item: itemId,
-          }
-        };
-        this.props.api.action("srrs", "srrs-action", read);
-
-      } else {
-        this.setState({
-          awaitingLoad: {
-            ship: ship,
-            stackId: stackId,
-            itemId: itemId,
-          },
-          temporary: true,
-        });
-
-        this.props.setSpinner(true);
-
-        this.props.api.bind(`/stack/${stackId}`, "PUT", ship, "srrs",
-          this.handleEvent.bind(this),
-          this.handleError.bind(this));
-      }
-    } else {
-      let stack = _.get(this.props, `pubs["${stackId}"]`, false);
-      let item = _.get(stack, `items["${itemId}"]`, false);
-      let learn = _.get(stack, `items["${itemId}"].learn`, false);
-
-      if (!stack || !item) {
-        this.setState({ notFound: true });
-        return;
-      } else {
-        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
-
-        this.setState({
-          title: item.content.title,
-          bodyFront: item.content.front,
-          bodyBack: item.content.back,
-          stack: stack,
-          item: item,
-          learn: learn,
-          pathData: [
-            { text: "Home", url: "/~srrs/review" },
-            { text: stack.info.title, url: stackUrl },
-            { text: item.content.title, url: itemUrl },
-          ],
-        });
-      }
-    }
-  }
-
-  handleEvent(diff) {
-    if (diff.data.total) {
-      let stack = diff.data.total.data;
-      let item = stack.items[this.state.itemId].item;
-      let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-      let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
-
-      this.setState({
-        awaitingLoad: false,
-        title: item.content.title,
-        bodyFront: item.content.front,
-        bodyBack: item.content.back,
-        stack: stack,
-        item: item,
-        pathData: [
-          { text: "Home", url: "/~srrs/review" },
-          { text: stack.info.title, url: stackUrl },
-          { text: item.info.title, url: itemUrl },
-        ],
-      });
-
-      this.props.setSpinner(false);
-
-    } else if (diff.data.stack) {
-      let newStack = this.state.stack;
-      newStack.info = diff.data.stack.data;
-      this.setState({
-        stack: newStack,
-      });
-    } else if (diff.data.item) {
-      this.setState({
-        item: diff.data.item.data,
-      });
-    } else if (diff.data.remove) {
-      // XX TODO Handle this properly
-    }
-  }
-
-  handleError(err) {
-    this.props.setSpinner(false);
-    this.setState({ notFound: true });
-  }
-
+  
   componentDidUpdate(prevProps, prevState) {
     if (this.state.notFound) return;
 
@@ -403,7 +341,6 @@ export class Item extends Component {
   render() {
     const { props, state } = this;
     let adminEnabled = (this.props.ship === window.ship);
-
     if (this.state.notFound) {
       return (
         <NF />

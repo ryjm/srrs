@@ -22,17 +22,10 @@ render() {
     let popoutBorder = (popout)
       ? "" : "ba-m ba-l ba-xl b--gray4 b--gray1-d br1"
 
-    let reviewText = <p className="label-regular">Review</p>;
-    let subsText = <p className="label-regular">Subscriptions</p>;
-    let tabStyles = {
-      review: "bb b--gray4 b--gray2-d gray2 pv4 ph2",
-      stacks: "bb b--gray4 b--gray2-d gray2 pv4 ph2",
-      settings: "bb b--gray4 b--gray2-d pr2 gray2 pv4 ph2",
-    };
     return (
       <div className={"absolute h-100 w-100 " + popoutWindow}>
         <HeaderBar spinner={this.props.spinner} />
-        <div className={`cf w-100 flex ` + popoutBorder}>
+        <div className={`cf w-100 h-100 flex ` + popoutBorder}>
               <Sidebar
                 popout={popout}
                 pubs={this.props.pubs}

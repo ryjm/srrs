@@ -5,55 +5,27 @@ import { withRouter } from "react-router";
 import { HeaderMenu } from "/components/lib/header-menu";
 import { MessageScreen } from "/components/message-screen";
 import { api } from "../api";
+import { next } from "sucrase/dist/parser/tokenizer";
 
 export class Review extends Component {
   constructor(props) {
     super(props);
+
+    this.state = {
+      'review-size': 0,
+      review: []
+    }
   }
 
   buildReview() {
-    var review = [];
-    var group = {
-      date: new Date(),
-      items: [],
-    };
-
-    for (var i = 0; i < this.props.review.length; i++) {
-      let index = this.props.review[i];
-      let item = this.retrieveItem(index.item, index.stack, index.who);
-      let itemDate = new Date(item.content["date-created"]);
-      let itemProps = this.buildItemPreviewProps(
-        index.item,
-        index.stack,
-        index.who
-      );
-
-      if (group.items.length == 0) {
-        group = {
-          date: this.roundDay(itemDate),
-          items: [itemProps],
-        };
-      } else if (this.sameDay(group.date, itemDate)) {
-        group.items.push(itemProps);
-      } else {
-        review.push(Object.assign({}, group));
-        group = {
-          date: this.roundDay(itemDate),
-          items: [itemProps],
-        };
-      }
-
-      if (i == this.props.review.length - 1) {
-        review.push(Object.assign({}, group));
-      }
-    }
-    return review;
+    this.state.review
   }
-
   buildItemPreviewProps(it, st, who) {
     let item = this.retrieveItem(it, st, who);
     let stack = this.retrieveStack(st, who);
-
+    if (!item) {
+      return null;
+    }
     return {
       itemTitle: item.content.title,
       itemName: item.content["note-id"],
@@ -61,86 +33,71 @@ export class Review extends Component {
       stackTitle: stack.title,
       stackName: stack.filename,
       author: item.content.author,
-      stackOwner: who,
+      stackOwner: stack.owner,
       date: item.content["date-created"],
     };
   }
 
   retrieveItem(item, stack, who) {
-    if (who === window.ship || who.slice(1) === window.ship) {
-      return this.props.pubs[stack].items[item];
-    } else {
-      return this.props.subs[who][stack].items[item];
+    try {
+      if (who === window.ship || who.slice(1) === window.ship) {
+        if (this.props.pubs[stack] && this.props.pubs[stack].items[item]) {
+          return this.props.pubs[stack].items[item];
+        }
+      } else {
+        return this.props.subs[who][stack].items[item];
+      }
+    } catch (e) {
+      console.log(e)
+      return null
     }
   }
 
   retrieveStack(stack, who) {
     if (who === window.ship || who.slice(1) === window.ship) {
-      return this.props.pubs[stack].info;
+      if (this.props.pubs[stack]) {
+        return this.props.pubs[stack].info;
+      }
+
     } else {
       return this.props.subs[who][stack].info;
     }
   }
 
-  roundDay(d) {
-    let result = new Date(d.getTime());
-    result.setHours(0);
-    result.setMinutes(0);
-    result.setSeconds(0);
-    result.setMilliseconds(0);
-    return result;
+  shouldComponentUpdate(nextProps, nextState, nextContext) {
+    return (nextProps.review.length === nextState.review.length) || (nextState['review-size'] !== nextState.review.length)
   }
-
-  sameDay(d1, d2) {
-    return (
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate() &&
-      d1.getFullYear() === d2.getFullYear()
-    );
-  }
-
-  dateLabel(d) {
-    let today = new Date();
-
-    let yesterday = new Date(today.getTime() - 1000 * 60 * 60 * 24);
-    if (this.sameDay(d, today)) {
-      return "Today";
-    } else if (this.sameDay(d, yesterday)) {
-      return "Yesterday";
-    } else if (d.getFullYear() === today.getFullYear()) {
-      let month = d.toLocaleString("en-us", { month: "long" });
-      let day = d.getDate();
-      return month + " " + day;
-    } else {
-      let month = d.toLocaleString("en-us", { month: "long" });
-      let day = d.getDate();
-      let year = d.getFullYear();
-      return month + " " + day + " " + year;
-    }
-  }
-
-  shouldComponentUpdate(prevProps, nextContext) {
-    let change = prevProps.review.length === this.props.review.length
-    return !change
+  componentDidMount() {
+    this.setState({review: this.props.review, 'review-size': this.props.review.length})
   }
   render() {
-    this.props.api.action("srrs", "srrs-action", {"update-review": null});
-    let review = this.buildReview();
-
-    let body = review.map((group, i) => {
-      let items = group.items.map((item, j) => {
-        return <ReviewPreview item={item} key={j} />;
-      });
+    let i = 0
+    let body = this.state.review.map(el => {
+      let item = this.buildItemPreviewProps(el.item, el.stack, el.who)
+      i = i + 1
       return (
-        <div key={i}>
-          <div className="flex-col">{items}</div>
-        </div>
-      );
+        <ReviewPreview item={item} key={i} />
+      )
     });
-    if (review.length == 0) {
+    if (this.props.review.length == 0) {
       body = <MessageScreen text="Nothing to review!" />;
     }
 
-    return <div>{body}</div>;
+    return (
+      <div className="overflow-y-scroll"
+        style={{ paddingLeft: 16, paddingRight: 16 }}
+        onScroll={this.onScroll}
+        ref={el => {
+          this.scrollElement = el;
+        }}>
+        <div className="center mw6 f9 h-100"
+          style={{ paddingLeft: 16, paddingRight: 16 }}>
+          <div className="h-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
+
+            <div className="flex-col">{body}</div>
+          </div>
+        </div>
+      </div>)
   }
 }
+

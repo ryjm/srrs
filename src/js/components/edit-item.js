@@ -11,12 +11,18 @@ export class EditItem extends Component {
         this.state = {
             bodyFront: '',
             bodyBack: '',
+            title: '',
             submit: false,
             awaiting: false
         }
         this.saveItem = this.saveItem.bind(this);
+        this.titleChange = this.titleChange.bind(this);
         this.bodyFrontChange = this.bodyFrontChange.bind(this);
         this.bodyBackChange = this.bodyBackChange.bind(this);
+    }
+    titleChange(editor, data, value) {
+        let submit = !(value === '');
+        this.setState({ title: value, submit: submit });
     }
     bodyFrontChange(editor, data, value) {
         let submit = !(value === '');
@@ -47,7 +53,7 @@ export class EditItem extends Component {
                 who: props.ship,
                 stak: props.stackId,
                 name: props.itemId,
-                title: props.title,
+                title: state.title,
                 perm: permissions,
                 front: state.bodyFront,
                 back: state.bodyBack,
@@ -63,18 +69,23 @@ export class EditItem extends Component {
                 itemId: this.props.itemId,
             }
         }, () => {
-            this.props.api.action("srrs", "srrs-action", data)
+            this.props.api.action("srrs", "srrs-action", data).then(() => {
+                this.setState({awaiting: false, mode: 'view'});
+                let redirect = `/~srrs/~${props.ship}/${props.stackId}`;
+                props.history.push(redirect);
+            });
         });
     }
     componentDidMount() {
         const { props } = this;
         let stack = props.pubs[props.stackId];
         let content = stack.items[props.itemId].content;
+        let title = content.title
         let front = content.front;
         let back = content.back;
         let bodyFront = front.slice(front.indexOf(';>') + 3);
         let bodyBack = back.slice(back.indexOf(';>') + 3);
-        this.setState({ bodyFront: bodyFront, bodyBack: bodyBack, stack: stack });
+        this.setState({ bodyFront: bodyFront, bodyBack: bodyBack, stack: stack, title: title });
     }
 
 
@@ -89,7 +100,7 @@ export class EditItem extends Component {
         };
 
         /* let stackLinkText = `<- Back to ${this.state.stack.info.title}`; */
-        let title = props.stack.info.title;
+        let stackTitle = props.stack.info.title;
         let date = dateToDa(new Date(props.item.content["date-created"]));
         date = date.slice(1, -10);
         let submitStyle = (state.submit)
@@ -104,7 +115,7 @@ export class EditItem extends Component {
                         disabled={!state.submit}
                         style={submitStyle}
                         onClick={this.saveItem}>
-                        Save "{title}"
+                        Save "{props.title}"
                     </button>
                     <Link to={`/~srrs/${props.stack.info.owner}/${props.stack.info.filename}`} className="blue3 ml2">
                         {`<- ${props.stack.info.filename}`}
@@ -113,6 +124,14 @@ export class EditItem extends Component {
                 <div className="mw6 center">
                     <div className="pl4">
                         <div className="gray2">{date}</div>
+                    </div>
+                    <div className="EditItem">
+                        <CodeMirror
+                            value={state.title}
+                            options={options}
+                            onBeforeChange={(e, d, v) => this.titleChange(e, d, v)}
+                            onChange={(editor, data, value) => { }}
+                        />
                     </div>
                     <div className="EditItem">
                         <CodeMirror

@@ -40,11 +40,10 @@ export class Root extends Component {
               return (
                 <Skeleton
                   pubs={state.pubs}
-                  review={state.review}
                   api={api}
                   spinner={this.state.spinner}
                   active="sidebar"
-                  children={<Review {...state} {...props} api={api} />}
+                  children={<Review {...props} {...state} />}
                 />
               );
             }}

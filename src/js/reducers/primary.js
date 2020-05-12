@@ -12,6 +12,12 @@ export class PrimaryReducer {
     case "update-review":
       this.updateReview(json["update-review"], state);
       break
+    case "add-raised-item":
+      this.addRaisedItem(json["add-raised-item"], state);
+      break
+    case "delete-review-item":
+      this.deleteReviewItem(json["delete-review-item"], state);
+      break
     default:
       break
     }
@@ -43,4 +49,15 @@ export class PrimaryReducer {
     state.review=json
   }
 
+  addRaisedItem(json, state) {
+    state.review.push(json)
+  }
+  deleteReviewItem(json, state) {
+    let idx = state.review.findIndex(item => ((item.who === json.who.slice(1)) || (item.who === json.who)) && (item.stack === json.stack) && (item.item === json.item))
+    if (idx === -1) {
+      return state.review
+    } else {
+      state.review.splice( idx, 1 );
+    }
+  }
 }

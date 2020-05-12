@@ -302,9 +302,8 @@
     ==
     =/  del  [%add-item our.bol stak.act name.act new-item]
     =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-    =/  raise  [%add-raised-item our.bol stak.act name.act]
-    =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
-    [~[mov raise-card] state(pubs (~(put by pubs) stak.act new-stack))]
+
+    [~[mov] state(pubs (~(put by pubs) stak.act new-stack))]
     ::
       %delete-stack
     ~&  delete-stack+act
@@ -333,20 +332,22 @@
     =/  item=item  (~(got by items.stack) name.act)
     =/  front-matter=(map knot cord)
     %-  my
-    :~  title+name.act
+    :~  title+title.act
         author+(scot %p src.bol)
         date-created+(scot %da date-created.content.item)
         last-modified+(scot %da now.bol)
     ==
     =/  front  (add-front-matter front-matter front.act)
     =/  back  (add-front-matter front-matter back.act)
-    =/  new-content  content.item(front front, back back, snippet (form-snippet front))
+    =/  new-content  content.item(front front, back back, snippet (form-snippet front), title title.act)
     =/  new-item  item(content new-content)
     =/  new-stack
     %=  stack
       items  (~(put by items.stack) name.act new-item)
     ==
-    :-  ~
+    =/  del  [%add-item our.bol stak.act name.act new-item]
+    =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
+    :-  ~[mov]
     %=  state
       pubs  (~(put by pubs.state) stak.act new-stack)
     ==
@@ -354,8 +355,9 @@
     ~&  schedule-item+act
     [~ state]
       %raise-item
-    ~&  raise-item+act
-    :-  make-tile-moves
+    =/  raise  [%add-raised-item our.bol stak.act item.act]
+    =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
+    :-  (snoc make-tile-moves raise-card)
     %=  state
       review  (~(put in review.state) [our.bol stak.act item.act])
     ==
@@ -364,10 +366,16 @@
     [cards state]
       %answered-item
     ~&  answered-item+act
+    =/  del  [our.bol stak.act item.act]
+    =/  primary-card
+      :*  %give
+          %fact
+          ~[/srrs-primary]
+          %srrs-primary-delta
+          !>(delete-review-item+del)
+      ==
     =^  cards  state  (update-learned-status stak.act item.act answer.act)
-    :-  %+  weld
-      make-tile-moves
-    cards
+    :-  (snoc cards primary-card)
     %=  state
       review  (~(del in review.state) [our.bol stak.act item.act])
     ==
@@ -401,10 +409,12 @@
     ?+  wire
       [~ state]
         [%review-schedule @ @ @ ~]
-          :-  ~
-          %=  state
-           review  (~(put in review.state) [our.bol i.t.wire i.t.t.wire])
-          ==
+      =/  raise  [%add-raised-item our.bol i.t.wire i.t.t.wire]
+      =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
+      :-  ~[raise-card]
+      %=  state
+        review  (~(put in review.state) [our.bol i.t.wire i.t.t.wire])
+      ==
     ==
   [cards state]
 ::
@@ -462,7 +472,7 @@
       %+  turn  ~(tap in review.sat)
       |=  [who=@p stack=@tas item=@tas]
       %-  pairs:enjs:format
-      :~  who+(ship:enjs:format who)
+      :~  who+s+(scot %p who)
           stack+s+stack
           item+s+item
       ==

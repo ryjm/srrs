@@ -16,7 +16,7 @@
   ++  tank
       ^-  ^tank
       :+  %rose
-      [[' ' ~] ['<' '|' ~] ['|' '>' ~]]
+      [[' ' ~] ['`' '<' '|' ~] ['|' '>' '`' ~]]
       ?+    -.del  [leaf+(en-json json)]~
           %add-item
         :~  leaf+"stack: {(trip stack.del)}"

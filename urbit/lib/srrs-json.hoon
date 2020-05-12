@@ -16,9 +16,15 @@
     %+  frond  stack.del
     (total-build-to-json data.del)
       %add-raised-item
-    %+  frond  (scot %p who.del)
     %-  pairs
-    :~  stak+s+stak.del
+    :~  who+s+(scot %p who.del)
+        stack+s+stack.del
+        item+s+item.del
+    ==
+      %delete-review-item
+    %-  pairs
+    :~  who+s+(scot %p who.del)
+        stack+s+stack.del
         item+s+item.del
     ==
       %update-review
