@@ -375,7 +375,7 @@
           !>(delete-review-item+del)
       ==
     =^  cards  state  (update-learned-status stak.act item.act answer.act)
-    :-  (snoc cards primary-card)
+    :-  (flop (snoc (weld make-tile-moves cards) primary-card))
     %=  state
       review  (~(del in review.state) [our.bol stak.act item.act])
     ==
@@ -409,9 +409,16 @@
     ?+  wire
       [~ state]
         [%review-schedule @ @ @ ~]
+      =/  item
+        %+  biff
+          (~(get by pubs) i.t.wire)
+        |=(=stack (~(get by items.stack) i.t.t.wire))
+      ?~  item
+        ~&  srrs+"{(spud t.t.wire)} was scheduled for review, but no longer exists"
+        [~ state]
       =/  raise  [%add-raised-item our.bol i.t.wire i.t.t.wire]
       =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
-      :-  ~[raise-card]
+      :-  (flop (snoc make-tile-moves raise-card))
       %=  state
         review  (~(put in review.state) [our.bol i.t.wire i.t.t.wire])
       ==
