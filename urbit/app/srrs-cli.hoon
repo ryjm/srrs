@@ -1,4 +1,4 @@
-/-  *srrs, sole-sur=sole, *chat-store, *chat-view, *chat-hook,
+/-  *srrs, sole-sur=sole, chat-store, *chat-view, *chat-hook,
     *permission-store, *group-store, *invite-store
 /+  sole-lib=sole, *srrs, *srrs-json, default-agent, verb, dbug,
     auto=language-server-complete
@@ -11,7 +11,7 @@
   ==
 ::
 +$  state-0
-  $:  audience=(set target)                  ::  active targets
+  $:  audience=(set target)                         ::  active targets
       width=@ud                                     ::  display width
       cli=state=sole-share:sole-sur                 ::  console state
       eny=@uvJ                                      ::  entropy
@@ -21,7 +21,7 @@
 ::
 +$  command
   $%  [%target (set target)]                        ::  set messaging target
-      [%say letter]                                 ::  send message
+      [%say letter:chat-store]                      ::  send message
       [%width @ud]                                  ::  display width
       [%help ~]                                     ::  print usage info
       [%all-reviews ~]
@@ -90,7 +90,8 @@
       ::
           %fact
         ?+  p.cage.sign  ~|([%srrs-cli-bad-sub-mark wire p.cage.sign] !!)
-          %srrs-primary-delta    (handle-delta:sc wire !<(primary-delta q.cage.sign))
+            %srrs-primary-delta
+          (handle-delta:sc wire !<(primary-delta q.cage.sign))
         ==
       ==
     [cards this]
@@ -209,7 +210,7 @@
   ?:  ?=([%error *] build-result.result)
     (mean message.build-result.result)
   =/  =cage  (result-to-cage:ford build-result.result)
-  =^  say-cards  state  (work:sh-in [%say !<(letter q.cage)])
+  =^  say-cards  state  (work:sh-in [%say !<(letter:chat-store q.cage)])
   [say-cards state]
 ::
 ::  +sh-in: handle user input
@@ -442,7 +443,7 @@
     ::  +say: send messages to srrs chat
     ::
     ++  say
-      |=  =letter
+      |=  =letter:chat-store
       ^-  (quip card _state)
       =/  =serial  (shaf %msg-uid eny.bowl)
       :_  state(eny (shax eny.bowl))
@@ -451,7 +452,7 @@
       |=  =target
       %^  act  %out-message  %chat-hook
       :-  %chat-action
-      !>  ^-  chat-action
+      !>  ^-  action:chat-store
       :+  %message  (target-to-path target)
       [serial *@ our-self now.bowl letter]
     ::  +show-settings: print enabled flags, timezone and width settings
@@ -467,7 +468,7 @@
       |=  w=@ud
       [~ state(width w)]
     ::  +all-reviews: show items needing review
-    ::  
+    ::
     ++  all-reviews
       ^-  (quip card _state)
       =,  html
@@ -477,7 +478,8 @@
           ~(tap in reviews)
         update-to-json
       =/  print-card=card  (print:sh-out "reviews: {(en-json json)}")
-      =^  say-cards  state  (say `letter`[%text (crip "reviews: {(en-json json)}")])
+      =^  say-cards  state
+        (say `letter:chat-store`[%text (crip "reviews: {(en-json json)}")])
       [(flop (snoc say-cards print-card)) state]
     ::
     ::  +help: print (link to) usage instructions

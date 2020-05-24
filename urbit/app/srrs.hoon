@@ -14,7 +14,7 @@
 /=  js
   /^  octs
   /;  as-octs:mimes:html
-  /|  /:  /===/app/srrs/js/index  /js/ 
+  /|  /:  /===/app/srrs/js/index  /js/
       /~  ~
   ==
 /=  css
@@ -90,7 +90,7 @@
     |=  =path
     ^-  (quip card _this)
     =^  cards  state
-      ?+  path  [~ state]
+      ?+  path  (on-watch:def path)
         [%srrstile *]       (peer-srrstile:sc t.path)
         [%srrs-primary *]   (peer-srrs-primary:sc t.path)
         [%http-response *]  [~ state]
@@ -116,10 +116,11 @@
     |=  [=wire =sign-arvo]
     ^-  (quip card _this)
     =^  cards  state
-      ?+  wire  [~ state]
-        [%bind ~]  [~ state]
-        [%review-schedule @ ~]  (wake:sc wire)
+      ?+  wire  (on-arvo:def wire sign-arvo)
+        [%bind %srrs ~]             [~ state]
+        [%review-schedule @ ~]      (wake:sc wire)
         [%review-schedule @ @ @ ~]  (wake:sc wire)
+        [%read %paths ~]            [~ state]
       ==
     [cards this]
   ::
