@@ -12,12 +12,14 @@ export class PrimaryReducer {
     case "update-review":
       this.updateReview(json["update-review"], state);
       break
-    case "add-raised-item":
-      this.addRaisedItem(json["add-raised-item"], state);
+    case "add-review-item":
+      this.addRaisedItem(json["add-review-item"], state);
       break
     case "delete-review-item":
       this.deleteReviewItem(json["delete-review-item"], state);
       break
+    case "update-stack":
+      this.addStack(json["update-stack"], state);
     default:
       break
     }
@@ -26,7 +28,7 @@ export class PrimaryReducer {
   addItem(json, state) {
     let host   = Object.keys(json)[0];
     let stack   = Object.keys(json[host])[0];
-    let noteId = json[host][stack].content["note-id"];
+    let noteId = json[host][stack].name;
     if (state.pubs && state.pubs[stack]) {
       if (state.pubs[stack].items) {
         state.pubs[stack].items[noteId] = json[host][stack];

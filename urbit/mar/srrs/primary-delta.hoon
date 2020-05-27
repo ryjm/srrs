@@ -1,5 +1,5 @@
 /?  309
-/-  *srrs, *chat-store
+/-  *srrs, chat-store
 /+  *srrs, *srrs-json
 
 =,  html
@@ -20,12 +20,12 @@
       ?+    -.del  [leaf+(en-json json)]~
           %add-item
         :~  leaf+"stack: {(trip stack.del)}"
-            leaf+"item added: {(trip item.del)}"
+            leaf+"item added: {(trip name.data.del)}"
             leaf+"front: {(trip snippet.content.data.del)}"
         ==
       ==
   ++  letter
-    ^-  ^letter
+    ^-  letter:chat-store
     [%text (crip ~(ram re tank))]
   --
 ::

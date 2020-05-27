@@ -63,7 +63,7 @@ export class ItemPreview extends Component {
 
     return (
       <div className="mv6">
-        <Link to={itemLink}>
+        <Link to={{pathname: itemLink, state: {prevPath: location.pathname}}}>
           <TitleSnippet title={this.props.item.itemTitle} />
           <ItemSnippet
             body={this.props.item.itemSnippet}

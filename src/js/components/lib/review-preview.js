@@ -36,15 +36,16 @@ export class ReviewPreview extends Component {
     let stackLink =
       "/~srrs/" + this.props.item.author + "/" + this.props.item.stackName;
     let itemLink = stackLink + "/" + this.props.item.itemName
-    const location = {
+    const loc = {
       pathname: itemLink,
-      state: { mode: "review" }
+      state: { mode: "review",
+              prevPath: location.pathname }
     }
     return (
       <div className="f9 lh-solid ml3">
         <div className="flex-col">
           <div className="mv6">
-            <Link to={location}>
+            <Link to={loc}>
               <TitleSnippet title={this.props.item.itemTitle} />
             </Link>
             <div className="flex">

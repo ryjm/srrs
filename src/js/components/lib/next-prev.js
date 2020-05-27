@@ -36,7 +36,7 @@ class Preview extends Component {
     let item = this.props.stack.items[itemId];
     return {
       itemTitle: item.content.title,
-      itemName: item.content["note-id"],
+      itemName: item.name,
       itemBody: item.content.front,
       itemSnippet: item.content.snippet,
       stackTitle: this.props.stack.info.title,

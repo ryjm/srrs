@@ -472,11 +472,11 @@
     ++  all-reviews
       ^-  (quip card _state)
       =,  html
-      =/  reviews  (scry-for (set update) %srrs /review)
+      =/  reviews  (scry-for (set review) %srrs /review)
       =/  json  :-  %a
         %+  turn
           ~(tap in reviews)
-        update-to-json
+        review-to-json
       =/  print-card=card  (print:sh-out "reviews: {(en-json json)}")
       =^  say-cards  state
         (say `letter:chat-store`[%text (crip "reviews: {(en-json json)}")])

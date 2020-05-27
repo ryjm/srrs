@@ -50,6 +50,21 @@ export class Root extends Component {
           />
           <Route
             exact
+            path="/~srrs/:stack/review"
+            render={(props) => {
+              return (
+                <Skeleton
+                  pubs={state.pubs}
+                  api={api}
+                  spinner={this.state.spinner}
+                  active="sidebar"
+                  children={<Review {...props} {...state} stack={props.match.params.stack} />}
+                />
+              );
+            }}
+          />
+          <Route
+            exact
             path="/~srrs/subs"
             render={(props) => {
               return (

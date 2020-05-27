@@ -54,7 +54,7 @@ export class Item extends Component {
       item: null,
       pathData: [],
       temporary: false,
-      notFound: false,
+      notFound: false
     }
 
     if (this.props.location.state) {
@@ -84,7 +84,7 @@ export class Item extends Component {
         let item = _.get(stack, `items["${itemId}"]`, false);
         let learn = _.get(stack, `items["${itemId}"].learn`, false);
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+        let itemUrl = `${stackUrl}/${item.name}`;
 
         let tempState = {
           title: item.content.title,
@@ -119,7 +119,7 @@ export class Item extends Component {
         return;
       } else {
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+        let itemUrl = `${stackUrl}/${item.name}`;
 
         this.state = {...this.state, ...{
           title: item.content.title,
@@ -227,7 +227,7 @@ export class Item extends Component {
       ((item.content.title != oldItem.title) || (item.content.front != oldItem.content.front) || (item.content.back != oldItem.content.back))) {
 
       let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-      let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+      let itemUrl = `${stackUrl}/${item.name}`;
 
       this.setState({
         mode: 'view',
@@ -257,10 +257,13 @@ export class Item extends Component {
 
     if (this.state.awaitingGrade) {
       let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-      let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+      let itemUrl = `${stackUrl}/${item.name}`;
       let redirect = itemUrl;
       if (this.state.mode === 'review') {
-        redirect = `/~srrs/review`;
+        if (this.props.location.state.prevPath) {
+          redirect = this.props.location.state.prevPath;
+        } else
+        redirect =`/~srrs/review`;
       }
 
       this.setState({
@@ -269,7 +272,7 @@ export class Item extends Component {
         item: item
 
       }, () => {
-        this.props.api.fetchStatus(stack.info.filename, item.content["note-id"])
+        this.props.api.fetchStatus(stack.info.filename, item.name)
         this.props.history.push(redirect)
       })
 
@@ -278,7 +281,7 @@ export class Item extends Component {
     if (!this.state.temporary) {
       if (oldItem != item) {
         let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.content["note-id"]}`;
+        let itemUrl = `${stackUrl}/${item.name}`;
 
         this.setState({
           item: item,

@@ -66,7 +66,7 @@
   $:  stack=(each stack-info tang)
       name=@tas
       items=(map @tas item)
-      order=[pin=(list @tas) unpin=(list @tas)]
+      review-items=(map @tas item)
       contributors=[mod=?(%white %black) who=(set @p)]
       subscribers=(set @p)
       last-update=@da
@@ -75,6 +75,7 @@
 +$  item
   $:  content=content
       learn=learned-status
+      name=@tas
   ==
 ::
 +$  content
@@ -105,18 +106,23 @@
       interval=@dr
       box=@
   ==
-+$  update
++$  review
   $:  who=@p
       stack=@tas
       item=@tas
   ==
 ::
 +$  stack-delta
-  $%  [%add-item who=@p stack=@tas item=@tas data=item]
-      [%add-stack who=@p stack=@tas data=stack]
-      [%add-raised-item who=@p stack=@tas item=@tas]
+  $%  [%add-item who=@p stack=@tas data=item]
+      [%add-review-item who=@p stack=@tas data=item]
+      [%add-stack who=@p data=stack]
+      ::
+      [%delete-item who=@p stack=@tas item=@tas]
       [%delete-review-item who=@p stack=@tas item=@tas]
-      [%update-review (set update)]
+      [%delete-stack who=@p stack=@tas]
+      ::
+      [%update-stack who=@p data=stack]
+      [%update-review (set review)]
   ==
 ::
 +$  primary-delta

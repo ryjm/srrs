@@ -31,6 +31,7 @@
 |%
 +$  versioned-state
   $%  [%0 state-zero]
+      [%1 state-one]
   ==
 ::
 +$  state-zero
@@ -40,16 +41,22 @@
       review=(set [who=ship stack=@tas item=@tas])
   ==
 ::
++$  state-one
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+  ==
+::
 +$  card  card:agent:gall
 ::
 --
 ::
-=|  versioned-state
+=|  [%1 state-one]
 =*  state  -
 ^-  agent:gall
-%-  agent:dbug
-%+  verb  |
 =<
+  %-  agent:dbug
+  %+  verb  |
   |_  bol=bowl:gall
   +*  this       .
       srrs-core  +>
@@ -130,28 +137,172 @@
     ^-  (quip card _this)
     =/  old-state=(each versioned-state tang)
       (mule |.(!<(versioned-state old)))
-    ?:  ?=(%& -.old-state)
+    ?:  ?=(%| -.old-state)
       ~!  p.old-state
+      [~ this]
+    ?-  -.p.old-state
+        %0
+      [~ this]
+        %1
       [~ this(state p.old-state)]
-    [~ this]
+    ==
   ++  on-leave  on-leave:def
   ++  on-peek
     |=  =path
     ^-  (unit (unit cage))
     ?+  path  (on-peek:def path)
-        [%x %review ~]        ``noun+!>(review.state)
-        [%x %all ~]        ``noun+!>(pubs.state)
+        [%x %review ~]        ``noun+!>((turn ~(val by stacks.state) |=(=stack review-items.stack)))
+        [%x %all ~]        ``noun+!>(stacks.state)
         [%x %stacks *]
       ?~  t.t.path
         ~
-      ``noun+!>((~(get by pubs.state) `@tas`i.t.t.path))
+      ``noun+!>((~(get by stacks.state) `@tas`i.t.t.path))
     ==
   ++  on-fail   on-fail:def
   --
+::  cards: list of outgoing moves
+::  stak:  the current stack
+::
+=|  [cards=(list card) stak=stack]
 ::
 |_  bol=bowl:gall
+::  +this: self
 ::
+++  this  .
+::  +emit: emit a card and set stak
+::
+++  emit
+  |=  [car=card stak=stack]
+  this(cards [car cards], stak stak)
+::
+++  emit-primary
+  |=  del=primary-delta
+  %+  emit
+  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
+  stak
+::
+++  emil
+  |=  rac=(list card)
+  |-  ^+  this
+  ?~  rac
+    this
+  =.  cards  [i.rac cards]
+  $(rac t.rac)
+::  +abet: finalize
+::
+++  abet
+  ^-  (quip card _state)
+  [(flop cards) state]
+::  +stack-emit: handles state updates for the given stack
+::
+++  stack-emit
+  :: todo: maybe doesn't need to be a door
+  ::
+  |_  =stack
+  ::
+  ++  add-stack
+    ^+  this
+    ?.  (~(has by stacks) name.stack)
+      %.  [%add-stack our.bol stack]
+      %=  emit-primary
+        stacks  (~(put by stacks.state) name.stack stack)
+      ==
+    this
+  ::
+  ++  delete-stack
+    ^+  this
+    %.  [%delete-stack our.bol name.stack]
+    %=  emit-primary
+      stacks  (~(del by stacks) name.stack)
+    ==
+  ::
+  ++  update-stack
+    ^+  this
+    =.  ..emit  this(stak stack)
+    ?:  (~(has by stacks) name.stack)
+      %.  [%update-stack our.bol stack]
+      %=  emit-primary
+        stacks  (~(put by stacks) name.stack stack)
+      ==
+    this
+  ::
+  ++  delete-item
+    |=  item=@tas
+    ^+  this
+    %~  update-stack  stack-emit
+    %=  stack
+      items  (~(del by items.stack) item)
+    ==
+  ::
+  ++  add-item
+    |=  =item
+    ^+  this
+    =.  ..emit
+    %~  update-stack  stack-emit
+    %=  stack
+      items  (~(uni by items.stack) (my ~[[name.item item]]))
+    ==
+    (~(add-review-item stack-emit stak) item)
+  ::
+  ++  edit-item
+    |=  =item
+    ^+  this
+    %~  update-stack  stack-emit
+    %=  stack
+      items  (~(uni by items.stack) (my ~[[name.item item]]))
+    ==
+  ::
+  ++  add-review-item
+    |=  =item
+    ^+  this
+    =.  ..emit
+      %~  update-stack  stack-emit
+      %=  stack
+        review-items  (~(uni by review-items.stack) (my ~[[name.item item]]))
+      ==
+    ~(update-review stack-emit stak)
+  ::
+  ++  delete-review-item
+    |=  =item
+    ^+  this
+    =.  ..emit
+      %~  update-stack  stack-emit
+      %=  stack
+        review-items  (~(del by review-items.stack) name.item)
+      ==
+    ~(update-review stack-emit stak)
+  ::
+  ++  update-learned-status
+    |=  [=item =recall-grade]
+    ^+  this
+    =.  ..emit  (~(delete-review-item stack-emit stack) item)
+    =/  =learned-status  (generate-learned-status item recall-grade)
+    =/  review-date=@da  (add now.bol interval.learned-status)
+    =/  =path
+      :~  %review-schedule
+        (scot %tas name.stak)
+        (scot %tas name.item)
+        (scot %da review-date)
+      ==
+    =/  schedule-card=card
+      :*  %pass
+          path
+          [%arvo %b %wait review-date]
+      ==
+    =.  ..emit
+      %.  item(learn learned-status)
+      %~  edit-item  stack-emit  stak
+    (emit schedule-card stak)
 
+  ::
+  ++  update-review
+    ^+  this
+    =/  del  [%update-review (silt all-reviews)]
+    %-  emil
+    :~  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
+        [%give %fact ~[/srrstile] %json !>(make-tile-json)]
+    ==
+  --
 ++  poke-sign-arvo
   |=  =sign-arvo
   ^-  (quip card _state)
@@ -190,20 +341,18 @@
     %-  json-response:gen
     %-  json-to-octs
     :-  %a
-    %+  turn
-      ~(tap in review.state)
-    update-to-json
+    (turn all-reviews review-to-json)
   ::  learned status as json for given stack
       [[[~ %json] [%'~srrs' %learn @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     %-  json-response:gen
     %-  json-to-octs
-    %-  stack-status-to-json  (~(got by pubs) stack-name)
+    %-  stack-status-to-json  (~(got by stacks) stack-name)
   ::  learned status as json for given stack and item
       [[[~ %json] [%'~srrs' %learn @ @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     =/  item-name  i.t.t.t.site.request-line
-    =/  =stack  (~(got by pubs) stack-name)
+    =/  =stack  (~(got by stacks) stack-name)
     =/  =item  (~(got by items.stack) item-name)
     %-  json-response:gen
     %-  json-to-octs
@@ -221,12 +370,12 @@
     (manx-response:gen hym)
   ::  subscriptions
   ::
-      [[~ [%'~srrs' %subs ~]] ~]
+      [[~ [%'~srrs' %stack-subs ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  created
   ::
-      [[~ [%'~srrs' %pubs ~]] ~]
+      [[~ [%'~srrs' %stacks ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new item
@@ -259,7 +408,7 @@
       %new-stack
     ?.  =(our.bol src.bol)
       [~ state]
-    ?:  ?&((~(has by pubs) name.act) =(items.act ~))
+    ?:  ?&((~(has by stacks) name.act) =(items.act ~))
       [~ state]
     ::
     =/  conf=stack-info
@@ -270,66 +419,50 @@
           now.bol
           now.bol
       ==
-    =^  cards  state  (add-stack conf items.act)
-    [cards state]
+    =<  abet
+    ~(add-stack stack-emit (create-stack conf items.act))
       %new-item
-    =/  front-matter=(map knot cord)
+      =/  front-matter=(map knot cord)
       %-  my
       :~  title+name.act
           author+(scot %p src.bol)
           date-created+(scot %da now.bol)
           last-modified+(scot %da now.bol)
       ==
-    =/  front  (add-front-matter front-matter front.act)
-    =/  back  (add-front-matter front-matter back.act)
-    =/  new-note=content
-      :*  src.bol
-          title.act
-          name.act
-          now.bol
-          now.bol
-          %.y
-          front
-          back
-          (form-snippet front)
-          ~
+      =/  front  (add-front-matter front-matter front.act)
+      =/  back  (add-front-matter front-matter back.act)
+      =/  new-content=content
+        :*  src.bol
+            title.act
+            name.act
+            now.bol
+            now.bol
+            %.y
+            front
+            back
+           (form-snippet front)
+           ~
           %.n
-      ==
-    =/  new-item  (item new-note (learned-status [.2.5 0 0]))
-    =/  old-stack=stack  (~(got by pubs) stak.act)
-    =/  new-stack=stack
-    %=  old-stack
-      items  (~(uni by items.old-stack) (my ~[[name.act new-item]]))
-    ==
-    =/  del  [%add-item our.bol stak.act name.act new-item]
-    =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-
-    [~[mov] state(pubs (~(put by pubs) stak.act new-stack))]
+        ==
+    =<  abet
+    %.  (item new-content (learned-status [.2.5 0 0]) name.act)
+    %~  add-item  stack-emit  (~(got by stacks) stak.act)
     ::
       %delete-stack
     ~&  delete-stack+act
-    :-  ~
-    %=  state
-      pubs  (~(del by pubs) stak.act)
-    ==
+    =<  abet
+    ~(delete-stack stack-emit (~(got by stacks) stak.act))
       %delete-item
     ~&  delete-item+act
-    =/  old-stack=stack  (~(got by pubs) stak.act)
-    =/  new-stack=stack
-    %=  old-stack
-      items  (~(del by items.old-stack) item.act)
-    ==
-    :-  ~
-    %=  state
-      review  (~(del in review.state) [our.bol stak.act item.act])
-      pubs  (~(put by pubs.state) stak.act new-stack)
-    ==
+    =<  abet
+    %.  item.act
+    ~(delete-item stack-emit (~(got by stacks) stak.act))
       %edit-stack
     ~&  edit-stack+act
     [~ state]
       %edit-item
     ~&  edit-item+act
-    =/  stack  (~(got by pubs) stak.act)
+    =/  stack  (~(got by stacks) stak.act)
     =/  item=item  (~(got by items.stack) name.act)
     =/  front-matter=(map knot cord)
     %-  my
@@ -341,50 +474,32 @@
     =/  front  (add-front-matter front-matter front.act)
     =/  back  (add-front-matter front-matter back.act)
     =/  new-content  content.item(front front, back back, snippet (form-snippet front), title title.act)
-    =/  new-item  item(content new-content)
-    =/  new-stack
-    %=  stack
-      items  (~(put by items.stack) name.act new-item)
-    ==
-    =/  del  [%add-item our.bol stak.act name.act new-item]
-    =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-    :-  ~[mov]
-    %=  state
-      pubs  (~(put by pubs.state) stak.act new-stack)
-    ==
+    =<  abet
+    %.  item(content new-content)
+    %~  edit-item  stack-emit  stack
       %schedule-item
     ~&  schedule-item+act
     [~ state]
       %raise-item
-    =/  raise  [%add-raised-item our.bol stak.act item.act]
-    =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
-    :-  (snoc make-tile-moves raise-card)
-    %=  state
-      review  (~(put in review.state) [our.bol stak.act item.act])
-    ==
+    =/  stack  (~(got by stacks) stak.act)
+    =/  =item  (~(got by items.stack) item.act)
+    =<  abet
+    %.  item
+    %~  add-review-item  stack-emit  stack
       %add-books
     =^  cards  state  (add-books books.act)
     [cards state]
       %answered-item
     ~&  answered-item+act
-    =/  del  [our.bol stak.act item.act]
-    =/  primary-card
-      :*  %give
-          %fact
-          ~[/srrs-primary]
-          %srrs-primary-delta
-          !>(delete-review-item+del)
-      ==
-    =^  cards  state  (update-learned-status stak.act item.act answer.act)
-    :-  (flop (snoc (weld make-tile-moves cards) primary-card))
-    %=  state
-      review  (~(del in review.state) [our.bol stak.act item.act])
-    ==
+    =/  stack  (~(got by stacks) stak.act)
+    =/  =item  (~(got by items.stack) item.act)
+    =<  abet
+    %.  [item answer.act]
+    %~  update-learned-status  stack-emit  stack
       %read
-    ~&  read+act
     [~ state]
       %update-review
-    [make-tile-moves state]
+    =<  abet  update-review:stack-emit
   ==
 ::
 ++  peer-srrstile
@@ -406,25 +521,20 @@
 ++  wake
   |=  =wire
   ^-  (quip card _state)
-  =^  cards  state
-    ?+  wire
+  ?+  wire
+    [~ state]
+      [%review-schedule @ @ @ ~]
+    =/  item
+      %+  biff
+        (~(get by stacks) i.t.wire)
+      |=(=stack (~(get by items.stack) i.t.t.wire))
+    ?~  item
+      ~&  srrs+"{(spud t.t.wire)} scheduled for review, but no longer exists"
       [~ state]
-        [%review-schedule @ @ @ ~]
-      =/  item
-        %+  biff
-          (~(get by pubs) i.t.wire)
-        |=(=stack (~(get by items.stack) i.t.t.wire))
-      ?~  item
-        ~&  srrs+"{(spud t.t.wire)} was scheduled for review, but no longer exists"
-        [~ state]
-      =/  raise  [%add-raised-item our.bol i.t.wire i.t.t.wire]
-      =/  raise-card=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(raise)]
-      :-  (flop (snoc make-tile-moves raise-card))
-      %=  state
-        review  (~(put in review.state) [our.bol i.t.wire i.t.t.wire])
-      ==
-    ==
-  [cards state]
+    =<  abet
+    %.  (need item)
+    %~  add-review-item  stack-emit  (~(got by stacks) i.t.wire)
+  ==
 ::
 ++  poke-noun
   |=  a=*
@@ -434,14 +544,10 @@
     ?+  a
       [~ state]
         %print-json
+      ~&  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *versioned-state]
-        %clear-review
-      [~ state(review review:*versioned-state)]
-        %tile
-      :_  state
-      make-tile-moves
+      [~ *[%1 state-one]]
     ==
 ::
 ++  state-to-json
@@ -450,15 +556,15 @@
   %-  pairs:enjs:format
   :~  :+  %pubs
         %o
-      %+  roll  ~(tap by pubs.sat)
+      %+  roll  ~(tap by stacks.sat)
       |=  [[nom=@tas stack=stack] out=(map @t json)]
       %+  ~(put by out)
         nom
       (total-build-to-json stack)
   ::
-      :+  %subs
+      :+  %stack-subs
         %o
-      %-  ~(rep by subs.sat)
+      %-  ~(rep by stack-subs.sat)
       |=  $:  [[who=@p nom=@tas] stack=stack]
               out=(map @t [%o (map @t json)])
           ==
@@ -477,50 +583,41 @@
   ::
       :+  %review
         %a
-      %+  turn  ~(tap in review.sat)
-      |=  [who=@p stack=@tas item=@tas]
-      %-  pairs:enjs:format
-      :~  who+s+(scot %p who)
-          stack+s+stack
-          item+s+item
-      ==
-  ==
-::
-++  make-tile-moves
-  ^-  (list card)
-  =/  del  [%update-review review.state]
-  :~  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-      [%give %fact ~[/srrstile] %json !>(make-tile-json)]
+      %+  turn  all-reviews  review-to-json
   ==
 ::
 ++  make-tile-json
   ^-  json
+  =/  reviews  (~(rep by stacks.state) |=([[name=@tas =stack] sum=@] (add sum ~(wyt by review-items.stack))))
   %-  pairs:enjs:format
-  :~  review+(numb:enjs:format ~(wyt by review))
+  :~  review+(numb:enjs:format reviews)
   ==
 ::
-++  add-stack
+++  create-stack
   |=  [info=stack-info items=(map @tas item)]
-  ^-  (quip card _state)
+  ^-  stack
   =|  sta=stack
-  =/  new-stack
   %=  sta
     stack  [%.y info]
     name  filename.info
     last-update  last-modified.info
     items  (~(uni by items) items.sta)
   ==
-  =/  new-pubs  (~(put by pubs.state) filename.info new-stack)
-  =/  del  [%add-stack our.bol filename.info new-stack]
-    =/  mov=card  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-  [~[mov] state(pubs new-pubs)]
+::
+++  all-reviews
+  ^-  (list review)
+  %-  zing
+  %+  turn  ~(val by stacks)
+  |=  =stack
+  %+  turn  ~(val by review-items.stack)
+  |=  =item  [author.content.item name.stack name.item]
 ::
 ++  add-books
   |=  books=(map @tas notebook:publish)
   ^-  (quip card _state)
   %+  roll  ~(tap by books)
   |=  [book=[@tas notebook:publish] cad=(list card) sty=_state]
-  ?:  (~(has by pubs.sty) -.book)
+  ?:  (~(has by stacks.sty) -.book)
     [cad sty]
   =/  items
   (~(run by notes.book) |=(note=note:publish (item note (learned-status [.2.5 0 0]))))
@@ -530,22 +627,14 @@
   [%pass /stacks %agent [our.bol %srrs] %poke %srrs-action !>(act)]
   [(snoc cad mov) sty]
 ::
-++  update-learned-status
-  |=  [stak=@tas item-name=@tas =recall-grade]
-  ^-  (quip card _state)
-  =/  old-stack=stack  (~(got by pubs.state) stak)
-  =/  =item  (~(got by items.old-stack) item-name)
+++  generate-learned-status
+  |=  [=item =recall-grade]
+  ^-  learned-status
   =/  item-status=learned-status  learn.item
   =/  ease=@rs  (next-ease recall-grade item-status)
   =/  box=@  (next-box recall-grade item-status)
   =/  interval=@dr  (next-interval [ease box item-status])
-  =/  new-item-status=learned-status  (learned-status [ease interval box])
-  =/  new-item  item(learn new-item-status)
-  =/  new-stack
-    old-stack(items (~(put by items.old-stack) item-name new-item))
-  =/  review-date=@da  (add now.bol interval)
-  =/  schedule-card  [%pass /review-schedule/(scot %tas stak)/(scot %tas item-name)/(scot %da review-date) %arvo %b %wait review-date]~
-  [schedule-card state(pubs (~(put by pubs) stak new-stack))]
+  (learned-status [ease interval box])
 ::
 ++  next-ease
   |=  [=recall-grade =learned-status]

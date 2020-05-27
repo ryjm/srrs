@@ -149,24 +149,17 @@ export class Stack extends Component {
       return [];
     }
 
-    let pinProps = stack.order.pin.map((itemId) => {
-      let item = stack.items[itemId];
+    return Object.values(stack.items).map((item) => {
       return this.buildItemPreviewProps(item, stack, true);
     });
-
-    let unpinProps = stack.order.unpin.map((itemId) => {
-      let item = stack.items[itemId];
-      return this.buildItemPreviewProps(item, stack, false);
-    });
-
-    return pinProps.concat(unpinProps);
+    
   }
 
   buildItemPreviewProps(item, stack, pinned) {
 
     return {
       itemTitle: item.content.title,
-      itemName: item.content["note-id"],
+      itemName: item.name,
       itemBody: item.content.front,
       itemSnippet: item.content.snippet,
       stackTitle: stack.info.title,
@@ -276,7 +269,7 @@ export class Stack extends Component {
         <div className="w-100 dn-m dn-l dn-xl inter pt4 pb6 f9">
           <Link to="/~srrs/review">{"<- Review"}</Link>
         </div>
-        <div className="center mw6 f9 h-100"
+        <div className="mw9 f9 h-100"
           style={{ paddingLeft: 16, paddingRight: 16 }}>
           <div className="h-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
             <div
@@ -300,7 +293,7 @@ export class Stack extends Component {
             </div>
 
             <div className="flex" style={{ marginBottom: 24 }}>
-            <Link to="/~srrs/review" className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
+            <Link to={`/~srrs/${data.stack.info.filename}/review`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
                 Review
               </Link>
               <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">

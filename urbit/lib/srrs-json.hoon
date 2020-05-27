@@ -11,11 +11,22 @@
     %+  frond  (scot %p who.del)
     %+  frond  stack.del
     (item-to-json data.del)
+      %add-review-item
+    %-  pairs
+    :~  who+s+(scot %p who.del)
+        stack+s+stack.del
+        item+s+name.data.del
+    ==
       %add-stack
     %+  frond  (scot %p who.del)
-    %+  frond  stack.del
+    %+  frond  name.data.del
     (total-build-to-json data.del)
-      %add-raised-item
+      %delete-stack
+    %-  pairs
+    :~  who+s+(scot %p who.del)
+        stack+s+stack.del
+    ==
+      %delete-item
     %-  pairs
     :~  who+s+(scot %p who.del)
         stack+s+stack.del
@@ -31,7 +42,11 @@
     :-  %a
     %+  turn
       ~(tap in +.del)
-    update-to-json
+    review-to-json
+      %update-stack
+    %+  frond  (scot %p who.del)
+    %+  frond  name.data.del
+    (total-build-to-json data.del)
       %read
     %-  pairs
     :~  who+s+(scot %p who.del)
@@ -259,8 +274,9 @@
   |=  =item
   ^-  json
   %-  pairs:enjs:format
-  :~  content+(content-full-json filename.content.item content.item)
+  :~  content+(content-full-json name.item content.item)
       learn+(status-to-json learn.item)
+      name+s+name.item
   ==
 ::
 ++  stack-build-to-json
@@ -296,6 +312,14 @@
   %-  pairs:enjs:format
   :~  info+(stack-build-to-json stack.stack)
   ::
+    :+  %review-items
+      %o
+    %+  roll  ~(tap in ~(key by review-items.stack))
+    |=  [item=@tas out=(map @t json)]
+    =/  item-build  (~(got by review-items.stack) item)
+    %+  ~(put by out)
+      item
+    (item-to-json item-build)
     :+  %items
       %o
     %+  roll  ~(tap in ~(key by items.stack))
@@ -304,12 +328,6 @@
     %+  ~(put by out)
       item
     (item-to-json item-build)
-  ::
-    :-  %order
-    %-  pairs:enjs:format
-    :~  pin+a+(turn pin.order.stack |=(s=@tas [%s s]))
-        unpin+a+(turn ~(tap in ~(key by items.stack)) |=(s=@tas [%s s]))
-    ==
   ::
     :-  %contributors
     %-  pairs:enjs:format
@@ -331,13 +349,13 @@
     [%last-update (time:enjs:format last-update.stack)]
   ==
 ::
-++  update-to-json
-  |=  update=update
+++  review-to-json
+  |=  =review
   ^-  json
   %-  pairs:enjs:format
-    :~  who+s+(scot %p who.update)
-        stack+s+stack.update
-        item+s+item.update
+    :~  who+s+(scot %p who.review)
+        stack+s+stack.review
+        item+s+item.review
     ==
 ::
 ++  content-full-json
