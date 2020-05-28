@@ -133,7 +133,7 @@ export class Review extends Component {
 
 
       header =
-        <div>
+        <div className="mt2 flex-auto">
           <Link to={`/~srrs/review`} className="blue3 f9">
             {`${reviewText}`}
           </Link>
@@ -163,11 +163,9 @@ export class Review extends Component {
         ref={el => {
           this.scrollElement = el;
         }}>
-        <div className="flex">
-          <div className="mv6 flex-auto">
+          <div className="flex flex-wrap">
             {header}
           </div>
-        </div>
         <div className="mw9 f9 h-100"
           style={{ paddingLeft: 10, paddingRight: 10 }}>
           <div className="h-100 pt0 pt4-m pt4-l pt4-xl no-scrollbar">
@@ -176,7 +174,7 @@ export class Review extends Component {
               <div className="bb b--gray4 b--gray2-d gray2 ph2"
                 style={{ flexGrow: 1 }}></div>
             </div>
-            <div className="flex-col">{body}</div>
+            <div className="flex flex-wrap">{body}</div>
           </div>
         </div>
       </div>)

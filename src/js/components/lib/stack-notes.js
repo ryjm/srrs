@@ -17,7 +17,7 @@ export class StackNotes extends Component {
     });
 
     return (
-      <div className="flex flex-wrap-reverse" >
+      <div className="flex flex-wrap" >
         {items}
       </div>
     );

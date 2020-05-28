@@ -62,7 +62,7 @@ export class ItemPreview extends Component {
     let itemLink = stackLink + "/" + this.props.item.itemName;
 
     return (
-      <div className="mv6">
+      <div className="mv2 link black dim db mw5 pa2 br2 bt b--green0 shadow-hover ma2">
         <Link to={{pathname: itemLink, state: {prevPath: location.pathname}}}>
           <TitleSnippet title={this.props.item.itemTitle} />
           <ItemSnippet
