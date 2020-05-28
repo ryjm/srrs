@@ -1,11 +1,6 @@
 spaced repetition repetition system
-
-**WIP**
 ---
 ![UI](ui.gif)
-
-*warning*: this was originally written on top of the old publish app, so there is a
-lot of that code in here, especially on the front end. 
 
 on urbit: |merge %home ~lisdun-modsup %home
 
