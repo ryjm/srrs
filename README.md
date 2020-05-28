@@ -2,7 +2,7 @@ spaced repetition repetition system
 ---
 ![UI](ui.gif)
 
-on urbit: |merge %home ~lisdun-modsup %home
+on urbit: `|merge %home ~lisdun-modsup %home`
 
 from source: 
 
