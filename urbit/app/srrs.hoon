@@ -211,10 +211,12 @@
   ::
   ++  delete-stack
     ^+  this
-    %.  [%delete-stack our.bol name.stack]
-    %=  emit-primary
-      stacks  (~(del by stacks) name.stack)
-    ==
+    =.  ..emit
+      %.  [%delete-stack our.bol name.stack]
+      %=  emit-primary
+        stacks  (~(del by stacks) name.stack)
+      ==
+    ~(update-review stack-emit stak)
   ::
   ++  update-stack
     ^+  this
@@ -229,9 +231,11 @@
   ++  delete-item
     |=  item=@tas
     ^+  this
+    =.  ..emit  (emit-primary [%delete-item our.bol name.stack item])
     %~  update-stack  stack-emit
     %=  stack
       items  (~(del by items.stack) item)
+      review-items  (~(del by review-items.stack) item)
     ==
   ::
   ++  add-item

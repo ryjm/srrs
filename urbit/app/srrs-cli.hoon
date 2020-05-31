@@ -24,6 +24,8 @@
       [%width @ud]                                  ::  display width
       [%help ~]                                     ::  print usage info
       [%all-reviews ~]
+      [%delete-item @tas @tas]
+      [%delete-stack @tas]
       [%settings ~]
   ==
 ::
@@ -225,6 +227,8 @@
         (stag %target tars)
         ;~(plug (tag %help) (easy ~))
         ;~(plug (tag %all-reviews) (easy ~))
+        ;~((glue ace) (tag %delete-item) sym sym)
+        ;~((glue ace) (tag %delete-stack) sym)
         ;~(plug (tag %settings) (easy ~))
       ==
     ::
@@ -273,6 +277,11 @@
     ++  ships
       %+  cook  ~(gas in *(set ^ship))
       (most ;~(plug com (star ace)) ship)
+    ::  +text: text message body
+    ::
+    ++  text
+      %+  cook  crip
+      (plus next)
   --
   ::  +tab-list: static list of autocomplete entries
   ::
@@ -281,6 +290,8 @@
     :~
       [%help leaf+";help"]
       [%all-reviews leaf+";all-reviews"]
+      [%delete-item leaf+";delete-item"]
+      [%delete-stack leaf+";delete-stack"]
       [%settings leaf+";settings"]
     ==
   ::  +work: run user command
@@ -294,6 +305,8 @@
           %width     (set-width +.job)
           %help      help
           %all-reviews  all-reviews
+          %delete-item  (delete-item +.job)
+          %delete-stack  (delete-stack +.job)
           %settings  show-settings
         ==
     ::  +act: build action card
@@ -340,6 +353,26 @@
         |=  =target  ~&  target+target  ~
       :~  (print:sh-out "width: {(scow %ud width)}")
       ==
+    ::
+    ++  delete-item
+      |=  [stack=@tas item=@tas]
+      ^-  (quip card _state)
+      ~&  stack+stack
+      ~&  item+item
+      =-  [[- ~] state]
+      %^  act  %delete-item  %srrs
+      :-  %srrs-action
+      !>  ^-  action
+      [%delete-item stack item]
+    ++  delete-stack
+      |=  stack=@tas
+      ^-  (quip card _state)
+      =-  [[- ~] state]
+      %^  act  %delete-stack  %srrs
+      :-  %srrs-action
+      !>  ^-  action
+      [%delete-stack stack]
+
     ::  +set-width: configure cli printing width
     ::
     ++  set-width
