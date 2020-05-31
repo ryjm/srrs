@@ -151,7 +151,7 @@
     |=  =path
     ^-  (unit (unit cage))
     ?+  path  (on-peek:def path)
-        [%x %review ~]        ``noun+!>((turn ~(val by stacks.state) |=(=stack review-items.stack)))
+        [%x %review ~]        ``noun+!>(all-reviews)
         [%x %all ~]        ``noun+!>(stacks.state)
         [%x %stacks *]
       ?~  t.t.path
@@ -237,6 +237,7 @@
   ++  add-item
     |=  =item
     ^+  this
+    =.  ..emit  (emit-primary [%add-item our.bol name.stack item])
     =.  ..emit
     %~  update-stack  stack-emit
     %=  stack
@@ -588,9 +589,8 @@
 ::
 ++  make-tile-json
   ^-  json
-  =/  reviews  (~(rep by stacks.state) |=([[name=@tas =stack] sum=@] (add sum ~(wyt by review-items.stack))))
   %-  pairs:enjs:format
-  :~  review+(numb:enjs:format reviews)
+  :~  review+(numb:enjs:format (lent all-reviews))
   ==
 ::
 ++  create-stack
