@@ -9,8 +9,7 @@ import _ from 'lodash';
 import { PathControl } from '/components/lib/path-control';
 import { withRouter } from 'react-router';
 import { stringToSymbol } from '/lib/util';
-
-const PC = withRouter(PathControl);
+import { uuid } from '/lib/util';
 
 export class NewItem extends Component {
   constructor(props) {
@@ -49,7 +48,7 @@ export class NewItem extends Component {
     }
 
     let itemTitle = this.state.title;
-    let itemId = stringToSymbol(itemTitle);
+    let itemId = uuid();
 
     let awaiting = Object.assign({}, {
       ship: ship,
@@ -83,14 +82,6 @@ export class NewItem extends Component {
         },
       };
 
-      let raiseItem = {
-        "raise-item": {
-          who: ship,
-          stak: stackId,
-          item: itemId,
-        },
-      };
-
       this.props.setSpinner(true);
 
       this.setState({
@@ -101,9 +92,7 @@ export class NewItem extends Component {
           itemId: itemId,
         }
       }, () => {
-        this.props.api.action("srrs", "srrs-action", newItem).then(() => {
-          this.props.api.action("srrs", "srrs-action", raiseItem);
-        })
+        this.props.api.action("srrs", "srrs-action", newItem)
       }
       );
 
