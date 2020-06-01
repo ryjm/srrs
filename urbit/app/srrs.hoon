@@ -570,8 +570,18 @@
     [%give %kick ~ ~]~
   [~ state]
 ::
-++  our-beak  /(scot %p our.bol)/[q.byk.bol]/(scot %da now.bol)
+++  peer-stack
+  |=  stack-name=@tas
+  ^-  (quip card _state)
+  ?<  (team:title our.bol src.bol)
+  =/  =stack  (~(got by stacks.state) stack-name)
+  :_  state
+  :~
+      [%give %fact ~ %srrs-stack !>(stack)]
+      [%give %kick ~ ~]
+  ==
 ::
+++  our-beak  /(scot %p our.bol)/[q.byk.bol]/(scot %da now.bol)
 ++  wake
   |=  =wire
   ^-  (quip card _state)
@@ -671,7 +681,7 @@
 ++  all-reviews
   ^-  (list review)
   %-  zing
-  %+  turn  (weld ~(val by stacks) ~(val by stack-subs))
+  %+  turn  ~(val by stacks)
   |=  =stack
   %+  turn  ~(val by review-items.stack)
   |=  =item  [author.content.item name.stack name.item]
