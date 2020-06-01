@@ -10,9 +10,20 @@ install node and npm
 
 run with `npm serve` 
 
-start with `|start %srrs` in the dojo
+#### Usage
 
-if you want to  use `srrs-cli`, start it with `|start %srrs-cli` and `|link %srrs-cli`, switch to it with C-x. create a private channel called `srrs` if you want notifications to show up in chat.
+- start with `|start %srrs` in the dojo
+- to  use `srrs-cli`, start it with `|start %srrs-cli` and `|link %srrs-cli`,
+switch to it with C-x. create a private channel called `srrs` for notifications
+to show up in chat.
+  - tab complete for commands starting with `;`
+  
+##### Subscribing to other stacks
+  - import stacks from other planets with the `;import [ship] [stack]` command
+  - this will add shared stacks to a read-only (at least from the UI) set of
+    subscribed stacks.
+      - when you review an item, it will be copied to your personal stacks.
+  - NOTE: all decks are currently public! permissioning to come soon. 
 
 #### Troubleshooting
 
