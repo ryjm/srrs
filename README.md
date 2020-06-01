@@ -8,6 +8,8 @@ from source:
 
 install node and npm
 run with `npm serve` 
+start with `|start %srrs` in the dojo
+if you want to  use `srrs-cli`, start it with `|start %srrs-cli` and `|link %srrs-cli`. create a private channel called `srrs` if you want notifications to show up in chat.
 
 #### Troubleshooting
 
