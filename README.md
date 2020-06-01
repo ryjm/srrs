@@ -1,6 +1,9 @@
 spaced repetition repetition system
 ---
+##### Landscape UI
 ![UI](ui.gif)
+##### CLI
+![CLI](cli.gif)
 
 on urbit: `|merge %home ~lisdun-modsup %home`
 
