@@ -9,8 +9,60 @@ export class Recall extends Component {
     
     render() {
         const { props, state} = this;
-        if (!props.enabled) {
-            return null;
+        if (!props.enabled && (props.mode === 'view')) {
+            let modifyButtonClasses = "mt4 db f9 ba pa2 white-d bg-gray0-d b--black b--gray2-d pointer mb1";
+            return (
+                <div className="flex fr">
+
+                    <Choices
+                        name="recall_grade"
+                        availableStates={[
+                            { value: 'again' },
+                            { value: 'hard' },
+                            { value: 'good' },
+                            { value: 'easy' }
+                        ]}
+                        defaultValue='again'
+                    >
+                        {({
+                            name,
+                            states,
+                            selectedValue,
+                            setValue,
+                            hoverValue
+                        }) => (
+
+                                <div
+                                    className="choices fr"
+                                >
+                                    <div className="choices__items">
+                                        {states.map((state, idx) => (
+                                            <button
+                                                key={`choice-${idx}`}
+                                                id={`choice-${state.value}`}
+                                                tabIndex={state.selected ? 0 : -1}
+                                                className={classnames('choice', state.inputClassName, {
+                                                    'choice--focused': state.focused,
+                                                    'bg-gray5': state.hovered,
+                                                    'bg-light-green': state.selected
+                                                }, modifyButtonClasses)}
+                                                onMouseOver={hoverValue.bind(null, state.value)}
+                                                onClick={() => {
+                                                    setValue(state.value);
+                                                    props.setGrade(state.value);
+                                                    props.saveGrade(state.value);
+                                                }
+                                                }
+                                            >
+                                                {state.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                    </Choices>
+                </div>
+            )
         } else if (props.mode === 'view') {
             return (
 

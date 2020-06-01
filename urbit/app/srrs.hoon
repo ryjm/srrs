@@ -101,22 +101,23 @@
         [%srrstile *]       (peer-srrstile:sc t.path)
         [%srrs-primary *]   (peer-srrs-primary:sc t.path)
         [%http-response *]  [~ state]
+        [%stack @ ~]  (peer-stack:sc i.t.path)
       ==
     [cards this]
   ::
   ++  on-agent
     |=  [=wire =sign:agent:gall]
     ^-  (quip card _this)
-    ?+    -.sign  (on-agent:def wire sign)
-        %kick
-      ?.  ?=([%stack *] wire)
-        (on-agent:def wire sign)
-      [~ this]
-    ::
-        %fact
-      ?.  ?=(%stack-rumor p.cage.sign)
-        (on-agent:def wire sign)
-      [~ this]
+    ?+  wire  (on-agent:def wire sign)
+        [%import @ @ ~]
+      =/  name  i.t.t.wire
+      ?+  -.sign  (on-agent:def wire sign)
+          %fact
+        ?>  ?=(%srrs-stack p.cage.sign)
+        =/  =stack  !<(stack q.cage.sign)
+        =^  cards  state  (handle-import-stack:sc stack)
+        [cards this]
+      ==
     ==
   ::
   ++  on-arvo
@@ -127,6 +128,7 @@
         [%bind %srrs ~]             [~ state]
         [%review-schedule @ ~]      (wake:sc wire)
         [%review-schedule @ @ @ ~]  (wake:sc wire)
+        [%import @ @ ~]             (peer-stack:sc i.t.t.wire)
         [%read %paths ~]            [~ state]
       ==
     [cards this]
@@ -206,6 +208,16 @@
       %.  [%add-stack our.bol stack]
       %=  emit-primary
         stacks  (~(put by stacks.state) name.stack stack)
+      ==
+    this
+  ++  add-stack-subs
+    ^+  this
+    ?>  ?=(%.y -.stack.stack)
+    =/  info=stack-info  +.stack.stack
+    ?.  (~(has by stack-subs) [owner.info name.stack])
+      %.  [%add-stack owner.info stack]
+      %=  emit-primary
+        stack-subs  (~(put by stack-subs.state) [owner.info name.stack] stack)
       ==
     this
   ::
@@ -450,8 +462,19 @@
           %.n
         ==
     =<  abet
-    %.  (item new-content (learned-status [.2.5 0 0]) name.act)
-    %~  add-item  stack-emit  (~(got by stacks) stak.act)
+    =/  new-item=item  (item new-content (learned-status [.2.5 0 0]) name.act)
+    =/  sub=(unit stack)  (~(get by stack-subs) [stack-owner.act stak.act])
+    =/  pub=(unit stack)  (~(get by stacks) stak.act)
+    ~&  sub+sub
+    ~&  pub+pub
+    ?~  pub
+      ?~  sub
+        this
+      ?>  ?=(%.y -.stack.u.sub)
+      =/  =stack-info  +.stack.u.sub
+      ~(add-stack stack-emit (create-stack stack-info(owner our.bol) (my [[name.act new-item] ~])))
+    %.  new-item
+    %~  add-item  stack-emit  u.pub
     ::
       %delete-stack
     ~&  delete-stack+act
@@ -496,15 +519,41 @@
     [cards state]
       %answered-item
     ~&  answered-item+act
-    =/  stack  (~(got by stacks) stak.act)
-    =/  =item  (~(got by items.stack) item.act)
+    =/  is-owner=?  =(our.bol owner.act)
+    =/  stk=stack
+    ?:  is-owner
+      (~(got by stacks) stak.act)
+    (~(got by stack-subs) [owner.act stak.act])
+    =/  =item  (~(got by items.stk) item.act)
+    =/  mov=(unit card)
+    ?:  is-owner
+      ~
+    =/  new-act=action
+      :*  %new-item
+          owner.act
+          our.bol
+          stak.act
+          name.item
+          title.content.item
+          [read=*rule:clay write=*rule:clay]
+          front.content.item
+          back.content.item
+        ==
+      [~ [%pass /stacks %agent [our.bol %srrs] %poke %srrs-action !>(new-act)]]
     =<  abet
+    ?.  ?=($~ mov)
+      (emit (need mov) stak)
     %.  [item answer.act]
-    %~  update-learned-status  stack-emit  stack
+    %~  update-learned-status  stack-emit  stk
+
       %read
     [~ state]
       %update-review
     =<  abet  update-review:stack-emit
+      %import
+    =/  =wire  /import/(scot %p who.act)/[stack.act]
+    :_  state
+    [%pass wire %agent [who.act %srrs] %watch /stack/[stack.act]]~
   ==
 ::
 ++  peer-srrstile
@@ -555,6 +604,17 @@
       [~ *[%1 state-one]]
     ==
 ::
+++  handle-import-stack
+  |=   =stack
+  ^-  (quip card _state)
+  ::    ~&  handle-import+stack
+  ::  ?>  ?=(%.y -.stack.stack)
+  ::  =/  info=stack-info  +.stack.stack
+  ::  =<  abet
+  ::  ~(add-stack stack-emit stack(stack [%.y info(owner our.bol)]))
+  =<  abet
+  ~(add-stack-subs stack-emit stack)
+::
 ++  state-to-json
   |=  sat=_state
   ^-  json
@@ -567,7 +627,7 @@
         nom
       (total-build-to-json stack)
   ::
-      :+  %stack-subs
+      :+  %subs
         %o
       %-  ~(rep by stack-subs.sat)
       |=  $:  [[who=@p nom=@tas] stack=stack]
@@ -611,7 +671,7 @@
 ++  all-reviews
   ^-  (list review)
   %-  zing
-  %+  turn  ~(val by stacks)
+  %+  turn  (weld ~(val by stacks) ~(val by stack-subs))
   |=  =stack
   %+  turn  ~(val by review-items.stack)
   |=  =item  [author.content.item name.stack name.item]

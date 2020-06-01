@@ -26,6 +26,7 @@
       [%all-reviews ~]
       [%delete-item @tas @tas]
       [%delete-stack @tas]
+      [%import @p @tas]
       [%settings ~]
   ==
 ::
@@ -229,6 +230,7 @@
         ;~(plug (tag %all-reviews) (easy ~))
         ;~((glue ace) (tag %delete-item) sym sym)
         ;~((glue ace) (tag %delete-stack) sym)
+        ;~((glue ace) (tag %import) ship sym)
         ;~(plug (tag %settings) (easy ~))
       ==
     ::
@@ -292,6 +294,7 @@
       [%all-reviews leaf+";all-reviews"]
       [%delete-item leaf+";delete-item [stack-name] [item-id]"]
       [%delete-stack leaf+";delete-stack [stack-name]"]
+      [%import leaf+";import [who (@p)] [stack-name]"]
       [%settings leaf+";settings"]
     ==
   ::  +work: run user command
@@ -307,6 +310,7 @@
           %all-reviews  all-reviews
           %delete-item  (delete-item +.job)
           %delete-stack  (delete-stack +.job)
+          %import  (import +.job)
           %settings  show-settings
         ==
     ::  +act: build action card
@@ -343,6 +347,7 @@
       !>  ^-  action:chat-store
       :+  %message  (target-to-path target)
       [serial *@ our-self now.bowl letter]
+    ::
     ::  +show-settings: print enabled flags, timezone and width settings
     ::
     ++  show-settings
@@ -364,6 +369,7 @@
       :-  %srrs-action
       !>  ^-  action
       [%delete-item stack item]
+    ::
     ++  delete-stack
       |=  stack=@tas
       ^-  (quip card _state)
@@ -372,7 +378,16 @@
       :-  %srrs-action
       !>  ^-  action
       [%delete-stack stack]
-
+    ::
+    ++  import
+      |=  [who=@p stack=@tas]
+      ^-  (quip card _state)
+      =-  [[- ~] state]
+      %^  act  %import  %srrs
+      :-  %srrs-action
+      !>  ^-  action
+      [%import who stack]
+    ::
     ::  +set-width: configure cli printing width
     ::
     ++  set-width

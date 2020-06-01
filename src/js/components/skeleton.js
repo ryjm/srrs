@@ -29,6 +29,7 @@ render() {
               <Sidebar
                 popout={popout}
                 pubs={this.props.pubs}
+                subs={this.props.subs}
                 path={this.props.path}
               />
               <div className={"h-100 w-100 relative white-d flex-auto " + rightPanelHide} style={{

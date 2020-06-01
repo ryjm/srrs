@@ -167,6 +167,7 @@ export class Item extends Component {
     this.props.setSpinner(true);
     let data = {
       "answered-item": {
+        owner: this.props.match.params.ship,
         stak: this.props.stackId,
         item: this.props.itemId,
         answer: value
@@ -397,6 +398,7 @@ export class Item extends Component {
               saveGrade={this.saveGrade}
               toggleAdvanced={this.toggleAdvanced}
               learn={this.state.learn}
+              host={host}
             />
 
             <ItemBody

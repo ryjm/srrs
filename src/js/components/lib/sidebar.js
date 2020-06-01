@@ -15,25 +15,41 @@ export class Sidebar extends Component {
 
 
     let stacks = {};
-    Object.keys(props.pubs).map(host => {
-      Object.keys(props.pubs).map(stack => {
+    Object.keys(props.pubs).map(stack => {
         let title = `${stack}`;
         stacks[title] = props.pubs[stack];
       })
-    });
+    Object.keys(props.subs).map(host => {
+    Object.keys(props.subs[host]).map(stack => {
+        let title = `~${host}/${stack}`;
+        stacks[title] = props.subs[host][stack];
+      })  
+    })
+    
 
     let groupedStacks = {};
     Object.keys(stacks).map(stack => {
-      if (groupedStacks["/~/"]) {
-        let array = groupedStacks["/~/"];
-        array.push(stack);
-        groupedStacks["/~/"] = array;
+      let owner = stacks[stack].info.owner
+      if (owner.slice(1) === window.ship) {
+        if (groupedStacks["/~/"]) {
+          let array = groupedStacks["/~/"];
+          array.push(stack);
+          groupedStacks["/~/"] = array;
+        } else {
+          groupedStacks["/~/"] = [stack];
+        };
+      }
+      else if (groupedStacks[owner]) {
+        let array = groupedStacks[owner];
+        array.push(stack)
+        groupedStacks[owner] = array;
       } else {
-        groupedStacks["/~/"] = [stack];
-      };
+        groupedStacks[owner] = [stack];
+      }
     });
 
     let groupedItems = [];
+    let groupedSubs = [];
 
     if (groupedStacks["/~/"]) {
       groupedItems = groupedStacks["/~/"]
@@ -52,6 +68,27 @@ export class Sidebar extends Component {
           )
         })
     }
+
+    Object.keys(groupedStacks).forEach((host, i, arr) => {
+      if (host === "/~/" || host.slice(1) === window.ship) {
+        return null
+      }
+      groupedSubs.push(groupedStacks[host].map((stack, i, arr) => {
+          let owner = stacks[stack].info.owner
+          let path = `${owner}/${stacks[stack].info.filename}`
+
+          let selected = props.path === path
+          return (
+            <StackEntry
+              key={i}
+              title={stacks[stack].info.title}
+              path={path}
+              selected={selected}
+            />
+          )
+      }
+                                 ));
+    })
 
 
     return (
@@ -73,8 +110,11 @@ export class Sidebar extends Component {
           </Link>
         </div>
         <div className="overflow-y-auto pb1"
-          style={{ height: "calc(100% - 82px)" }}>
+             style={{ height: "calc(100% - 82px)" }}>
+          <div className="w-100 f9 gray2 pa4 f9 dib">your stacks</div>
           {groupedItems}
+          <div className="w-100 f9 gray2 pa4 f9 dib">subscriptions</div>
+          {groupedSubs}
         </div>
       </div>
     );

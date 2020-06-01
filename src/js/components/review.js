@@ -24,7 +24,7 @@ export class Review extends Component {
     if (!this.props.stack) {
       return this.props.review
     } else {
-      return Object.values(this.retrieveStackReview(this.props.stack, window.ship))
+      return Object.values(this.retrieveStackReview(this.props.stack, this.props.who.slice(1)))
         .map(item => {
           return {
             item: item.name,
@@ -44,7 +44,7 @@ export class Review extends Component {
     return {
       itemTitle: item.content.title,
       itemName: item.name,
-      itemBody: item.content.front,
+      itemSnippet: item.content.snippet,
       stackTitle: stack.title,
       stackName: stack.filename,
       author: item.content.author,
@@ -103,7 +103,7 @@ export class Review extends Component {
     let stacks = new Set()
     let review = this.buildReview()
     let body = review.map(el => {
-      let item = this.buildItemPreviewProps(el.item, el.stack, el.who)
+      let item = this.buildItemPreviewProps(el.item, el.stack, el.who.slice(1))
       if (!item) {
         return null
       }

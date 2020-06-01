@@ -72,6 +72,7 @@ export class NewItem extends Component {
     if (!this.state.error) {
       let newItem = {
         "new-item": {
+          "stack-owner": this.props.ship, 
           who: ship,
           stak: stackId,
           name: itemId,

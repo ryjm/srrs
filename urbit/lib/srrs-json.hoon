@@ -94,7 +94,8 @@
   ::
   ++  new-item
     %-  ot
-    :~  who+(su fed:ag)
+    :~  stack-owner+(su ;~(pfix sig fed:ag))
+        who+(su fed:ag)
         stak+so
         name+so
         title+so
@@ -119,7 +120,8 @@
   ::
   ++  answered-item
     %-  ot
-    :~  stak+so
+    :~  owner+(su ;~(pfix sig fed:ag))
+        stak+so
         item+so
         answer+recall-grade
     ==

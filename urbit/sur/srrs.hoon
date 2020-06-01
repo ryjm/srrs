@@ -11,6 +11,7 @@
       ==
   ::
       $:  %new-item
+          stack-owner=@p
           who=@p
           stak=@tas
           name=@tas
@@ -27,7 +28,7 @@
       ==
   ::
       [%raise-item who=@p stak=@tas item=@tas]
-      [%answered-item stak=@tas item=@tas answer=recall-grade]
+      [%answered-item owner=@p stak=@tas item=@tas answer=recall-grade]
   ::
       [%delete-stack stak=@tas]
       [%delete-item stak=@tas item=@tas]
@@ -47,6 +48,8 @@
       [%read who=@p stak=@tas item=@tas]
       [%update-review ~]
       [%add-books books=(map @tas notebook:publish)]
+  ::
+      [%import who=@p stack=@tas]
   ==
 ::
 +$  stack-info

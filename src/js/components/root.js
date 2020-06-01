@@ -40,6 +40,7 @@ export class Root extends Component {
               return (
                 <Skeleton
                   pubs={state.pubs}
+                  subs={state.subs}
                   api={api}
                   spinner={this.state.spinner}
                   active="sidebar"
@@ -50,15 +51,16 @@ export class Root extends Component {
           />
           <Route
             exact
-            path="/~srrs/:stack/review"
+            path="/~srrs/:who/:stack/review"
             render={(props) => {
               return (
                 <Skeleton
                   pubs={state.pubs}
+                  subs={state.subs}
                   api={api}
                   spinner={this.state.spinner}
                   active="sidebar"
-                  children={<Review {...props} {...state} stack={props.match.params.stack} />}
+                  children={<Review {...props} {...state} stack={props.match.params.stack} who={props.match.params.who} />}
                 />
               );
             }}
@@ -84,6 +86,7 @@ export class Root extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   pubs={state.pubs}
+                  subs={state.subs}
                   active="sidebar"
                   children={<Pubs {...state} />}
                 />
@@ -99,6 +102,7 @@ export class Root extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   pubs={state.pubs}
+                  subs={state.subs}
                   children={
                     <NewStack
                       api={api}
@@ -120,6 +124,7 @@ export class Root extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   pubs={state.pubs}
+                  subs={state.subs}
                   active="sidebar"
                   children={
                     <NewItem
@@ -142,6 +147,7 @@ export class Root extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   pubs={state.pubs}
+                  subs={state.subs}                  
                   active="sidebar"
                   children={
                     <NewItem
@@ -166,6 +172,7 @@ export class Root extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   pubs={state.pubs}
+                  subs={state.subs}
                   path={props.match.params.stack}
                   active="sidebar"
                   children={
@@ -192,6 +199,7 @@ export class Root extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   pubs={state.pubs}
+                  subs={state.subs}
                   active="sidebar"
                   children={
                     <Item

@@ -293,7 +293,7 @@ export class Stack extends Component {
             </div>
 
             <div className="flex" style={{ marginBottom: 24 }}>
-            <Link to={`/~srrs/${data.stack.info.filename}/review`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
+            <Link to={`/~srrs/${data.stack.info.owner}/${data.stack.info.filename}/review`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
                 Review
               </Link>
               <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">

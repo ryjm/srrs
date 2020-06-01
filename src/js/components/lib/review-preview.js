@@ -4,7 +4,6 @@ import classnames from "classnames";
 import moment from "moment";
 import { Link } from "react-router-dom";
 import { ItemSnippet } from "/components/lib/item-snippet";
-import { TitleSnippet } from "/components/lib/title-snippet";
 
 export class ReviewPreview extends Component {
   constructor(props) {
@@ -47,7 +46,7 @@ export class ReviewPreview extends Component {
         <div className="flex-wrap">
           <div className="mv2 link black dim db mw5 pa2 br2 bt b--green0 shadow-hover ma2">
             <Link to={loc}>
-              <TitleSnippet title={this.props.item.itemTitle} />
+              <ItemSnippet body={this.props.item.itemSnippet} />
             </Link>
             <div className="flex">
               <div className="gray2 mr3">{author}</div>
