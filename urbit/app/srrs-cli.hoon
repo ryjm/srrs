@@ -290,8 +290,8 @@
     :~
       [%help leaf+";help"]
       [%all-reviews leaf+";all-reviews"]
-      [%delete-item leaf+";delete-item"]
-      [%delete-stack leaf+";delete-stack"]
+      [%delete-item leaf+";delete-item [stack-name] [item-id]"]
+      [%delete-stack leaf+";delete-stack [stack-name]"]
       [%settings leaf+";settings"]
     ==
   ::  +work: run user command
