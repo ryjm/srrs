@@ -25,8 +25,9 @@
       [%help ~]                                     ::  print usage info
       [%all-reviews ~]
       [%delete-item @tas @tas]
-      [%delete-stack @tas]
+      [%delete-stack @t]
       [%import @p @tas]
+      [%import-file path]
       [%settings ~]
   ==
 ::
@@ -229,14 +230,16 @@
         ;~(plug (tag %help) (easy ~))
         ;~(plug (tag %all-reviews) (easy ~))
         ;~((glue ace) (tag %delete-item) sym sym)
-        ;~((glue ace) (tag %delete-stack) sym)
+        ;~((glue ace) (tag %delete-stack) qut)
         ;~((glue ace) (tag %import) ship sym)
+        ;~((glue ace) (tag %import-file) file-path)
         ;~(plug (tag %settings) (easy ~))
       ==
     ::
     ++  tag   |*(a=@tas (cold a (jest a)))
     ++  ship  ;~(pfix sig fed:ag)
     ++  path  ;~(pfix net ;~(plug urs:ab (easy ~)))  ::NOTE  short only, tmp
+    ++  file-path  ;~(pfix net (more net (cook crip (star ;~(less net prn)))))
     ::  +mang: un/managed indicator prefix
     ::
     ++  mang
@@ -295,6 +298,7 @@
       [%delete-item leaf+";delete-item [stack-name] [item-id]"]
       [%delete-stack leaf+";delete-stack [stack-name]"]
       [%import leaf+";import [who (@p)] [stack-name]"]
+      [%import-file leaf+";import-file [path to tab separated file]"]
       [%settings leaf+";settings"]
     ==
   ::  +work: run user command
@@ -311,6 +315,7 @@
           %delete-item  (delete-item +.job)
           %delete-stack  (delete-stack +.job)
           %import  (import +.job)
+          %import-file  (import-file +.job)
           %settings  show-settings
         ==
     ::  +act: build action card
@@ -371,13 +376,13 @@
       [%delete-item stack item]
     ::
     ++  delete-stack
-      |=  stack=@tas
+      |=  stack=@t
       ^-  (quip card _state)
       =-  [[- ~] state]
       %^  act  %delete-stack  %srrs
       :-  %srrs-action
       !>  ^-  action
-      [%delete-stack stack]
+      [%delete-stack (string-to-symbol (trip stack))]
     ::
     ++  import
       |=  [who=@p stack=@tas]
@@ -387,6 +392,15 @@
       :-  %srrs-action
       !>  ^-  action
       [%import who stack]
+    ::
+    ++  import-file
+      |=  =path
+      ^-  (quip card _state)
+      =-  [[- ~] state]
+      %^  act  %import-file  %srrs
+      :-  %srrs-action
+      !>  ^-  action
+      [%import-file path]
     ::
     ::  +set-width: configure cli printing width
     ::

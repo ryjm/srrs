@@ -52,4 +52,18 @@
   |=  time=@rs
   ^-  @dr
   (abs:si (need (toi:rs time)))
+::
+++  string-to-symbol
+  |=  tap=tape
+  ^-  @tas
+  %-  crip
+  %+  turn  tap
+  |=  a=@
+  ?:  ?|  &((gte a 'a') (lte a 'z'))
+          &((gte a '0') (lte a '9'))
+      ==
+    a
+  ?:  &((gte a 'A') (lte a 'Z'))
+    (add 32 a)
+  '-'
 --

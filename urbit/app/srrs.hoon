@@ -174,14 +174,18 @@
 ::  +emit: emit a card and set stak
 ::
 ++  emit
-  |=  [car=card stak=stack]
-  this(cards [car cards], stak stak)
+  |=  car=card
+  this(cards [car cards])
 ::
 ++  emit-primary
   |=  del=primary-delta
-  %+  emit
+  %-  emit
   [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-  stak
+::
+++  emit-action
+  |=  =action
+  %-  emit
+  [%pass /action %agent [our.bol %srrs] %poke %srrs-action !>(action)]
 ::
 ++  emil
   |=  rac=(list card)
@@ -209,7 +213,12 @@
       %=  emit-primary
         stacks  (~(put by stacks.state) name.stack stack)
       ==
-    this
+    =/  old-stack  (~(got by stacks) name.stack)
+    %~  update-stack  stack-emit
+    %=  stack
+      items  (~(uni by items.old-stack) items.stack)
+    ==
+  ::
   ++  add-stack-subs
     ^+  this
     ?>  ?=(%.y -.stack.stack)
@@ -309,7 +318,7 @@
     =.  ..emit
       %.  item(learn learned-status)
       %~  edit-item  stack-emit  stak
-    (emit schedule-card stak)
+    (emit schedule-card)
 
   ::
   ++  update-review
@@ -439,40 +448,20 @@
     =<  abet
     ~(add-stack stack-emit (create-stack conf items.act))
       %new-item
-      =/  front-matter=(map knot cord)
-      %-  my
-      :~  title+name.act
-          author+(scot %p src.bol)
-          date-created+(scot %da now.bol)
-          last-modified+(scot %da now.bol)
-      ==
-      =/  front  (add-front-matter front-matter front.act)
-      =/  back  (add-front-matter front-matter back.act)
-      =/  new-content=content
-        :*  src.bol
-            title.act
-            name.act
-            now.bol
-            now.bol
-            %.y
-            front
-            back
-           (form-snippet front)
-           ~
-          %.n
-        ==
+    =/  new-item=item  (create-item act)
     =<  abet
-    =/  new-item=item  (item new-content (learned-status [.2.5 0 0]) name.act)
-    =/  sub=(unit stack)  (~(get by stack-subs) [stack-owner.act stak.act])
-    =/  pub=(unit stack)  (~(get by stacks) stak.act)
-    ~&  sub+sub
-    ~&  pub+pub
+    =/  sub=(unit stack)
+      (~(get by stack-subs) [stack-owner.act stak.act])
+    =/  pub=(unit stack)
+      (~(get by stacks) stak.act)
     ?~  pub
       ?~  sub
         this
       ?>  ?=(%.y -.stack.u.sub)
       =/  =stack-info  +.stack.u.sub
-      ~(add-stack stack-emit (create-stack stack-info(owner our.bol) (my [[name.act new-item] ~])))
+      %~  add-stack  stack-emit
+      %+  create-stack  stack-info(owner our.bol)
+      (my [[name.act new-item] ~])
     %.  new-item
     %~  add-item  stack-emit  u.pub
     ::
@@ -542,7 +531,7 @@
       [~ [%pass /stacks %agent [our.bol %srrs] %poke %srrs-action !>(new-act)]]
     =<  abet
     ?.  ?=($~ mov)
-      (emit (need mov) stak)
+      (emit (need mov))
     %.  [item answer.act]
     %~  update-learned-status  stack-emit  stk
 
@@ -554,6 +543,8 @@
     =/  =wire  /import/(scot %p who.act)/[stack.act]
     :_  state
     [%pass wire %agent [who.act %srrs] %watch /stack/[stack.act]]~
+      %import-file
+    (import-from-file path.act)
   ==
 ::
 ++  peer-srrstile
@@ -667,6 +658,35 @@
   :~  review+(numb:enjs:format (lent all-reviews))
   ==
 ::
+++  create-item
+  |*  in=*
+  =/  act  `$>(%new-item action)`in
+  ^-  item
+  =/  front-matter=(map knot cord)
+    %-  my
+    :~  title+name.act
+         author+(scot %p src.bol)
+         date-created+(scot %da now.bol)
+         last-modified+(scot %da now.bol)
+    ==
+  =/  front  (add-front-matter front-matter front.act)
+  =/  back  (add-front-matter front-matter back.act)
+  =/  new-content=content
+    :*  src.bol
+        title.act
+        name.act
+        now.bol
+        now.bol
+        %.y
+        front
+        back
+        (form-snippet front)
+        ~
+       %.n
+    ==
+  (item new-content (learned-status [.2.5 0 0]) name.act)
+
+::
 ++  create-stack
   |=  [info=stack-info items=(map @tas item)]
   ^-  stack
@@ -763,4 +783,57 @@
   =/  fuzzed  (mul:rs (mul:rs next-ease interval-rs) r)
   (rs-to-time fuzzed)
 ::
+++  import-from-file
+  =<
+  |=  px=path
+  =/  pax=path  (welp our-beak px)
+  =/  name  `@t`+<:(flop pax)
+  =/  items
+    %+  parse  name
+    %-  of-wall:format
+    =+  ark=.^(arch %cy pax)
+    ?^  fil.ark
+      =/  fyl  .^(noun %cx pax)
+      =+  `(unit wain)`?@(fyl `(to-wain:format fyl) ((soft wain) fyl))
+      ?^  -  (wain-to-tape u)  !!
+    !!
+  =/  filtered  (murn (need items) |*(a=(unit *) a))
+
+  abet:(emit-action [%new-stack (string-to-symbol (trip name)) name (molt filtered) %none read=*rule:clay write=*rule:clay])
+  |%
+  ++  wain-to-tape  |=(a/wain (turn a |=(b/cord (trip b))))
+  ++  parse
+    |=  [stack-name=@tas =tape]
+    |^  (rust tape parser)
+    ++  parser
+      %+  more  (just `@`10)
+      %+  cook
+        |=  a=wall
+        ^-  (unit (pair @tas item))
+        ?.  ?=({* * *} a)  ~
+        =/  front  (crip i.a)
+        =/  back  (crip i.t.a)
+        =/  uid
+          %-  string-to-symbol
+          "{<(sham %srrs our.bol front eny.bol)>}"
+        :-  ~
+        :-  uid
+        %-  create-item
+        =/  act
+        :*  %new-item
+            our.bol
+            our.bol
+            stack-name
+            uid
+            `@tas`front
+            [read=*rule:clay write=*rule:clay]
+            `@t`front
+            `@t`back
+         ==
+         `$>(%new-item action)`act
+      (most (just `@`9) (star prn))
+    --
+  --
+
+
 --

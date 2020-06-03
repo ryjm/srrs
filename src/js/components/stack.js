@@ -40,6 +40,7 @@ export class Stack extends Component {
     this.viewSubs = this.viewSubs.bind(this);
     this.viewSettings = this.viewSettings.bind(this);
     this.viewNotes = this.viewNotes.bind(this);
+    this.deleteStack = this.deleteStack.bind(this);
 
     this.stack = null;
   }
@@ -144,6 +145,25 @@ export class Stack extends Component {
     }
   }
 
+  deleteStack() {
+    let del = {
+      "delete-stack": {
+        stak: this.props.stackId
+        }
+    };
+    this.props.setSpinner(true);
+    this.setState({
+      awaitingDelete: {
+        ship: this.props.ship,
+        stackId: this.props.stackId,
+      }
+    }, () => {
+      this.props.api.action("srrs", "srrs-action", del).then(() => {
+       let redirect = `/~srrs/review`;
+        this.props.history.push(redirect);
+      });
+    });
+  }
   buildItems(stack) {
     if (!stack) {
       return [];
@@ -275,7 +295,8 @@ export class Stack extends Component {
             <div
               className="flex justify-between"
               style={{ marginBottom: 32 }}>
-              <div className="flex-col">
+              <div
+               className="flex-col">
                 <div className="mb1">{data.stackTitle}</div>
                 <span>
                   <span className="gray3 mr1">by</span>
@@ -289,15 +310,16 @@ export class Stack extends Component {
                 <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
                   New Item
             </Link>
+            <p className="StackButton bg-gray3 black ml2"
+            onClick={this.deleteStack}>
+                  Delete Stack
+            </p>
               </div>
             </div>
 
             <div className="flex" style={{ marginBottom: 24 }}>
             <Link to={`/~srrs/${data.stack.info.owner}/${data.stack.info.filename}/review`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
                 Review
-              </Link>
-              <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
-                Stack Items
               </Link>
               
               <div className="bb b--gray4 b--gray2-d gray2 pv4 ph2"

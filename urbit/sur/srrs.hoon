@@ -50,6 +50,7 @@
       [%add-books books=(map @tas notebook:publish)]
   ::
       [%import who=@p stack=@tas]
+      [%import-file =path]
   ==
 ::
 +$  stack-info
