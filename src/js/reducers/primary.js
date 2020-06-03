@@ -18,6 +18,9 @@ export class PrimaryReducer {
     case "delete-review-item":
       this.deleteReviewItem(json["delete-review-item"], state);
       break
+    case "delete-stack":
+      this.deleteStack(json["delete-stack"], state);
+      break
     case "update-stack":
       this.addStack(json["update-stack"], state);
     default:
@@ -44,6 +47,11 @@ export class PrimaryReducer {
     if (state.pubs) {
       state.pubs[stack] = json[host][stack];
 
+    }
+  }
+deleteStack(json, state) {
+    if (state.pubs) {
+      delete state.pubs[json["stack"]];
     }
   }
 
