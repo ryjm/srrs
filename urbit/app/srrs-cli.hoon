@@ -25,7 +25,7 @@
       [%help ~]                                     ::  print usage info
       [%all-reviews ~]
       [%delete-item @tas @tas]
-      [%delete-stack @t]
+      [%delete-stack @p @t]
       [%import @p @tas]
       [%import-file path]
       [%settings ~]
@@ -230,7 +230,7 @@
         ;~(plug (tag %help) (easy ~))
         ;~(plug (tag %all-reviews) (easy ~))
         ;~((glue ace) (tag %delete-item) sym sym)
-        ;~((glue ace) (tag %delete-stack) qut)
+        ;~((glue ace) (tag %delete-stack) ship qut)
         ;~((glue ace) (tag %import) ship sym)
         ;~((glue ace) (tag %import-file) file-path)
         ;~(plug (tag %settings) (easy ~))
@@ -367,8 +367,6 @@
     ++  delete-item
       |=  [stack=@tas item=@tas]
       ^-  (quip card _state)
-      ~&  stack+stack
-      ~&  item+item
       =-  [[- ~] state]
       %^  act  %delete-item  %srrs
       :-  %srrs-action
@@ -376,13 +374,13 @@
       [%delete-item stack item]
     ::
     ++  delete-stack
-      |=  stack=@t
+      |=  [who=@p stack=@t]
       ^-  (quip card _state)
       =-  [[- ~] state]
       %^  act  %delete-stack  %srrs
       :-  %srrs-action
       !>  ^-  action
-      [%delete-stack (string-to-symbol (trip stack))]
+      [%delete-stack who (string-to-symbol (trip stack))]
     ::
     ++  import
       |=  [who=@p stack=@tas]

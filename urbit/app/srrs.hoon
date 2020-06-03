@@ -231,11 +231,13 @@
     this
   ::
   ++  delete-stack
+    |=  owner=@p
     ^+  this
     =.  ..emit
-      %.  [%delete-stack our.bol name.stack]
+      %.  [%delete-stack owner name.stack]
       %=  emit-primary
-        stacks  (~(del by stacks) name.stack)
+        stacks  ?:(=(our.bol owner) (~(del by stacks) name.stack) stacks)
+        stack-subs  (~(del by stack-subs) [owner name.stack])
       ==
     ~(update-review stack-emit stak)
   ::
@@ -467,8 +469,12 @@
     ::
       %delete-stack
     ~&  delete-stack+act
+    =/  stack-to-delete
+      ?:  =(our.bol who.act)
+        (~(got by stacks) stak.act)
+      (~(got by stack-subs) who.act stak.act)
     =<  abet
-    ~(delete-stack stack-emit (~(got by stacks) stak.act))
+    (~(delete-stack stack-emit stack-to-delete) who.act)
       %delete-item
     ~&  delete-item+act
     =<  abet
@@ -608,11 +614,6 @@
 ++  handle-import-stack
   |=   =stack
   ^-  (quip card _state)
-  ::    ~&  handle-import+stack
-  ::  ?>  ?=(%.y -.stack.stack)
-  ::  =/  info=stack-info  +.stack.stack
-  ::  =<  abet
-  ::  ~(add-stack stack-emit stack(stack [%.y info(owner our.bol)]))
   =<  abet
   ~(add-stack-subs stack-emit stack)
 ::

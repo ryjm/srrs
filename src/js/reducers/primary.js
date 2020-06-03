@@ -49,9 +49,15 @@ export class PrimaryReducer {
 
     }
   }
-deleteStack(json, state) {
-    if (state.pubs) {
-      delete state.pubs[json["stack"]];
+  deleteStack(json, state) {
+    let host = json["who"].slice(1);
+    if (state.subs[host]) {
+      delete state.subs[host][json["stack"]];
+    }
+    else if (state.pubs) {
+      if (state.pubs[json["stack"]].info.owner === host) {
+        delete state.pubs[json["stack"]];
+      }
     }
   }
 

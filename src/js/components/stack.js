@@ -148,6 +148,7 @@ export class Stack extends Component {
   deleteStack() {
     let del = {
       "delete-stack": {
+        who: `~${this.props.ship}`,
         stak: this.props.stackId
         }
     };

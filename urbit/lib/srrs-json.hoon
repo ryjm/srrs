@@ -128,7 +128,8 @@
   ::
   ++  delete-stack
     %-  ot
-    :~  stak+so
+    :~  who+(su ;~(pfix sig fed:ag))
+        stak+so
     ==
   ::
   ++  delete-item
