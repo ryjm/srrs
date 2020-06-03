@@ -118,7 +118,7 @@ export class Review extends Component {
     }
     let stackLink = el => {
       return {
-        pathname: `/~srrs/${el}/review`,
+        pathname: `/~srrs/~${window.ship}/${el}/review`,
         state: {
           lastPath: this.props.location.pathname,
           lastMatch: this.props.match.path,
@@ -151,7 +151,7 @@ export class Review extends Component {
       header =
         Object.values(this.props.pubs).map((el, key) => {
           <div key={key} className="flex-auto">
-            <Link to={`/~srrs/${stackLink(el.info.filename)}/review`} className="f9 StackButton ma5 bg-gray4 gray2">{el.info.filename}</Link>
+            <Link to={`/~srrs/${el.info.owner}/${stackLink(el.info.filename)}/review`} className="f9 StackButton ma5 bg-gray4 gray2">{el.info.filename}</Link>
           </div>
         })
     }
