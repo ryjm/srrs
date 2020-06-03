@@ -20,7 +20,15 @@ switch to it with C-x. create a private channel called `srrs` for notifications
 to show up in chat.
   - tab complete for commands starting with `;`
   
+##### Importing from anki
+
+Note that this currently only supports decks with two fields, like this one: [Hoon Rune Families](https://ankiweb.net/shared/info/227862017)
+
+  - export your deck to text file and place it in your urbit pier
+  - run `;import-file /path/to/file/txt` from `srrs-cli`
+  
 ##### Subscribing to other stacks
+
   - import stacks from other planets with the `;import [ship] [stack]` command
   - this will add shared stacks to a read-only (at least from the UI) set of
     subscribed stacks.
