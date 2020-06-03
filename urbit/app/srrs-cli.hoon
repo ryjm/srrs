@@ -26,7 +26,7 @@
       [%all-reviews ~]
       [%delete-item @tas @tas]
       [%delete-stack @p @t]
-      [%import @p @tas]
+      [%import @p @t]
       [%import-file path]
       [%settings ~]
   ==
@@ -231,7 +231,7 @@
         ;~(plug (tag %all-reviews) (easy ~))
         ;~((glue ace) (tag %delete-item) sym sym)
         ;~((glue ace) (tag %delete-stack) ship qut)
-        ;~((glue ace) (tag %import) ship sym)
+        ;~((glue ace) (tag %import) ship qut)
         ;~((glue ace) (tag %import-file) file-path)
         ;~(plug (tag %settings) (easy ~))
       ==
@@ -383,13 +383,13 @@
       [%delete-stack who (string-to-symbol (trip stack))]
     ::
     ++  import
-      |=  [who=@p stack=@tas]
+      |=  [who=@p stack=@t]
       ^-  (quip card _state)
       =-  [[- ~] state]
       %^  act  %import  %srrs
       :-  %srrs-action
       !>  ^-  action
-      [%import who stack]
+      [%import who (string-to-symbol (trip stack))]
     ::
     ++  import-file
       |=  =path
