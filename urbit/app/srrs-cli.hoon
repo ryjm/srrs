@@ -24,7 +24,7 @@
       [%width @ud]                                  ::  display width
       [%help ~]                                     ::  print usage info
       [%all-reviews ~]
-      [%delete-item @tas @tas]
+      [%delete-item @tas @t]
       [%delete-stack @p @t]
       [%import @p @t]
       [%import-file path]
@@ -229,7 +229,7 @@
         (stag %target tars)
         ;~(plug (tag %help) (easy ~))
         ;~(plug (tag %all-reviews) (easy ~))
-        ;~((glue ace) (tag %delete-item) sym sym)
+        ;~((glue ace) (tag %delete-item) sym qut)
         ;~((glue ace) (tag %delete-stack) ship qut)
         ;~((glue ace) (tag %import) ship qut)
         ;~((glue ace) (tag %import-file) file-path)
@@ -365,7 +365,7 @@
       ==
     ::
     ++  delete-item
-      |=  [stack=@tas item=@tas]
+      |=  [stack=@tas item=@t]
       ^-  (quip card _state)
       =-  [[- ~] state]
       %^  act  %delete-item  %srrs
