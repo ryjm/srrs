@@ -48,6 +48,8 @@ Note that this currently only supports decks with two fields, like this one: [Ho
 
 if you're having issues with the tile not showing up, run `:launch &launch-action [%add %srrs /srrstile '/~srrs/tile.js']` in the dojo
 
+dm `~littel-wolfur` or `~lisdun-modsup` if you're having any other issues, or create an issue here.
+
 ### Hooking into app/publish
 
 can piggyback off of publish notebooks - title of notes are questions, bodies of
