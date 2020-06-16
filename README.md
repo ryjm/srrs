@@ -10,7 +10,13 @@ from source:
 
 install node and npm
 
-run with `npm serve` 
+mount your urbit with `|mount %` in the dojo - you should see your files in unix under `/path/to/pier/home`
+
+change `.urbitrc` to point your mounted files - `path/to/pier/home`
+
+run with `npm run serve`, and check that the `srrs` files appear under `home/app/srrs`
+
+start with `|start %srrs`
 
 #### Usage
 
