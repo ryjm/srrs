@@ -16,6 +16,8 @@ change `.urbitrc` to point your mounted files - `path/to/pier/home`
 
 run with `npm run serve`, and check that the `srrs` files appear under `home/app/srrs`
 
+in the dojo, run `|commit %home` to get urbit to see the added files - you should see the added files in the output
+
 start with `|start %srrs`
 
 #### Usage
