@@ -65,7 +65,7 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '' '/~srrs'] %.y]])]
+    =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '/~srrs/srrs.png' '/~srrs'] %.y]])]
     :_  this
     :~  [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
         [%pass /srrstile %agent [our.bol %launch] %poke launcha]
