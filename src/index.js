@@ -12,6 +12,7 @@ api.setAuthTokens({
   ship: window.ship
 });
 
+window.urb = new window.channel()
 subscription.start();
 
 window.util = util;

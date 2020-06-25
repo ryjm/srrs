@@ -64,13 +64,11 @@
       def        ~(. (default-agent this %|) bol)
   ::
   ++  on-init
+    ^-  (quip card _this)
+    =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '' '/~srrs'] %.y]])]
     :_  this
-    =/  rav  [%sing %t [%da now.bol] /app/srrs]
     :~  [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
-        :*  %pass  /launch/srrs  %agent  [our.bol %launch]  %poke
-             %launch-action  !>([%add %srrs /srrstile '/~srrs/tile.js'])
-        ==
-        [%pass /read/paths %arvo %c %warp our.bol q.byk.bol `rav]
+        [%pass /srrstile %agent [our.bol %launch] %poke launcha]
     ==
   ::
   ++  on-poke
@@ -126,6 +124,7 @@
     =^  cards  state
       ?+  wire  (on-arvo:def wire sign-arvo)
         [%bind %srrs ~]             [~ state]
+        [%view-bind ~]              [~ state]
         [%review-schedule @ ~]      (wake:sc wire)
         [%review-schedule @ @ @ ~]  (wake:sc wire)
         [%import @ @ ~]             (peer-stack:sc i.t.t.wire)
@@ -139,14 +138,18 @@
     ^-  (quip card _this)
     =/  old-state=(each versioned-state tang)
       (mule |.(!<(versioned-state old)))
+    =/  init-cards
+      :~
+        [%pass /bind/srrs %arvo %e %connect [~ /'srrs'] %srrs]
+      ==
     ?:  ?=(%| -.old-state)
       ~!  p.old-state
-      [~ this]
+      [init-cards this]
     ?-  -.p.old-state
         %0
       [~ this]
         %1
-      [~ this(state p.old-state)]
+      [init-cards this(state p.old-state)]
     ==
   ++  on-leave  on-leave:def
   ++  on-peek
