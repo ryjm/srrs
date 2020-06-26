@@ -46,9 +46,9 @@ Note that this currently only supports decks with two fields, like this one: [Ho
 
 #### Troubleshooting
 
-if you're having issues with the tile not showing up, run `:launch &launch-action [%add %srrs /srrstile '/~srrs/tile.js']` in the dojo
+if you're having issues with the tile not showing up, run  `:launch &launch-action [%add %srrs [[%basic 'srrs' '/~srrs/srrs.png' '/~srrs'] %.y]]` in the dojo
 
-dm `~littel-wolfur` or `~lisdun-modsup` if you're having any other issues, or create an issue here.
+dm `~littel-wolfur` if you're having any other issues, or create an issue here.
 
 ### Hooking into app/publish
 
