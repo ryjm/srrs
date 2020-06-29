@@ -177,6 +177,7 @@
       ==  ==
   ++  item
     |=  jon=json
+    ~!  jon+jon
     ?~  jon
       ~
     ((om same) jon)
@@ -279,7 +280,7 @@
   %-  pairs:enjs:format
   :~  content+(content-full-json name.item content.item)
       learn+(status-to-json learn.item)
-      last-review+(time:enjs:format last-review.item)
+      ::  last-review+(time:enjs:format last-review.item)
       name+s+name.item
   ==
 ::

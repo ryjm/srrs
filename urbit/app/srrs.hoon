@@ -32,6 +32,7 @@
 +$  versioned-state
   $%  [%0 state-zero]
       [%1 state-one]
+      [%2 state-two]
   ==
 ::
 +$  state-zero
@@ -42,9 +43,9 @@
   ==
 ::
 +$  state-one
-  $:  stacks=(map @tas stack)
+  $:  stacks=(map @tas stack-1)
       paths=(list path)
-      stack-subs=(map [ship @tas] stack)
+      stack-subs=(map [ship @tas] stack-1)
   ==
 ::
 +$  state-two
@@ -144,6 +145,8 @@
     ^-  (quip card _this)
     =/  old-state=(each versioned-state tang)
       (mule |.(!<(versioned-state old)))
+    |^
+    ^-  (quip card _this)
     =/  init-cards
       :~
         [%pass /bind/srrs %arvo %e %connect [~ /'srrs'] %srrs]
@@ -154,11 +157,39 @@
     ?-  -.p.old-state
         %0
       [~ this]
+
         %1
-      [init-cards this(state p.old-state)]
-        %2
+      :-  init-cards
+      %=  this
+          state
+        =/  new-stacks=(map @tas stack)
+          %-  ~(rep by stacks.p.old-state)
+          |=  [[key=@tas val=stack-1] out=(map @tas stack)]
+          ^-  (map @tas stack)
+          %+  ~(put by out)
+            key
+          (convert-stack-1-2 val)
+        [%2 new-stacks ~ *(map [@p @tas] stack)]
+      ==
+    %2
       [init-cards this(state p.old-state)]
     ==
+    ++  convert-stack-1-2
+      |=  prev=stack-1
+      ^-  stack
+      %=    prev
+          items
+        %-  ~(run by items.prev)
+        |=  =item-1
+        ^-  item
+        (item content.item-1 learn.item-1 ~ name.item-1)
+          review-items
+        %-  ~(run by review-items.prev)
+        |=  =item-1
+        ^-  item
+         (item content.item-1 learn.item-1 ~ name.item-1)
+      ==
+    --
   ++  on-leave  on-leave:def
   ++  on-peek
     |=  =path
@@ -330,7 +361,7 @@
           [%arvo %b %wait review-date]
       ==
     =.  ..emit
-      %.  item(learn learned-status, last-review now.bol)
+      %.  item(learn learned-status, last-review `now.bol)
       %~  edit-item  stack-emit  stak
     (emit schedule-card)
   ::
@@ -648,7 +679,7 @@
       ~&  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *[%1 state-one]]
+      [~ *[%2 state-two]]
     ==
 ::
 ++  handle-import-stack
@@ -725,7 +756,7 @@
         ~
        %.n
     ==
-  (item new-content (learned-status [.2.5 0 0]) name.act)
+  (item new-content (learned-status [.2.5 0 0]) ~ name.act)
 
 ::
 ++  create-stack

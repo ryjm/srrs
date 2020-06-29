@@ -81,10 +81,25 @@
 +$  item
   $:  content=content
       learn=learned-status
-      last-review=@da
+      last-review=(unit @da)
       name=@tas
   ==
 ::
++$  stack-1
+  $:  stack=(each stack-info tang)
+      name=@tas
+      items=(map @tas item-1)
+      review-items=(map @tas item-1)
+      contributors=[mod=?(%white %black) who=(set @p)]
+      subscribers=(set @p)
+      last-update=@da
+  ==
+::
++$  item-1
+  $:  content=content
+      learn=learned-status
+      name=@tas
+  ==
 +$  content
   $:  author=@p
       title=@t
