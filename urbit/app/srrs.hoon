@@ -47,11 +47,17 @@
       stack-subs=(map [ship @tas] stack)
   ==
 ::
++$  state-two
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+  ==
+::
 +$  card  card:agent:gall
 ::
 --
 ::
-=|  [%1 state-one]
+=|  [%2 state-two]
 =*  state  -
 ^-  agent:gall
 =<
@@ -150,6 +156,8 @@
       [~ this]
         %1
       [init-cards this(state p.old-state)]
+        %2
+      [init-cards this(state p.old-state)]
     ==
   ++  on-leave  on-leave:def
   ++  on-peek
@@ -158,6 +166,7 @@
     ?+  path  (on-peek:def path)
         [%x %review ~]        ``noun+!>(all-reviews)
         [%x %all ~]        ``noun+!>(stacks.state)
+        [%x %stack-subs ~]        ``noun+!>(stack-subs.state)
         [%x %stacks *]
       ?~  t.t.path
         ~
@@ -321,9 +330,31 @@
           [%arvo %b %wait review-date]
       ==
     =.  ..emit
-      %.  item(learn learned-status)
+      %.  item(learn learned-status, last-review now.bol)
       %~  edit-item  stack-emit  stak
     (emit schedule-card)
+  ::
+  ++  clear-learned-status
+    ^+  this
+    =-  %~  update-stack  stack-emit  stack(items -)
+    %-  ~(run by items.stack)
+    |=  =item
+    item(learn (learned-status [.2.5 0 0]))
+  ::
+  ++  update-owner
+    ^+  this
+    =/  updated-items=(map @tas item)
+      %-  ~(run by items.stack)
+      |=  =item
+      =.  author.content.item  our.bol
+      item
+    %~  update-stack  stack-emit
+    ?>  ?=(%.y -.stack.stack)
+    =/  =stack-info  +.stack.stack
+    %=  stack
+      items  updated-items
+      stack  [%.y stack-info(owner our.bol)]
+    ==
 
   ::
   ++  update-review
@@ -515,6 +546,12 @@
       %add-books
     =^  cards  state  (add-books books.act)
     [cards state]
+      %copy-stack
+    =/  their-stack=stack  (~(got by stack-subs) [owner.act stak.act])
+
+    =<  abet
+    =.  ..emit  ~(update-owner stack-emit their-stack)
+    ~(add-stack stack-emit stak:emit)
       %answered-item
     ~&  answered-item+act
     =/  is-owner=?  =(our.bol owner.act)

@@ -27,6 +27,7 @@
       [%delete-item @tas @t]
       [%delete-stack @p @t]
       [%import @p @t]
+      [%copy-stack @p @t ?]
       [%import-file path]
       [%settings ~]
   ==
@@ -232,11 +233,17 @@
         ;~((glue ace) (tag %delete-item) sym qut)
         ;~((glue ace) (tag %delete-stack) ship qut)
         ;~((glue ace) (tag %import) ship qut)
+        ;~((glue ace) (tag %copy-stack) ship qut bool)
         ;~((glue ace) (tag %import-file) file-path)
         ;~(plug (tag %settings) (easy ~))
       ==
     ::
     ++  tag   |*(a=@tas (cold a (jest a)))
+    ++  bool
+      ;~  pose
+        (cold %| (jest '%.y'))
+        (cold %& (jest '%.n'))
+      ==
     ++  ship  ;~(pfix sig fed:ag)
     ++  path  ;~(pfix net ;~(plug urs:ab (easy ~)))  ::NOTE  short only, tmp
     ++  file-path  ;~(pfix net (more net (cook crip (star ;~(less net prn)))))
@@ -298,6 +305,7 @@
       [%delete-item leaf+";delete-item [stack-name] [item-id]"]
       [%delete-stack leaf+";delete-stack [stack-name]"]
       [%import leaf+";import [who (@p)] [stack-name]"]
+      [%copy-stack leaf+";copy-stack [who (@p)] [stack-name] [keep-learned] (add subscribed stacks to main library)"]
       [%import-file leaf+";import-file [path to tab separated file]"]
       [%settings leaf+";settings"]
     ==
@@ -315,6 +323,7 @@
           %delete-item  (delete-item +.job)
           %delete-stack  (delete-stack +.job)
           %import  (import +.job)
+          %copy-stack  (copy-stack +.job)
           %import-file  (import-file +.job)
           %settings  show-settings
         ==
@@ -390,6 +399,15 @@
       :-  %srrs-action
       !>  ^-  action
       [%import who (string-to-symbol (trip stack))]
+    ::
+    ++  copy-stack
+      |=  [who=@p stack=@t keep-learned=?]
+      ^-  (quip card _state)
+      =-  [[- ~] state]
+      %^  act  %copy-stack  %srrs
+      :-  %srrs-action
+      !>  ^-  action
+      [%copy-stack who (string-to-symbol (trip stack)) keep-learned]
     ::
     ++  import-file
       |=  =path

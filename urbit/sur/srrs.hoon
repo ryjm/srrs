@@ -51,6 +51,8 @@
   ::
       [%import who=@p stack=@tas]
       [%import-file =path]
+  ::
+      [%copy-stack owner=@p stak=@tas keep-learned=?]
   ==
 ::
 +$  stack-info
@@ -79,6 +81,7 @@
 +$  item
   $:  content=content
       learn=learned-status
+      last-review=@da
       name=@tas
   ==
 ::
