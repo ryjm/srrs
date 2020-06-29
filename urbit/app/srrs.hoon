@@ -169,7 +169,12 @@
           %+  ~(put by out)
             key
           (convert-stack-1-2 val)
-        [%2 new-stacks ~ *(map [@p @tas] stack)]
+        =/  new-stack-subs=(map [@p @tas] stack)
+          %-  ~(run by stack-subs.p.old-state)
+          |=  old-stack=stack-1
+          ^-  stack
+          (convert-stack-1-2 old-stack)
+        [%2 new-stacks ~ new-stack-subs]
       ==
     %2
       [init-cards this(state p.old-state)]
