@@ -616,7 +616,6 @@
       (emit (need mov))
     %.  [item answer.act]
     %~  update-learned-status  stack-emit  stk
-
       %read
     [~ state]
       %update-review
@@ -762,7 +761,6 @@
        %.n
     ==
   (item new-content (learned-status [.2.5 0 0]) ~ name.act)
-
 ::
 ++  create-stack
   |=  [info=stack-info items=(map @tas item)]
@@ -818,7 +816,6 @@
       [%good .0]
       [%easy .0.15]
   ==
-
   =/  ease-min=@rs  .1.3
   =/  ease-max=@rs  .5.0
   ?:  (lth box.learned-status 2)
@@ -911,6 +908,4 @@
       (most (just `@`9) (star prn))
     --
   --
-
-
 --

@@ -97,15 +97,8 @@
       ==
     [cards this]
   ::
-  ++  on-arvo
-    |=  [=wire =sign-arvo]
-    ^-  (quip card _this)
-    =^  cards  state
-      ?+  wire  [~ state]
-        [%srrs ~]  (handle-srrs:sc sign-arvo)
-        [%srrs %chat ~]  (handle-srrs-chat:sc sign-arvo)
-      ==
-    [cards this]
+  ++  on-arvo  on-arvo:def
+  ::
   ++  on-fail   on-fail:def
   ++  command-parser
     |=  sole-id=@ta
@@ -178,38 +171,26 @@
       %add-review-item  [/[-.wire]/chat %letter]
       %add-item  [/[-.wire]/chat %letter]
     ==
-  =/  ford-card=card  :*
-    %pass  wir  %arvo  %f
-    %build
-      live=%.n
-      ^-  schematic:ford
-      =/  =beak  byk.bowl
-      [%cast [p q]:beak mark [%$ [%srrs-primary-delta !>(del)]]]
+  =/  cay=cage  [%srrs-primary-delta !>(del)]
+  =/  =cage
+    =+  .^(=tube:clay %cc /(scot %p our.bowl)/home/(scot %da now.bowl)/[p.cay]/mark)
+    [mark (tube q.cay)]
+  ?+  wir  [~ state]
+    [%srrs ~]  (handle-srrs cage)
+    [%srrs %chat ~]  (handle-srrs-chat cage)
   ==
-  [[ford-card ~] state]
 ::  +handle-srrs: handle updates from the /srrs-primary wire
 ::
 ++  handle-srrs
-  |=  =sign-arvo
+  |=  =cage
   ^-  (quip card _state)
-  ?>  ?=(%made +<.sign-arvo)
-  =/  [date=@da result=made-result:ford]  +>.sign-arvo
-  ?:  ?=(%incomplete -.result)
-    [~ state]
-  =/  =cage  (result-to-cage:ford build-result.result)
   [[(show-result:sh-out cage) ~] state]
 ::  +handle-srrs-chat: handle updates and send to chat
 ::
 ++  handle-srrs-chat
-  |=  =sign-arvo
+  |=  =cage
   ^-  (quip card _state)
-  ?>  ?=(%made +<.sign-arvo)
-  =/  [date=@da result=made-result:ford]  +>.sign-arvo
-  ?:  ?=(%incomplete -.result)
-    [~ state]
-  ?:  ?=([%error *] build-result.result)
-    (mean message.build-result.result)
-  =/  =cage  (result-to-cage:ford build-result.result)
+  ~!  q.cage
   =^  say-cards  state  (work:sh [%say !<(letter:chat-store q.cage)])
   [say-cards state]
 ::
@@ -224,6 +205,7 @@
   ::
   ++  parser
     |^
+      %+  stag  |
       %+  knee  *command  |.  ~+
       =-  ;~(pfix mic -)
       ;~  pose
@@ -433,9 +415,9 @@
         %+  turn
           reviews
         review-to-json
-      =/  print-card=card  (print:sh-out "reviews: {(en-json json)}")
+      =/  print-card=card  (print:sh-out "review: {(en-json json)}")
       =^  say-cards  state
-        (say `letter:chat-store`[%text (crip "reviews: {(en-json json)}")])
+        (say `letter:chat-store`[%text (crip "review: {(en-json json)}")])
       [(flop (snoc say-cards print-card)) state]
     ::
     ::  +help: print (link to) usage instructions

@@ -280,7 +280,7 @@
   %-  pairs:enjs:format
   :~  content+(content-full-json name.item content.item)
       learn+(status-to-json learn.item)
-      ::  last-review+(time:enjs:format last-review.item)
+      last-review+(maybe last-review.item time:enjs:format)
       name+s+name.item
   ==
 ::
@@ -410,4 +410,10 @@
       content+s+content.com
       pending+b+pending.com
   ==
+::
+++  maybe
+      |*  [unit=(unit) enjs=$-(* json)]
+      ^-  json
+      ?~  unit  ~
+      (enjs u.unit)
 --
