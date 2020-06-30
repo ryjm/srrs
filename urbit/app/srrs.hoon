@@ -1,32 +1,6 @@
 /-  *srrs, publish
 /+  *server, *srrs, *srrs-json, default-agent, verb, dbug, publish
-/=  index
-  /^  $-(json manx)
-  /:  /===/app/srrs/index  /!noun/
-::
-/=  tile-js
-  /^  octs
-  /;  as-octs:mimes:html
-  /:  /===/app/srrs/js/tile
-  /|  /js/
-      /~  ~
-  ==
-/=  js
-  /^  octs
-  /;  as-octs:mimes:html
-  /|  /:  /===/app/srrs/js/index  /js/
-      /~  ~
-  ==
-/=  css
-  /^  octs
-  /;  as-octs:mimes:html
-  /:  /===/app/srrs/css/index
-  /|  /css/
-      /~  ~
-  ==
-/=  images
-  /^  (map knot @)
-  /:  /===/app/srrs/img  /_  /png/
+/=  index  /app/srrs/index
 ::
 |%
 +$  versioned-state
@@ -72,10 +46,16 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '/~srrs/srrs.png' '/~srrs'] %.y]])]
+    =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '/~srrs-files/img/srrs.png' '/~srrs'] %.y]])]
     :_  this
-    :~  [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
+    :~
+        [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
+        [%pass /bind/srrs-files %arvo %e %connect [~ /'~srrs-files'] %srrs]
         [%pass /srrstile %agent [our.bol %launch] %poke launcha]
+    :*  %pass  /srv  %agent  [our.bol %file-server]
+            %poke  %file-server-action
+            !>([%serve-dir /'~srrs-files' /app/srrs %.n])
+        ==
     ==
   ::
   ++  on-poke
@@ -131,6 +111,7 @@
     =^  cards  state
       ?+  wire  (on-arvo:def wire sign-arvo)
         [%bind %srrs ~]             [~ state]
+        [%bind %srrs-files ~]             [~ state]
         [%view-bind ~]              [~ state]
         [%review-schedule @ ~]      (wake:sc wire)
         [%review-schedule @ @ @ ~]  (wake:sc wire)
@@ -147,9 +128,16 @@
       (mule |.(!<(versioned-state old)))
     |^
     ^-  (quip card _this)
+    =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '/~srrs-files/img/srrs.png' '/~srrs'] %.y]])]
     =/  init-cards
       :~
-        [%pass /bind/srrs %arvo %e %connect [~ /'srrs'] %srrs]
+        [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
+        [%pass /bind/srrs-files %arvo %e %connect [~ /'~srrs-files'] %srrs]
+        [%pass /srrstile %agent [our.bol %launch] %poke launcha]
+        :*  %pass  /srv  %agent  [our.bol %file-server]
+            %poke  %file-server-action
+            !>([%serve-dir /'~srrs-files' /app/srrs %.n])
+        ==
       ==
     ?:  ?=(%| -.old-state)
       ~!  p.old-state
@@ -177,7 +165,7 @@
         [%2 new-stacks ~ new-stack-subs]
       ==
     %2
-      [init-cards this(state p.old-state)]
+      [~ this(state p.old-state)]
     ==
     ++  convert-stack-1-2
       |=  prev=stack-1
@@ -413,26 +401,6 @@
   =+  request-line=(parse-request-line url.request.inbound-request)
   ?+  request-line
     not-found:gen
-  ::  images
-  ::
-      [[[~ %png] [%'~srrs' @t ~]] ~]
-    =/  filename=@t  i.t.site.request-line
-    =/  img=(unit @t)  (~(get by images) filename)
-    ?~  img
-      not-found:gen
-    (png-response:gen (as-octs:mimes:html u.img))
-  ::  styling
-  ::
-      [[[~ %css] [%'~srrs' %index ~]] ~]
-    (css-response:gen css)
-  ::  scripting
-  ::
-      [[[~ %js] [%'~srrs' %index ~]] ~]
-    (js-response:gen js)
-  ::  tile js
-  ::
-      [[[~ %js] [%'~srrs' %tile ~]] ~]
-    (js-response:gen tile-js)
   ::  send review state as json
   ::
       [[[~ %json] [%'~srrs' %update-review ~]] ~]
