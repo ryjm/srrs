@@ -132,6 +132,7 @@
     =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '/~srrs-files/img/srrs.png' '/~srrs'] %.y]])]
     =/  init-cards
       :~
+        [%pass /srrstile %agent [our.bol %launch] %poke [%launch-action !>([%remove %srrs])]]
         [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
         [%pass /bind/srrs-files %arvo %e %connect [~ /'~srrs-files'] %srrs]
         [%pass /srrstile %agent [our.bol %launch] %poke launcha]
