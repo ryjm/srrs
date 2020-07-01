@@ -7,6 +7,7 @@
   $%  [%0 state-zero]
       [%1 state-one]
       [%2 state-two]
+      [%3 state-two]
   ==
 ::
 +$  state-zero
@@ -32,7 +33,7 @@
 ::
 --
 ::
-=|  [%2 state-two]
+=|  [%3 state-two]
 =*  state  -
 ^-  agent:gall
 =<
@@ -162,10 +163,12 @@
           |=  old-stack=stack-1
           ^-  stack
           (convert-stack-1-2 old-stack)
-        [%2 new-stacks ~ new-stack-subs]
+        [%3 new-stacks ~ new-stack-subs]
       ==
     %2
-      [~ this(state p.old-state)]
+      [~ this(state [%3 +.p.old-state])]
+    %3
+      [init-cards this(state p.old-state)]
     ==
     ++  convert-stack-1-2
       |=  prev=stack-1
@@ -651,7 +654,7 @@
       ~&  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *[%2 state-two]]
+      [~ *[%3 state-two]]
     ==
 ::
 ++  handle-import-stack
