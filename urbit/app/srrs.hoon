@@ -51,7 +51,6 @@
     :_  this
     :~
         [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
-        [%pass /bind/srrs-files %arvo %e %connect [~ /'~srrs-files'] %srrs]
         [%pass /srrstile %agent [our.bol %launch] %poke launcha]
     :*  %pass  /srv  %agent  [our.bol %file-server]
             %poke  %file-server-action
@@ -112,7 +111,6 @@
     =^  cards  state
       ?+  wire  (on-arvo:def wire sign-arvo)
         [%bind %srrs ~]             [~ state]
-        [%bind %srrs-files ~]             [~ state]
         [%view-bind ~]              [~ state]
         [%review-schedule @ ~]      (wake:sc wire)
         [%review-schedule @ @ @ ~]  (wake:sc wire)
@@ -134,7 +132,6 @@
       :~
         [%pass /srrstile %agent [our.bol %launch] %poke [%launch-action !>([%remove %srrs])]]
         [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
-        [%pass /bind/srrs-files %arvo %e %connect [~ /'~srrs-files'] %srrs]
         [%pass /srrstile %agent [our.bol %launch] %poke launcha]
         :*  %pass  /srv  %agent  [our.bol %file-server]
             %poke  %file-server-action
