@@ -172,9 +172,8 @@
       %add-item  [/[-.wire]/chat %letter]
     ==
   =/  cay=cage  [%srrs-primary-delta !>(del)]
-  =/  =cage
-    =+  .^(=tube:clay %cc /(scot %p our.bowl)/home/(scot %da now.bowl)/[p.cay]/mark)
-    [mark (tube q.cay)]
+  =+  .^(=tube:clay %cc /(scot %p our.bowl)/home/(scot %da now.bowl)/[p.cay]/[mark])
+  =/  =cage  [mark (tube q.cay)]
   ?+  wir  [~ state]
     [%srrs ~]  (handle-srrs cage)
     [%srrs %chat ~]  (handle-srrs-chat cage)
