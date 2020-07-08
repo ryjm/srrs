@@ -1,5 +1,3 @@
-import _ from 'lodash';
-
 export class PrimaryReducer {
   reduce(json, state){
     switch(Object.keys(json)[0]){

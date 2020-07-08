@@ -3,7 +3,6 @@ import classnames from 'classnames';
 import { Link } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import { SrrsCreate } from '/components/lib/srrs-create';
-import _ from 'lodash';
 
 const PC = withRouter(SrrsCreate);
 
@@ -14,13 +13,15 @@ export class PathControl extends Component {
   }
 
   buildPathData(){
-    let path = [
+    const path = [
       { text: "Home", url: "/~srrs/review" },
     ];
 
-    let last = _.get(this.props, 'location.state', false);
+    const last = this.props.location.state || false;
+    const ship = last.lastParams.ship.slice(1);
+    const stackId = last.lastParams.stack;
     let stack = false;
-    let finalUrl = this.props.location.pathname;
+    const finalUrl = this.props.location.pathname;
 
     if (last) {
       finalUrl = {
@@ -30,10 +31,9 @@ export class PathControl extends Component {
 
       if ((last.lastMatch === '/~srrs/:ship/:stack/:item') ||
           (last.lastMatch === '/~srrs/:ship/:stack')){
-        stack = (last.lastParams.ship.slice(1) == window.ship)
-          ?  _.get(this.props, `pubs["${last.lastParams.stack}"]`, false)
-          :  _.get(this.props,
-            `subs["${last.lastParams.ship.slice(1)}"]["${last.lastParams.stack}"]`, false);
+        stack = (ship == window.ship)
+          ? this.props.pub[stackId] || false
+          : this.props.subs[ship][stackId] || false;
       }
     }
 

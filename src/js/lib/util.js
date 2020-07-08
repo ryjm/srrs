@@ -1,4 +1,3 @@
-import _ from 'lodash';
 import classnames from 'classnames';
 export function stringToSymbol(str) {
   let result = '';

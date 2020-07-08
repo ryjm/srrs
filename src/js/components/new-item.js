@@ -36,7 +36,7 @@ export class NewItem extends Component {
   }
 
   itemSubmit() {
-    let last = _.get(this.props, 'location.state', false);
+    const last = this.props.location.state || false;
     let ship = window.ship;
     let stackId = null;
 
@@ -125,18 +125,10 @@ export class NewItem extends Component {
       let ship = this.state.awaiting.ship;
       let stackId = this.state.awaiting.stackId;
       let itemId = this.state.awaiting.itemId;
-      let item;
+      const item = ship === window.ship
+        ? this.props.pubs[stackId].items[itemId] || false
+        : this.props.subs[ship][stackId].items[itemId] || false;
 
-      if (ship == window.ship) {
-        item =
-          _.get(this.props,
-            `pubs["${stackId}"].items["${itemId}"]`, false) || false;
-      } else {
-        item =
-          _.get(this.props,
-            `subs["${ship}"]["${stackId}"].items["${itemId}"]`, false) || false;
-
-      }
       if (!_.isEqual(this.item, item)) {
         if (typeof (item) === 'string') {
           this.props.setSpinner(false);
@@ -157,7 +149,7 @@ export class NewItem extends Component {
   }
 
   discardItem() {
-    let last = _.get(this.props, 'location.state', false);
+    const last = this.props.location.state || false;
     let ship = window.ship;
     let stackId = null;
 

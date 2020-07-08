@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
 import classnames from 'classnames';
-import _ from 'lodash';
 import { PathControl } from '/components/lib/path-control';
 import {
   StackData
@@ -83,12 +82,11 @@ export class Stack extends Component {
   componentDidUpdate(prevProps, prevState) {
     if (this.state.notFound) return;
 
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-
-    let stack = (ship === window.ship)
-      ? _.get(this.props, `pubs["${stackId}"]`, false)
-      : _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
+    const ship = this.props.ship;
+    const stackId = this.props.stackId;
+    const stack = (ship === window.ship)
+      ? this.props.pubs[stackId] || false
+      : this.props.subs[ship][stackId] || false;
 
 
     if (!(stack) && (ship === window.ship)) {
@@ -112,11 +110,11 @@ export class Stack extends Component {
   }
 
   componentWillMount() {
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-    let stack = (ship == window.ship)
-      ? _.get(this.props, `pubs["${stackId}"]`, false)
-      : _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
+    const ship = this.props.ship;
+    const stackId = this.props.stackId;
+    const stack = (ship === window.ship)
+      ? this.props.pubs[stackId] || false
+      : this.props.subs[ship][stackId] || false;
 
     if (!(stack) && (ship === window.ship)) {
       this.setState({ notFound: true });
@@ -193,9 +191,11 @@ export class Stack extends Component {
   }
 
   buildData() {
-    let stack = (this.props.ship == window.ship)
-      ? _.get(this.props, `pubs["${this.props.stackId}"]`, false)
-      : _.get(this.props, `subs["${this.props.ship}"]["${this.props.stackId}"]`, false);
+    const ship = this.props.ship;
+    const stackId = this.props.stackId;
+    const stack = (ship === window.ship)
+      ? this.props.pubs[stackId] || false
+      : this.props.subs[ship][stackId] || false;
 
     if (this.state.temporary) {
       return {

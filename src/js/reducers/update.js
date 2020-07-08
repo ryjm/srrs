@@ -1,11 +1,8 @@
-import _ from 'lodash';
-
-
 export class UpdateReducer {
     reduce(json, state) {
-        let data = _.get(json, 'update', false);
+        const data = json.update || false;
         if (data) {
-            this.reduceInbox(_.get(data, 'inbox', false), state);
+          this.reduceInbox(data.inbox || false, state);
         }
     }
 
