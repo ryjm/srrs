@@ -10,65 +10,65 @@ export class Icon extends Component {
     let iconElem = null;
 
     switch(this.props.type) {
-      case "icon-stream-chat":
+      case 'icon-stream-chat':
         iconElem = <span className="icon-stream-chat"></span>;
         break;
-      case "icon-stream-dm":
+      case 'icon-stream-dm':
         iconElem = <span className="icon-stream-dm"></span>;
         break;
-      case "icon-stack-index":
+      case 'icon-stack-index':
         iconElem = <span className="icon-stack"></span>;
         break;
-      case "icon-stack-item":
+      case 'icon-stack-item':
         iconElem = <span className="icon-stack-item"></span>;
         break;
-      case "icon-stack-comment":
+      case 'icon-stack-comment':
         iconElem = <span className="icon-stack icon-stack-comment"></span>;
         break;
-      case "icon-panini":
+      case 'icon-panini':
         // TODO: Should icons be display: block, inline, or inline-blocks?
         //   1) Should naturally flow inline
         //   2) But can't make icon-panini naturally inline without hacks like &nbsp;
-        iconElem = <div className="icon-panini"></div>
+        iconElem = <div className="icon-panini"></div>;
         break;
-      case "icon-x":
-        iconElem = <span className="icon-x"></span>
+      case 'icon-x':
+        iconElem = <span className="icon-x"></span>;
         break;
-      case "icon-decline":
-        iconElem = <IconDecline />
+      case 'icon-decline':
+        iconElem = <IconDecline />;
         break;
-      case "icon-lus":
-        iconElem = <span className="icon-lus"></span>
+      case 'icon-lus':
+        iconElem = <span className="icon-lus"></span>;
         break;
-      case "icon-inbox":
-        iconElem = <IconInbox />
+      case 'icon-inbox':
+        iconElem = <IconInbox />;
         break;
-      case "icon-comment":
-        iconElem = <IconComment />
+      case 'icon-comment':
+        iconElem = <IconComment />;
         break;
-      case "icon-sig":
-        iconElem = <IconSig />
+      case 'icon-sig':
+        iconElem = <IconSig />;
         break;
-      case "icon-user":
-        iconElem = <IconUser />
+      case 'icon-user':
+        iconElem = <IconUser />;
         break;
-      case "icon-ellipsis":
+      case 'icon-ellipsis':
         iconElem = (
           <div className="icon-ellipsis-wrapper icon-label">
             <div className="icon-ellipsis-dot"></div>
             <div className="icon-ellipsis-dot"></div>
             <div className="icon-ellipsis-dot"></div>
           </div>
-        )
+        );
         break;
     }
 
-    let className = this.props.label ? "icon-label" : "";
+    const className = this.props.label ? 'icon-label' : '';
 
     return (
       <span className={className}>
         {iconElem}
       </span>
-    )
+    );
   }
 }

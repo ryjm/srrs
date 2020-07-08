@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
 import { Link } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import { SrrsCreate } from '/components/lib/srrs-create';
@@ -7,30 +6,29 @@ import { SrrsCreate } from '/components/lib/srrs-create';
 const PC = withRouter(SrrsCreate);
 
 export class PathControl extends Component {
-  constructor(props){
+  constructor(props) {
     super(props);
-
   }
 
-  buildPathData(){
+  buildPathData() {
     const path = [
-      { text: "Home", url: "/~srrs/review" },
+      { text: 'Home', url: '/~srrs/review' }
     ];
 
     const last = this.props.location.state || false;
     const ship = last.lastParams.ship.slice(1);
     const stackId = last.lastParams.stack;
     let stack = false;
-    const finalUrl = this.props.location.pathname;
+    let finalUrl = this.props.location.pathname;
 
     if (last) {
       finalUrl = {
         pathName: finalUrl,
-        state: last,
+        state: last
       };
 
       if ((last.lastMatch === '/~srrs/:ship/:stack/:item') ||
-          (last.lastMatch === '/~srrs/:ship/:stack')){
+          (last.lastMatch === '/~srrs/:ship/:stack')) {
         stack = (ship == window.ship)
           ? this.props.pub[stackId] || false
           : this.props.subs[ship][stackId] || false;
@@ -45,7 +43,7 @@ export class PathControl extends Component {
       if (stack) {
         path.push({
           text: stack.info.title,
-          url: `/~srrs/${stack.info.owner}/${stack.info.filename}`,
+          url: `/~srrs/${stack.info.owner}/${stack.info.filename}`
         });
       }
       path.push(
@@ -56,22 +54,23 @@ export class PathControl extends Component {
   }
 
   render() {
-    let pathData = (this.props.pathData)
+    const pathData = (this.props.pathData)
       ?  this.props.pathData
       :  this.buildPathData();
-    let path = [];
+    const path = [];
     let key = 0;
 
     pathData.forEach((seg, i) => {
-      let style = (i == 0)
-        ?  {marginLeft: 16}
+      const style = (i == 0)
+        ?  { marginLeft: 16 }
         :  {};
       if (i === pathData.length - 1)
-        style.color = "black";
+        style.color = 'black';
 
       path.push(
         <Link to={seg.url} key={key++}
-          className="fl gray-30 label-regular one-line mw-336" style={style}>
+          className="fl gray-30 label-regular one-line mw-336" style={style}
+        >
           {seg.text}
         </Link>
       );
@@ -79,13 +78,14 @@ export class PathControl extends Component {
         path.push(
           <img src="/~srrs/arrow.png"
           className="fl ml1 mr1 relative"
-          style={{top: 5}}
-          key={key++}/>
+          style={{ top: 5 }}
+          key={key++}
+          />
         );
       }
     });
 
-    let create = ((window.location.pathname === '/~srrs/new-stack') ||
+    const create = ((window.location.pathname === '/~srrs/new-stack') ||
       (window.location.pathname === '/~srrs/new-item')) ||
       (this.props.create === false)
       ?  false
@@ -93,7 +93,7 @@ export class PathControl extends Component {
 
     return (
       <div>
-        <PC create={create}/>
+        <PC create={create} />
       </div>
     );
   }

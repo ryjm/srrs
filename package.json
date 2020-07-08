@@ -11,7 +11,10 @@
   "license": "ISC",
   "devDependencies": {
     "@sucrase/gulp-plugin": "^2.0.0",
+    "babel-eslint": "^10.1.0",
     "cssnano": "^4.1.10",
+    "eslint": "^6.8.0",
+    "eslint-plugin-react": "^7.20.3",
     "gulp": "^4.0.0",
     "gulp-better-rollup": "^4.0.1",
     "gulp-cssimport": "^7.0.0",
@@ -32,7 +35,6 @@
     "classnames": "^2.2.6",
     "codemirror": "^5.53.2",
     "del": "^5.1.0",
-    "eslint": "^6.8.0",
     "fs-extra": "^8.1.0",
     "lodash": "^4.17.11",
     "moment": "^2.25.1",

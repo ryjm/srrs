@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
 import { ItemSnippet } from '/components/lib/item-snippet';
@@ -13,38 +12,38 @@ export class ItemPreview extends Component {
     moment.updateLocale('en', momentConfig);
     this.saveGrade = this.saveGrade.bind(this);
   }
-  
+
   saveGrade() {
     this.props.setSpinner(true);
-    let data = {
-      "answered-item": {
+    const data = {
+      'answered-item': {
         stak: this.props.stackId,
         item: this.props.itemId,
         answer: this.state.recallGrade
-      },
+      }
     };
     this.setState({
       awaitingGrade: {
         ship: this.state.ship,
         stackId: this.props.stackId,
-        itemId: this.props.itemId,
+        itemId: this.props.itemId
       }
     }, () => {
-      this.props.api.action("srrs", "srrs-action", data)
+      this.props.api.action('srrs', 'srrs-action', data);
     });
   };
   render() {
-    let date = moment(this.props.item.date).fromNow();
-    let author = this.props.item.author
+    const date = moment(this.props.item.date).fromNow();
+    const author = this.props.item.author;
 
-    let stackLink = "/~srrs/" +
-      this.props.item.stackOwner + "/" +
+    const stackLink = '/~srrs/' +
+      this.props.item.stackOwner + '/' +
       this.props.item.stackName;
-    let itemLink = stackLink + "/" + this.props.item.itemName;
+    const itemLink = stackLink + '/' + this.props.item.itemName;
 
     return (
       <div className="mv2 link black dim db mw5 pa2 br2 bt b--green0 shadow-hover ma2">
-        <Link to={{pathname: itemLink, state: {prevPath: location.pathname}}}>
+        <Link to={{ pathname: itemLink, state: { prevPath: location.pathname } }}>
           <TitleSnippet title={this.props.item.itemTitle} />
           <ItemSnippet
             body={this.props.item.itemSnippet}

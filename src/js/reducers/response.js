@@ -1,7 +1,7 @@
 export class ResponseReducer {
   reduce(json, state) {
     switch(json.type) {
-      case "local":
+      case 'local':
         this.sidebarToggle(json, state);
         this.setSelected(json, state);
         break;
@@ -11,13 +11,13 @@ export class ResponseReducer {
   }
 
   sidebarToggle(json, state) {
-    if (json.data.hasOwnProperty('sidebarToggle')) {
+    if (Object.prototype.hasOwnProperty.call(json.data, 'sidebarToggle')) {
       state.sidebarShown = json.data.sidebarToggle;
     }
   }
 
   setSelected(json, state) {
-    if (json.data.hasOwnProperty('selected')) {
+    if (Object.prototype.hasOwnProperty.call(json.data, 'selected')) {
       state.selectedGroups = json.data.selected;
     }
   }
