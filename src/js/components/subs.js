@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { withRouter } from 'react-router';
 import { HeaderMenu } from '/components/lib/header-menu';
 import moment from 'moment';
+import momentConfig from '/config/moment';
 
 const HM = withRouter(HeaderMenu);
 
@@ -15,27 +16,7 @@ export class Subs extends Component {
     this.reject = this.reject.bind(this);
     this.unsubscribe = this.unsubscribe.bind(this);
 
-    moment.updateLocale('en', {
-      relativeTime: {
-        past: function(input) {
-          return input === 'just now'
-            ? input
-            : input + ' ago'
-        },
-        s : 'just now',
-        future : 'in %s',
-        m  : '1m',
-        mm : '%dm',
-        h  : '1h',
-        hh : '%dh',
-        d  : '1d',
-        dd : '%dd',
-        M  : '1 month',
-        MM : '%d months',
-        y  : '1 year',
-        yy : '%d years',
-      }
-    });
+    moment.updateLocale('en', momentConfig);
   }
 
   buildStackData() {

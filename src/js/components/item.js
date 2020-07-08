@@ -6,7 +6,7 @@ import { EditItem } from '/components/edit-item';
 import { Recall } from '/components/recall';
 import { NotFound } from '/components/not-found';
 import { withRouter } from 'react-router';
-import _ from 'lodash';
+import momentConfig from '/config/moment';
 
 const NF = withRouter(NotFound);
 
@@ -14,27 +14,7 @@ export class Item extends Component {
   constructor(props) {
     super(props);
 
-    moment.updateLocale('en', {
-      relativeTime: {
-        past: function (input) {
-          return input === 'just now'
-            ? input
-            : input + ' ago'
-        },
-        s: 'just now',
-        future: 'in %s',
-        m: '1m',
-        mm: '%dm',
-        h: '1h',
-        hh: '%dh',
-        d: '1d',
-        dd: '%dd',
-        M: '1 month',
-        MM: '%d months',
-        y: '1 year',
-        yy: '%d years',
-      }
-    });
+    moment.updateLocale('en', momentConfig);
 
     this.state = {
       mode: 'view',
@@ -55,7 +35,7 @@ export class Item extends Component {
       pathData: [],
       temporary: false,
       notFound: false
-    }
+    };
 
     if (this.props.location.state) {
       let mode = this.props.location.state.mode;
@@ -74,54 +54,57 @@ export class Item extends Component {
     this.toggleAdvanced = this.toggleAdvanced.bind(this);
     this.toggleShowBack = this.toggleShowBack.bind(this);
 
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-    let itemId = this.props.itemId;
+    const { ship, stackId, itemId } = this.props;
+
     if (ship !== window.ship) {
-      let stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
+      const stack = this.props.subs[ship][stackId];
 
       if (stack) {
-        let item = _.get(stack, `items["${itemId}"]`, false);
-        let learn = _.get(stack, `items["${itemId}"].learn`, false);
-        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.name}`;
+        const item = stack.items[itemId];
+        const learn = item.learn;
+        const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        const itemUrl = `${stackUrl}/${item.name}`;
 
-        let tempState = {
+        this.state = {
+          ...this.state,
           title: item.content.title,
           bodyFront: item.content.front,
           bodyBack: item.content.back,
-          stack: stack,
-          item: item,
-          learn: learn,
+          stack,
+          item,
+          learn,
           pathData: [
             { text: "Home", url: "/~srrs/review" },
             { text: stack.info.title, url: stackUrl },
             { text: item.title, url: itemUrl },
           ],
-        }
-        this.state = {...this.state, ...tempState}
+        };
 
       } else {
-        this.state = {...this.state, ...{
+        this.state = {
+          ...this.state,
+          temporary: true,
           awaitingLoad: {
             ship: ship,
             stackId: stackId,
             itemId: itemId,
-          }, ...{temporary: true}}}
+          }
+        };
       }
     } else {
-      let stack = _.get(this.props, `pubs["${stackId}"]`, false);
-      let item = _.get(stack, `items["${itemId}"]`, false);
-      let learn = _.get(stack, `items["${itemId}"].learn`, false);
+      const stack = this.props.pubs[stackId];
+      const item = stack.items[itemId];
+      const learn = item.learn;
 
       if (!stack || !item) {
         this.state = {...this.state, ...{ notFound: true }}
         return;
       } else {
-        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.name}`;
+        const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        const itemUrl = `${stackUrl}/${item.name}`;
 
-        this.state = {...this.state, ...{
+        this.state = {
+          ...this.state,
           title: item.content.title,
           bodyFront: item.content.front,
           bodyBack: item.content.back,
@@ -133,7 +116,7 @@ export class Item extends Component {
             { text: stack.info.title, url: stackUrl },
             { text: item.content.title, url: itemUrl },
           ],
-        }};
+        };
       }
     }
   }
@@ -187,27 +170,14 @@ export class Item extends Component {
   componentDidUpdate(prevProps, prevState) {
     if (this.state.notFound) return;
 
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-    let itemId = this.props.itemId;
+    const { ship, stackId, itemId } = this.props;
 
     let oldItem = prevState.item;
     let oldStack = prevState.stack;
 
-
-    let item;
-    let stack;
-    let learn;
-
-    if (ship === window.ship) {
-      stack = _.get(this.props, `pubs["${stackId}"]`, false);
-      item = _.get(stack, `items["${itemId}"]`, false);
-      learn = _.get(stack, `items["${itemId}"].learn`, false);
-    } else {
-      stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
-      item = _.get(stack, `items["${itemId}"]`, false);
-      learn = _.get(stack, `items["${itemId}"].learn`, false);
-    }
+    const stack = ship === window.ship ? this.props.pubs[stackId] : this.props.subs[ship][stackId];
+    const item = stack.items[itemId];
+    const learn = item.learn;
 
     if (this.state.learn !== learn) {
       this.state.learn = learn;
@@ -345,15 +315,12 @@ export class Item extends Component {
   render() {
     const { props, state } = this;
     let adminEnabled = (this.props.ship === window.ship);
-    if (this.state.notFound) {
-      return (
-        <NF />
-      );
-    } else if (this.state.awaitingLoad) {
-      return null;
-    } else if (this.state.awaitingEdit) {
-      return null;
-    } else if (this.state.mode == 'review' || this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
+
+    if (this.state.notFound) return (<NF />);
+    if (this.state.awaitingLoad) return null;
+    if (this.state.awaitingEdit) return null;
+    
+    if (this.state.mode == 'review' || this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
       let title = this.state.item.content.title;
       let stackTitle = this.props.stackId;
       let host = this.state.stack.info.owner;

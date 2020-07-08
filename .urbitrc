@@ -1,6 +1,6 @@
 module.exports = {
   URBIT_PIERS: [
 
-   "path/to/pier"
+   "/Users/tyler/zod/home"
   ]
 };
