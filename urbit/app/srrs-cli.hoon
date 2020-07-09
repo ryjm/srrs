@@ -106,7 +106,9 @@
   ::
   ++  tab-list
     |=  sole-id=@ta
-    tab-list:sh:sc
+    %+  turn  tab-list:sh:sc
+    |=  [term=cord detail=tank]
+    [(cat 3 ';' term) detail]
   ::
   ++  on-command
     |=  [sole-id=@ta =command]
