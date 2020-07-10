@@ -1,9 +1,7 @@
-import _ from 'lodash';
-
 export class ResponseReducer {
   reduce(json, state) {
     switch(json.type) {
-      case "local":
+      case 'local':
         this.sidebarToggle(json, state);
         this.setSelected(json, state);
         break;
@@ -13,15 +11,13 @@ export class ResponseReducer {
   }
 
   sidebarToggle(json, state) {
-    let data = _.has(json.data, 'sidebarToggle', false);
-    if (data) {
-        state.sidebarShown = json.data.sidebarToggle;
+    if (Object.prototype.hasOwnProperty.call(json.data, 'sidebarToggle')) {
+      state.sidebarShown = json.data.sidebarToggle;
     }
   }
 
   setSelected(json, state) {
-    let data = _.has(json.data, 'selected', false);
-    if (data) {
+    if (Object.prototype.hasOwnProperty.call(json.data, 'selected')) {
       state.selectedGroups = json.data.selected;
     }
   }

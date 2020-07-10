@@ -1,10 +1,8 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
 import { Link } from 'react-router-dom';
-import { withRouter } from 'react-router';
 
 export class SrrsCreate extends Component {
-  constructor(props){
+  constructor(props) {
     super(props);
   }
 
@@ -15,13 +13,13 @@ export class SrrsCreate extends Component {
         </div>
       );
     } else if (this.props.create == 'stack') {
-      let link = {
-        pathname: "/~srrs/new-stack",
+      const link = {
+        pathname: '/~srrs/new-stack',
         state: {
           lastPath: this.props.location.pathname,
           lastMatch: this.props.match.path,
-          lastParams: this.props.match.params,
-        },
+          lastParams: this.props.match.params
+        }
       };
       return (
         <div className="flex">
@@ -31,13 +29,13 @@ export class SrrsCreate extends Component {
         </div>
       );
     } else if (this.props.create == 'item') {
-      let link = {
-        pathname: "/~srrs/new-item",
+      const link = {
+        pathname: '/~srrs/new-item',
         state: {
           lastPath: this.props.location.pathname,
           lastMatch: this.props.match.path,
-          lastParams: this.props.match.params,
-        },
+          lastParams: this.props.match.params
+        }
       };
       return (
         <div className="flex">

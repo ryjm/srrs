@@ -1,39 +1,19 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
 import { TitleSnippet } from '/components/lib/title-snippet';
 import { ItemSnippet } from '/components/lib/item-snippet';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
+import momentConfig from '/config/moment';
 
 class Preview extends Component {
-  constructor(props){
+  constructor(props) {
     super(props);
 
-    moment.updateLocale('en', {
-      relativeTime: {
-        past: function(input) {
-          return input === 'just now'
-            ? input
-            : input + ' ago'
-        },
-        s : 'just now',
-        future : 'in %s',
-        m  : '1m',
-        mm : '%dm',
-        h  : '1h',
-        hh : '%dh',
-        d  : '1d',
-        dd : '%dd',
-        M  : '1 month',
-        MM : '%d months',
-        y  : '1 year',
-        yy : '%d years',
-      }
-    });
+    moment.updateLocale('en', momentConfig);
   }
 
-  buildProps(itemId){
-    let item = this.props.stack.items[itemId];
+  buildProps(itemId) {
+    const item = this.props.stack.items[itemId];
     return {
       itemTitle: item.content.title,
       itemName: item.name,
@@ -43,24 +23,24 @@ class Preview extends Component {
       stackName: this.props.stack.info.filename,
       author: item.content.author,
       stackOwner: this.props.stack.info.owner,
-      date: item.content["date-created"],
-      pinned: false,
-    }
+      date: item.content['date-created'],
+      pinned: false
+    };
   }
 
-  render(){
+  render() {
     if (this.props.itemId) {
-      let owner = this.props.stack.info.owner;
-      let stackId = this.props.stack.info.filename;
-      let previewProps = this.buildProps(this.props.itemId);
-      let prevUrl = `/~srrs/${owner}/${stackId}/${this.props.itemId}`
+      const owner = this.props.stack.info.owner;
+      const stackId = this.props.stack.info.filename;
+      const previewProps = this.buildProps(this.props.itemId);
+      const prevUrl = `/~srrs/${owner}/${stackId}/${this.props.itemId}`;
 
-      let date = moment(previewProps.date).fromNow();
-      let authorDate = `${previewProps.author} • ${date}`
-      let stackLink = "/~srrs/" +
-        previewProps.stackOwner + "/" +
+      const date = moment(previewProps.date).fromNow();
+      const authorDate = `${previewProps.author} • ${date}`;
+      const stackLink = '/~srrs/' +
+        previewProps.stackOwner + '/' +
         previewProps.stackName;
-      let itemLink = stackLink + "/" + previewProps.itemName;
+      const itemLink = stackLink + '/' + previewProps.itemName;
 
       return (
         <div className="w-336">
@@ -68,15 +48,16 @@ class Preview extends Component {
             {this.props.text}
           </Link>
           <div className="w-336 relative"
-            style={{height:210}}>
+            style={{ height: 210 }}
+          >
             <Link to={itemLink} className="db">
               <TitleSnippet badge={false} title={previewProps.itemTitle} />
-              <div className="w-100" style={{height:16}}></div>
+              <div className="w-100" style={{ height: 16 }}></div>
               <ItemSnippet
                 body={previewProps.itemSnippet}
               />
             </Link>
-            <p className="label-small gray-50 absolute" style={{bottom:0}}>
+            <p className="label-small gray-50 absolute" style={{ bottom: 0 }}>
               {authorDate}
             </p>
           </div>
@@ -95,34 +76,32 @@ export class NextPrev extends Component {
     super(props);
   }
 
-
-
   render() {
-    let items = this.props.stack.order.unpin.slice().reverse();
-    let itemIdx = items.indexOf(this.props.itemId);
+    const items = this.props.stack.order.unpin.slice().reverse();
+    const itemIdx = items.indexOf(this.props.itemId);
 
-    let prevId = (itemIdx > 0)
+    const prevId = (itemIdx > 0)
       ?  items[itemIdx - 1]
       :  false;
 
-    let nextId = (itemIdx < (items.length - 1))
+    const nextId = (itemIdx < (items.length - 1))
       ?  items[itemIdx + 1]
       :  false;
 
-    if (!(prevId || nextId)){
+    if (!(prevId || nextId)) {
       return null;
     } else {
-      let prevText = "<- Previous Item";
-      let nextText = "-> Next Item";
+      const prevText = '<- Previous Item';
+      const nextText = '-> Next Item';
 
       return (
         <div>
           <div className="flex">
-            <Preview itemId={prevId} stack={this.props.stack} text={prevText}/>
-            <div style={{width:16}}></div>
-            <Preview itemId={nextId} stack={this.props.stack} text={nextText}/>
+            <Preview itemId={prevId} stack={this.props.stack} text={prevText} />
+            <div style={{ width: 16 }}></div>
+            <Preview itemId={nextId} stack={this.props.stack} text={nextText} />
           </div>
-          <hr className="gray-50 w-680 mt4"/>
+          <hr className="gray-50 w-680 mt4" />
         </div>
       );
     }

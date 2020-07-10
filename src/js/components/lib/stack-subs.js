@@ -1,6 +1,4 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
-import urbitOb from 'urbit-ob';
 
 export class StackSubs extends Component {
   constructor(props) {
@@ -8,9 +6,9 @@ export class StackSubs extends Component {
   }
 
   render() {
-    let back = '<- Back to notes'
+    const back = '<- Back to notes';
 
-    let subscribers = this.props.subs.map((sub, i) => {
+    const subscribers = this.props.subs.map((sub, i) => {
       return (
         <div className="flex w-100" key={i+1}>
           <p className="label-regular-mono w-100">~{sub}</p>
@@ -26,19 +24,20 @@ export class StackSubs extends Component {
     );
 
     return (
-      <div className="flex-col mw-688" style={{marginTop:48}}>
-        <hr className="gray-30" style={{marginBottom:25}}/>
+      <div className="flex-col mw-688" style={{ marginTop: 48 }}>
+        <hr className="gray-30" style={{ marginBottom: 25 }} />
         <p className="label-regular pointer b" onClick={this.props.back}>
           {back}
         </p>
-        <p className="body-large b" style={{marginTop:16, marginBottom: 20}}>
+        <p className="body-large b" style={{ marginTop: 16, marginBottom: 20 }}>
           Manage Notebook
         </p>
         <div className="flex">
           <div className="flex-col w-100">
             <p className="body-regular-400">Members</p>
             <p className="gray-50 label-small-2"
-              style={{marginTop:12, marginBottom: 23}}>
+              style={{ marginTop: 12, marginBottom: 23 }}
+            >
               Everyone subscribed to this notebook
             </p>
             {subscribers}

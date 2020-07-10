@@ -1,22 +1,11 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
-import _ from 'lodash';
-import { PathControl } from '/components/lib/path-control';
-import {
-  StackData
-} from '/components/lib/stack-data';
 import { StackNotes } from '/components/lib/stack-notes';
-import { StackSubs } from '/components/lib/stack-subs';
-import { StackSettings } from '/components/lib/stack-settings';
 import { withRouter } from 'react-router';
 import { NotFound } from '/components/not-found';
 import { Link } from 'react-router-dom';
 
-const PC = withRouter(PathControl);
 const NF = withRouter(NotFound);
 const BN = withRouter(StackNotes);
-const BS = withRouter(StackSettings)
-
 
 export class Stack extends Component {
   constructor(props) {
@@ -32,7 +21,7 @@ export class Stack extends Component {
       temporary: false,
       awaitingSubscribe: false,
       awaitingUnsubscribe: false,
-      notFound: false,
+      notFound: false
     };
 
     this.subscribe = this.subscribe.bind(this);
@@ -46,9 +35,8 @@ export class Stack extends Component {
   }
 
   handleEvent(diff) {
-
     if (diff.data.total) {
-      let stack = diff.data.total.data;
+      const stack = diff.data.total.data;
       this.stack = stack;
       this.setState({
         itemProps: this.buildItems(stack),
@@ -57,12 +45,12 @@ export class Stack extends Component {
         stackHost: stack.info.owner,
         awaiting: false,
         pathData: [
-          { text: "Home", url: "/~srrs/review" },
+          { text: 'Home', url: '/~srrs/review' },
           {
             text: stack.info.title,
             url: `/~srrs/${stack.info.owner}/${stack.info.filename}`
           }
-        ],
+        ]
       });
 
       this.props.setSpinner(false);
@@ -70,7 +58,7 @@ export class Stack extends Component {
       if (diff.data.remove.item) {
         // XX TODO
       } else {
-        this.props.history.push("/~srrs/review");
+        this.props.history.push('/~srrs/review');
       }
     }
   }
@@ -81,21 +69,20 @@ export class Stack extends Component {
   }
 
   componentDidUpdate(prevProps, prevState) {
-    if (this.state.notFound) return;
-
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-
-    let stack = (ship === window.ship)
-      ? _.get(this.props, `pubs["${stackId}"]`, false)
-      : _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
-
+    if (this.state.notFound) {
+      return;
+    }
+    const ship = this.props.ship;
+    const stackId = this.props.stackId;
+    const stack = (ship === window.ship)
+      ? this.props.pubs[stackId] || false
+      : this.props.subs[ship][stackId] || false;
 
     if (!(stack) && (ship === window.ship)) {
       this.setState({ notFound: true });
       return;
     } else if (this.stack && !stack) {
-      this.props.history.push("/~srrs/review");
+      this.props.history.push('/~srrs/review');
       return;
     }
 
@@ -104,7 +91,7 @@ export class Stack extends Component {
     if (this.state.awaitingSubscribe && stack) {
       this.setState({
         temporary: false,
-        awaitingSubscribe: false,
+        awaitingSubscribe: false
       });
 
       this.props.setSpinner(false);
@@ -112,32 +99,31 @@ export class Stack extends Component {
   }
 
   componentWillMount() {
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-    let stack = (ship == window.ship)
-      ? _.get(this.props, `pubs["${stackId}"]`, false)
-      : _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
+    const ship = this.props.ship;
+    const stackId = this.props.stackId;
+    const stack = (ship === window.ship)
+      ? this.props.pubs[stackId] || false
+      : this.props.subs[ship][stackId] || false;
 
     if (!(stack) && (ship === window.ship)) {
       this.setState({ notFound: true });
       return;
     };
 
-    let temporary = (!(stack) && (ship != window.ship));
-
+    const temporary = (!(stack) && (ship != window.ship));
 
     if (temporary) {
       this.setState({
         awaiting: {
           ship: ship,
-          stackId: stackId,
+          stackId: stackId
         },
-        temporary: true,
+        temporary: true
       });
 
       this.props.setSpinner(true);
 
-      this.props.api.bind(`/stack/${stackId}`, "PUT", ship, "srrs",
+      this.props.api.bind(`/stack/${stackId}`, 'PUT', ship, 'srrs',
         this.handleEvent.bind(this),
         this.handleError.bind(this));
     } else {
@@ -146,8 +132,8 @@ export class Stack extends Component {
   }
 
   deleteStack() {
-    let del = {
-      "delete-stack": {
+    const del = {
+      'delete-stack': {
         who: `~${this.props.ship}`,
         stak: this.props.stackId
         }
@@ -156,11 +142,11 @@ export class Stack extends Component {
     this.setState({
       awaitingDelete: {
         ship: this.props.ship,
-        stackId: this.props.stackId,
+        stackId: this.props.stackId
       }
     }, () => {
-      this.props.api.action("srrs", "srrs-action", del).then(() => {
-       let redirect = `/~srrs/review`;
+      this.props.api.action('srrs', 'srrs-action', del).then(() => {
+       const redirect = '/~srrs/review';
         this.props.history.push(redirect);
       });
     });
@@ -173,11 +159,9 @@ export class Stack extends Component {
     return Object.values(stack.items).map((item) => {
       return this.buildItemPreviewProps(item, stack, true);
     });
-    
   }
 
   buildItemPreviewProps(item, stack, pinned) {
-
     return {
       itemTitle: item.content.title,
       itemName: item.name,
@@ -187,15 +171,17 @@ export class Stack extends Component {
       stackName: stack.info.filename,
       author: item.content.author,
       stackOwner: stack.info.owner,
-      date: item.content["date-created"],
-      pinned: pinned,
-    }
+      date: item.content['date-created'],
+      pinned: pinned
+    };
   }
 
   buildData() {
-    let stack = (this.props.ship == window.ship)
-      ? _.get(this.props, `pubs["${this.props.stackId}"]`, false)
-      : _.get(this.props, `subs["${this.props.ship}"]["${this.props.stackId}"]`, false);
+    const ship = this.props.ship;
+    const stackId = this.props.stackId;
+    const stack = (ship === window.ship)
+      ? this.props.pubs[stackId] || false
+      : this.props.subs[ship][stackId] || false;
 
     if (this.state.temporary) {
       return {
@@ -203,7 +189,7 @@ export class Stack extends Component {
         itemProps: this.state.itemProps,
         stackTitle: this.state.stackTitle,
         stackHost: this.state.stackHost,
-        pathData: this.state.pathData,
+        pathData: this.state.pathData
       };
     } else {
       if (!stack) {
@@ -215,38 +201,38 @@ export class Stack extends Component {
         stackTitle: stack.info.title,
         stackHost: stack.info.owner,
         pathData: [
-          { text: "Home", url: "/~srrs/review" },
+          { text: 'Home', url: '/~srrs/review' },
           {
             text: stack.info.title,
             url: `/~srrs/${stack.info.owner}/${stack.info.filename}`
           }
-        ],
+        ]
       };
     }
   }
 
   subscribe() {
-    let sub = {
+    const sub = {
       subscribe: {
         who: this.props.ship,
-        stack: this.props.stackId,
+        stack: this.props.stackId
       }
-    }
+    };
     this.props.setSpinner(true);
     this.setState({ awaitingSubscribe: true }, () => {
-      this.props.api.action("srrs", "srrs-action", sub);
+      this.props.api.action('srrs', 'srrs-action', sub);
     });
   }
 
   unsubscribe() {
-    let unsub = {
+    const unsub = {
       unsubscribe: {
         who: this.props.ship,
-        stack: this.props.stackId,
+        stack: this.props.stackId
       }
-    }
-    this.props.api.action("srrs", "srrs-action", unsub);
-    this.props.history.push("/~srrs/review");
+    };
+    this.props.api.action('srrs', 'srrs-action', unsub);
+    this.props.history.push('/~srrs/review');
   }
 
   viewSubs() {
@@ -264,7 +250,6 @@ export class Stack extends Component {
   render() {
     const { props } = this;
 
-
     if (this.state.notFound) {
       return (
         <NF />
@@ -272,11 +257,11 @@ export class Stack extends Component {
     } else if (this.state.awaiting) {
       return null;
     } else {
-      let data = this.buildData();
-      let inner = null
+      const data = this.buildData();
+      let inner = null;
       switch (props.view) {
-        case "notes":
-          inner = <BN ship={this.props.ship} items={data.itemProps} />
+        case 'notes':
+          inner = <BN ship={this.props.ship} items={data.itemProps} />;
       }
 
       return (
@@ -284,25 +269,30 @@ export class Stack extends Component {
         className="overflow-y-scroll"
         style={{ paddingLeft: 16, paddingRight: 16 }}
         onScroll={this.onScroll}
-        ref={el => {
+        ref={(el) => {
           this.scrollElement = el;
-        }}>
+        }}
+      >
         <div className="w-100 dn-m dn-l dn-xl inter pt4 pb6 f9">
-          <Link to="/~srrs/review">{"<- Review"}</Link>
+          <Link to="/~srrs/review">{'<- Review'}</Link>
         </div>
         <div className="mw9 f9 h-100"
-          style={{ paddingLeft: 16, paddingRight: 16 }}>
+          style={{ paddingLeft: 16, paddingRight: 16 }}
+        >
           <div className="h-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
             <div
               className="flex justify-between"
-              style={{ marginBottom: 32 }}>
+              style={{ marginBottom: 32 }}
+            >
               <div
-               className="flex-col">
+               className="flex-col"
+              >
                 <div className="mb1">{data.stackTitle}</div>
                 <span>
                   <span className="gray3 mr1">by</span>
-                  <span className={"mono"}
-                    title={data.stackHost}>
+                  <span className={'mono'}
+                    title={data.stackHost}
+                  >
                     {data.stackHost}
                   </span>
                 </span>
@@ -312,7 +302,8 @@ export class Stack extends Component {
                   New Item
             </Link>
             <p className="StackButton bg-gray3 black ml2"
-            onClick={this.deleteStack}>
+            onClick={this.deleteStack}
+            >
                   Delete Stack
             </p>
               </div>
@@ -322,12 +313,13 @@ export class Stack extends Component {
             <Link to={`/~srrs/${data.stack.info.owner}/${data.stack.info.filename}/review`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
                 Review
               </Link>
-              
+
               <div className="bb b--gray4 b--gray2-d gray2 pv4 ph2"
-                style={{ flexGrow: 1 }}></div>
+                style={{ flexGrow: 1 }}
+              ></div>
             </div>
 
-            <div style={{ height: "calc(100% - 188px)" }} className="f9 lh-solid">
+            <div style={{ height: 'calc(100% - 188px)' }} className="f9 lh-solid">
               {inner}
             </div>
           </div>
@@ -335,10 +327,6 @@ export class Stack extends Component {
       </div>
       );
     }
-
-
-
-
   }
 }
 

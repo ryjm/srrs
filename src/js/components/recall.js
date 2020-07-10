@@ -1,16 +1,16 @@
 import React, { Component } from 'react';
 import classnames from 'classnames';
-import Choices from 'react-choices'
+import Choices from 'react-choices';
 
 export class Recall extends Component {
     constructor(props) {
         super(props);
     }
-    
+
     render() {
-        const { props, state} = this;
+        const { props } = this;
         if (!props.enabled && (props.mode === 'view')) {
-            let modifyButtonClasses = "mt4 db f9 ba pa2 white-d bg-gray0-d b--black b--gray2-d pointer mb1";
+            const modifyButtonClasses = 'mt4 db f9 ba pa2 white-d bg-gray0-d b--black b--gray2-d pointer mb1';
             return (
                 <div className="flex fr">
 
@@ -62,27 +62,31 @@ export class Recall extends Component {
                             )}
                     </Choices>
                 </div>
-            )
+            );
         } else if (props.mode === 'view') {
             return (
 
                 <div className="flex-col fr">
 
                     <p className="label-regular gray-50 pointer tr b"
-                        onClick={props.gradeItem}>
+                        onClick={props.gradeItem}
+                    >
                         Grade
             </p>
 
                     <p className="label-regular gray-50 pointer tr b"
-                        onClick={props.editItem}>
+                        onClick={props.editItem}
+                    >
                         Edit
             </p>
                     <p className="label-regular red pointer tr b"
-                        onClick={props.deleteItem}>
+                        onClick={props.deleteItem}
+                    >
                         Delete
             </p>
                     <p className="label-regular gray-50 pointer tr b"
-                        onClick={props.toggleAdvanced}>
+                        onClick={props.toggleAdvanced}
+                    >
                         Advanced
             </p>
                 </div>
@@ -91,17 +95,19 @@ export class Recall extends Component {
             return (
                 <div className="flex-col fr">
                     <p className="pointer"
-                        onClick={props.saveItem}>
-                        -> Save
+                        onClick={props.saveItem}
+                    >
+                        -&gt; Save
             </p>
                     <p className="pointer"
-                        onClick={props.deleteItem}>
+                        onClick={props.deleteItem}
+                    >
                         Delete item
             </p>
                 </div>
             );
         } else if (props.mode === 'grade' || props.mode === 'review') {
-            let modifyButtonClasses = "mt4 db f9 ba pa2 white-d bg-gray0-d b--black b--gray2-d pointer mb1";
+            const modifyButtonClasses = 'mt4 db f9 ba pa2 white-d bg-gray0-d b--black b--gray2-d pointer mb1';
             return (
                 <div className="flex fr">
 
@@ -155,15 +161,16 @@ export class Recall extends Component {
                 </div>
             );
         } else if (props.mode === 'advanced') {
-            let ease = `ease: ${props.learn.ease}`;
-            let interval = `interval: ${props.learn.interval}`;
-            let box = `box: ${props.learn.box}`;
-            let backString = `<- Back`
+            const ease = `ease: ${props.learn.ease}`;
+            const interval = `interval: ${props.learn.interval}`;
+            const box = `box: ${props.learn.box}`;
+            const backString = '<- Back';
 
             return (
                 <div className="body-regular flex-col fr">
                     <p className="pointer"
-                        onClick={props.toggleAdvanced}>
+                        onClick={props.toggleAdvanced}
+                    >
                         {backString}
                     </p>
                     <p className="label-small gray-50">{ease}</p>
@@ -172,6 +179,5 @@ export class Recall extends Component {
                 </div>
             );
         }
-
     }
 }

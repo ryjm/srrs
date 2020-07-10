@@ -1,6 +1,5 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
-import ReactMarkdown from 'react-markdown'
+import ReactMarkdown from 'react-markdown';
 
 export class ItemSnippet extends Component {
   constructor(props) {
@@ -10,11 +9,13 @@ export class ItemSnippet extends Component {
   render() {
     return (
       <div className="mb1"
-        style={{ overflowWrap: "break-word" }}>
+        style={{ overflowWrap: 'break-word' }}
+      >
         <ReactMarkdown
           unwrapDisallowed
           allowedTypes={['text', 'root', 'break', 'paragraph']}
-          source={this.props.body} />
+          source={this.props.body}
+        />
       </div>
 
     );

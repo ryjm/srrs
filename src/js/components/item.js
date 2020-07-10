@@ -6,7 +6,7 @@ import { EditItem } from '/components/edit-item';
 import { Recall } from '/components/recall';
 import { NotFound } from '/components/not-found';
 import { withRouter } from 'react-router';
-import _ from 'lodash';
+import momentConfig from '/config/moment';
 
 const NF = withRouter(NotFound);
 
@@ -14,27 +14,7 @@ export class Item extends Component {
   constructor(props) {
     super(props);
 
-    moment.updateLocale('en', {
-      relativeTime: {
-        past: function (input) {
-          return input === 'just now'
-            ? input
-            : input + ' ago'
-        },
-        s: 'just now',
-        future: 'in %s',
-        m: '1m',
-        mm: '%dm',
-        h: '1h',
-        hh: '%dh',
-        d: '1d',
-        dd: '%dd',
-        M: '1 month',
-        MM: '%d months',
-        y: '1 year',
-        yy: '%d years',
-      }
-    });
+    moment.updateLocale('en', momentConfig);
 
     this.state = {
       mode: 'view',
@@ -55,15 +35,14 @@ export class Item extends Component {
       pathData: [],
       temporary: false,
       notFound: false
-    }
+    };
 
     if (this.props.location.state) {
-      let mode = this.props.location.state.mode;
+      const mode = this.props.location.state.mode;
       if (mode) {
         this.state.mode = mode;
       }
     }
-
 
     this.editItem = this.editItem.bind(this);
     this.deleteItem = this.deleteItem.bind(this);
@@ -74,54 +53,56 @@ export class Item extends Component {
     this.toggleAdvanced = this.toggleAdvanced.bind(this);
     this.toggleShowBack = this.toggleShowBack.bind(this);
 
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-    let itemId = this.props.itemId;
+    const { ship, stackId, itemId } = this.props;
+
     if (ship !== window.ship) {
-      let stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
+      const stack = this.props.subs[ship][stackId];
 
       if (stack) {
-        let item = _.get(stack, `items["${itemId}"]`, false);
-        let learn = _.get(stack, `items["${itemId}"].learn`, false);
-        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.name}`;
+        const item = stack.items[itemId];
+        const learn = item.learn;
+        const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        const itemUrl = `${stackUrl}/${item.name}`;
 
-        let tempState = {
+        this.state = {
+          ...this.state,
           title: item.content.title,
           bodyFront: item.content.front,
           bodyBack: item.content.back,
-          stack: stack,
-          item: item,
-          learn: learn,
+          stack,
+          item,
+          learn,
           pathData: [
-            { text: "Home", url: "/~srrs/review" },
+            { text: 'Home', url: '/~srrs/review' },
             { text: stack.info.title, url: stackUrl },
-            { text: item.title, url: itemUrl },
-          ],
-        }
-        this.state = {...this.state, ...tempState}
-
+            { text: item.title, url: itemUrl }
+          ]
+        };
       } else {
-        this.state = {...this.state, ...{
+        this.state = {
+          ...this.state,
+          temporary: true,
           awaitingLoad: {
             ship: ship,
             stackId: stackId,
-            itemId: itemId,
-          }, ...{temporary: true}}}
+            itemId: itemId
+          }
+        };
       }
     } else {
-      let stack = _.get(this.props, `pubs["${stackId}"]`, false);
-      let item = _.get(stack, `items["${itemId}"]`, false);
-      let learn = _.get(stack, `items["${itemId}"].learn`, false);
+      const stack = this.props.pubs[stackId];
+      const item = stack.items[itemId];
+      const learn = item.learn;
 
       if (!stack || !item) {
-        this.state = {...this.state, ...{ notFound: true }}
+        this.state = { ...this.state, ...{ notFound: true } };
         return;
       } else {
-        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.name}`;
+        const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        const itemUrl = `${stackUrl}/${item.name}`;
 
-        this.state = {...this.state, ...{
+        this.state = {
+          ...this.state,
           title: item.content.title,
           bodyFront: item.content.front,
           bodyBack: item.content.back,
@@ -129,11 +110,11 @@ export class Item extends Component {
           item: item,
           learn: learn,
           pathData: [
-            { text: "Home", url: "/~srrs/review" },
+            { text: 'Home', url: '/~srrs/review' },
             { text: stack.info.title, url: stackUrl },
-            { text: item.content.title, url: itemUrl },
-          ],
-        }};
+            { text: item.content.title, url: itemUrl }
+          ]
+        };
       }
     }
   }
@@ -165,56 +146,44 @@ export class Item extends Component {
 
   saveGrade(value) {
     this.props.setSpinner(true);
-    let data = {
-      "answered-item": {
+    const data = {
+      'answered-item': {
         owner: this.props.match.params.ship,
         stak: this.props.stackId,
         item: this.props.itemId,
         answer: value
-      },
+      }
     };
     this.setState({
       awaitingGrade: {
         ship: this.state.ship,
         stackId: this.props.stackId,
-        itemId: this.props.itemId,
+        itemId: this.props.itemId
       }
     }, () => {
-      this.props.api.action("srrs", "srrs-action", data)
+      this.props.api.action('srrs', 'srrs-action', data);
     });
   }
-  
+
   componentDidUpdate(prevProps, prevState) {
-    if (this.state.notFound) return;
+    if (this.state.notFound)
+return;
 
-    let ship = this.props.ship;
-    let stackId = this.props.stackId;
-    let itemId = this.props.itemId;
+    const { ship, stackId, itemId } = this.props;
 
-    let oldItem = prevState.item;
-    let oldStack = prevState.stack;
+    const oldItem = prevState.item;
+    const oldStack = prevState.stack;
 
-
-    let item;
-    let stack;
-    let learn;
-
-    if (ship === window.ship) {
-      stack = _.get(this.props, `pubs["${stackId}"]`, false);
-      item = _.get(stack, `items["${itemId}"]`, false);
-      learn = _.get(stack, `items["${itemId}"].learn`, false);
-    } else {
-      stack = _.get(this.props, `subs["${ship}"]["${stackId}"]`, false);
-      item = _.get(stack, `items["${itemId}"]`, false);
-      learn = _.get(stack, `items["${itemId}"].learn`, false);
-    }
+    const stack = ship === window.ship ? this.props.pubs[stackId] : this.props.subs[ship][stackId];
+    const item = stack.items[itemId];
+    const learn = item.learn;
 
     if (this.state.learn !== learn) {
-      this.state.learn = learn;
+      this.setState({ learn });
     }
     if (this.state.awaitingDelete && (item === false) && oldItem) {
       this.props.setSpinner(false);
-      let redirect = `/~srrs/~${this.props.ship}/${this.props.stackId}`;
+      const redirect = `/~srrs/~${this.props.ship}/${this.props.stackId}`;
       this.props.history.push(redirect);
       return;
     }
@@ -226,9 +195,8 @@ export class Item extends Component {
 
     if (this.state.awaitingEdit &&
       ((item.content.title != oldItem.title) || (item.content.front != oldItem.content.front) || (item.content.back != oldItem.content.back))) {
-
-      let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-      let itemUrl = `${stackUrl}/${item.name}`;
+      const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+      const itemUrl = `${stackUrl}/${item.name}`;
 
       this.setState({
         mode: 'view',
@@ -238,33 +206,33 @@ export class Item extends Component {
         awaitingEdit: false,
         item: item,
         pathData: [
-          { text: "Home", url: "/~srrs/review" },
+          { text: 'Home', url: '/~srrs/review' },
           { text: stack.info.title, url: stackUrl },
-          { text: item.content.title, url: itemUrl },
-        ],
+          { text: item.content.title, url: itemUrl }
+        ]
       });
 
       this.props.setSpinner(false);
 
-      let read = {
+      const read = {
         read: {
           who: ship,
           stak: stackId,
-          item: itemId,
+          item: itemId
         }
       };
-      this.props.api.action("srrs", "srrs-action", read);
+      this.props.api.action('srrs', 'srrs-action', read);
     }
 
     if (this.state.awaitingGrade) {
-      let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-      let itemUrl = `${stackUrl}/${item.name}`;
+      const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+      const itemUrl = `${stackUrl}/${item.name}`;
       let redirect = itemUrl;
       if (this.state.mode === 'review') {
         if (this.props.location.state.prevPath) {
           redirect = this.props.location.state.prevPath;
         } else
-        redirect =`/~srrs/review`;
+        redirect ='/~srrs/review';
       }
 
       this.setState({
@@ -273,16 +241,14 @@ export class Item extends Component {
         item: item
 
       }, () => {
-        this.props.api.fetchStatus(stack.info.filename, item.name)
-        this.props.history.push(redirect)
-      })
-
-
+        this.props.api.fetchStatus(stack.info.filename, item.name);
+        this.props.history.push(redirect);
+      });
     }
     if (!this.state.temporary) {
       if (oldItem != item) {
-        let stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
-        let itemUrl = `${stackUrl}/${item.name}`;
+        const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        const itemUrl = `${stackUrl}/${item.name}`;
 
         this.setState({
           item: item,
@@ -290,20 +256,20 @@ export class Item extends Component {
           bodyFront: item.content.front,
           bodyBack: item.content.back,
           pathData: [
-            { text: "Home", url: "/~srrs/review" },
+            { text: 'Home', url: '/~srrs/review' },
             { text: stack.info.title, url: stackUrl },
-            { text: item.content.title, url: itemUrl },
-          ],
+            { text: item.content.title, url: itemUrl }
+          ]
         });
 
-        let read = {
+        const read = {
           read: {
             who: ship,
             stak: stackId,
-            item: itemId,
+            item: itemId
           }
         };
-        this.props.api.action("srrs", "srrs-action", read);
+        this.props.api.action('srrs', 'srrs-action', read);
       }
 
       if (oldStack != stack) {
@@ -313,10 +279,10 @@ export class Item extends Component {
   }
 
   deleteItem() {
-    let del = {
-      "delete-item": {
+    const del = {
+      'delete-item': {
         stak: this.props.stackId,
-        item: this.props.itemId,
+        item: this.props.itemId
       }
     };
     this.props.setSpinner(true);
@@ -324,11 +290,11 @@ export class Item extends Component {
       awaitingDelete: {
         ship: this.props.ship,
         stackId: this.props.stackId,
-        itemId: this.props.itemId,
+        itemId: this.props.itemId
       }
     }, () => {
-      this.props.api.action("srrs", "srrs-action", del).then(() => {
-       let redirect = `/~srrs/~${this.props.ship}/${this.props.stackId}`;
+      this.props.api.action('srrs', 'srrs-action', del).then(() => {
+       const redirect = `/~srrs/~${this.props.ship}/${this.props.stackId}`;
         this.props.history.push(redirect);
       });
     });
@@ -344,36 +310,38 @@ export class Item extends Component {
 
   render() {
     const { props, state } = this;
-    let adminEnabled = (this.props.ship === window.ship);
-    if (this.state.notFound) {
-      return (
-        <NF />
-      );
-    } else if (this.state.awaitingLoad) {
-      return null;
-    } else if (this.state.awaitingEdit) {
-      return null;
-    } else if (this.state.mode == 'review' || this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
-      let title = this.state.item.content.title;
-      let stackTitle = this.props.stackId;
-      let host = this.state.stack.info.owner;
-      let date = moment(this.state.item.content["date-created"]).fromNow();
+    const adminEnabled = (this.props.ship === window.ship);
+
+    if (this.state.notFound)
+return (<NF />);
+    if (this.state.awaitingLoad)
+return null;
+    if (this.state.awaitingEdit)
+return null;
+
+    if (this.state.mode == 'review' || this.state.mode == 'view' || this.state.mode == 'grade' || this.state.mode == 'advanced') {
+      const title = this.state.item.content.title;
+      const stackTitle = this.props.stackId;
+      const host = this.state.stack.info.owner;
 
       return (
 
         <div className="center mw6 f9 h-100"
-          style={{ paddingLeft: 16, paddingRight: 16 }}>
+          style={{ paddingLeft: 16, paddingRight: 16 }}
+        >
           <div className="h-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
 
             <div
               className="flex justify-between"
-              style={{ marginBottom: 32 }}>
+              style={{ marginBottom: 32 }}
+            >
               <div className="flex-col">
                 <div className="mb1">{title}</div>
                 <span>
                   <span className="gray3 mr1">by</span>
-                  <span className={"mono"}
-                    title={host}>
+                  <span className={'mono'}
+                    title={host}
+                  >
                     {host}
                   </span>
                 </span>
@@ -408,17 +376,16 @@ export class Item extends Component {
               toggleShowBack={this.toggleShowBack}
             />
 
-
           </div>
         </div>
 
       );
-
     } else if (this.state.mode == 'edit') {
       return (
         <EditItem
           {...state}
-          {...props} />
+          {...props}
+        />
 
       );
     }

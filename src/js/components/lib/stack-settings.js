@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import classnames from 'classnames';
 
 class SaveLink extends Component {
   constructor(props) {
@@ -10,14 +9,15 @@ class SaveLink extends Component {
     if (this.props.enabled) {
       return (
         <button className="label-regular b"
-          onClick={this.props.action}>
-          -> Save
+          onClick={this.props.action}
+        >
+          -&gt; Save
         </button>
       );
     } else {
       return (
         <p className="label-regular b gray-50">
-          -> Save
+          -&gt; Save
         </p>
       );
     }
@@ -30,8 +30,8 @@ export class StackSettings extends Component {
 
     this.state = {
       title: '',
-      awaitingTitleChange: false,
-    }
+      awaitingTitleChange: false
+    };
 
     this.rename = this.rename.bind(this);
     this.titleChange = this.titleChange.bind(this);
@@ -39,81 +39,84 @@ export class StackSettings extends Component {
   }
 
   rename() {
-    let edit = {
-      "edit-stack": {
+    const edit = {
+      'edit-stack': {
         name: this.props.stackId,
-        title: this.state.title,
+        title: this.state.title
       }
-    }
+    };
     this.setState({
-      awaitingTitleChange: true,
+      awaitingTitleChange: true
     }, () => {
-      this.props.api.action("srrs", "srrs-action", edit);
+      this.props.api.action('srrs', 'srrs-action', edit);
     });
   }
 
   titleChange(evt) {
-    this.setState({title: evt.target.value});
+    this.setState({ title: evt.target.value });
   }
 
   deleteStack() {
-    let del = {
-      "delete-stack": {
-        stack: this.props.stackId,
+    const del = {
+      'delete-stack': {
+        stack: this.props.stackId
       }
-    }
-    this.props.api.action("srrs", "srrs-action", del);
-    this.props.history.push("/~srrs/review");
+    };
+    this.props.api.action('srrs', 'srrs-action', del);
+    this.props.history.push('/~srrs/review');
   }
 
   componentDidUpdate(prevProps) {
     if (this.state.awaitingTitleChange) {
-      if (prevProps.title !== this.props.title){
+      if (prevProps.title !== this.props.title) {
         this.titleInput.value = '';
         this.setState({
-          awaitingTitleChange: false,
+          awaitingTitleChange: false
         });
       }
     }
   }
 
   render() {
-    let back = '<- Back to notes'
-    let enableSave = ((this.state.title !== '') &&
+    const back = '<- Back to notes';
+    const enableSave = ((this.state.title !== '') &&
       (this.state.title !== this.props.title) &&
       !this.state.awaitingTitleChange);
     return (
-      <div className="flex-col mw-688" style={{marginTop:48}}>
-        <hr className="gray-30" style={{marginBottom:25}}/>
+      <div className="flex-col mw-688" style={{ marginTop:48 }}>
+        <hr className="gray-30" style={{ marginBottom:25 }} />
         <p className="label-regular pointer b" onClick={this.props.back}>
           {back}
         </p>
-        <p className="body-large b" style={{marginTop:16, marginBottom: 20}}>
+        <p className="body-large b" style={{ marginTop:16, marginBottom: 20 }}>
           Settings
         </p>
         <div className="flex">
           <div className="flex-col w-100">
             <p className="body-regular-400">Delete Notebook</p>
-            <p className="gray-50 label-small-2" style={{marginTop:12, marginBottom:8}}>
+            <p className="gray-50 label-small-2" style={{ marginTop:12, marginBottom:8 }}>
               Permanently delete this notebook
             </p>
             <button className="red label-regular b" onClick={this.deleteStack}>
-              -> Delete
+              -&gt; Delete
             </button>
           </div>
           <div className="flex-col w-100">
             <p className="body-regular-400">Rename</p>
-            <p className="gray-50 label-small-2" style={{marginTop:12, marginBottom:23}}>
+            <p className="gray-50 label-small-2" style={{ marginTop:12, marginBottom:23 }}>
               Change the name of this notebook
             </p>
             <p className="label-small-2">Notebook Name</p>
             <input className="body-regular-400 w-100"
-              ref={(el) => {this.titleInput = el}}
-              style={{marginBottom:8}}
+              ref={(el) => {
+ this.titleInput = el;
+}}
+              style={{ marginBottom:8 }}
               placeholder={this.props.title}
               onChange={this.titleChange}
-              disabled={this.state.awaitingTitleChange}/>
-            <SaveLink action={this.rename} enabled={enableSave}/>
+              disabled={this.state.awaitingTitleChange}
+            />
+            <SaveLink action={this.rename} enabled={enableSave} />
           </div>
         </div>
       </div>

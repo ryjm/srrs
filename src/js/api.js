@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import _ from 'lodash';
 
 class UrbitApi {
   setAuthTokens(authTokens) {
@@ -9,7 +8,7 @@ class UrbitApi {
   }
 
   bind(path, method, ship = this.authTokens.ship, appl = "srrs", success, fail) {
-    this.bindPaths = _.uniq([...this.bindPaths, path]);
+    this.bindPaths = [...new Set([...this.bindPaths, path])];
 
     window.subscriptionId = window.urb.subscribe(ship, appl, path, 
       (err) => {

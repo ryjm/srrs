@@ -1,17 +1,16 @@
-import React, { Component } from "react";
-import { BrowserRouter, Route } from "react-router-dom";
-import classnames from "classnames";
-import { api } from "/api";
-import { store } from "/store";
-import { Review } from "/components/review";
-import { NewStack } from "/components/new-stack";
-import { NewItem } from "/components/new-item";
-import { Skeleton } from "/components/skeleton";
-import { Stack } from "/components/stack";
-import { Item } from "/components/item";
-import { Subs } from "/components/subs";
-import { Pubs } from "/components/pubs";
-import { Switch } from "react-router";
+import React, { Component } from 'react';
+import { BrowserRouter, Route } from 'react-router-dom';
+import { api } from '/api';
+import { store } from '/store';
+import { Review } from '/components/review';
+import { NewStack } from '/components/new-stack';
+import { NewItem } from '/components/new-item';
+import { Skeleton } from '/components/skeleton';
+import { Stack } from '/components/stack';
+import { Item } from '/components/item';
+import { Subs } from '/components/subs';
+import { Pubs } from '/components/pubs';
+import { Switch } from 'react-router';
 
 export class Root extends Component {
   constructor(props) {
@@ -24,12 +23,12 @@ export class Root extends Component {
 
   setSpinner(spinner) {
     this.setState({
-      spinner,
+      spinner
     });
   }
 
   render() {
-    const { props, state } = this;
+    const { state } = this;
     return (
       <BrowserRouter>
         <Switch>
@@ -44,8 +43,9 @@ export class Root extends Component {
                   api={api}
                   spinner={this.state.spinner}
                   active="sidebar"
-                  children={<Review {...props} {...state} />}
-                />
+                >
+                  <Review {...props} {...state} />
+                </Skeleton>
               );
             }}
           />
@@ -60,8 +60,9 @@ export class Root extends Component {
                   api={api}
                   spinner={this.state.spinner}
                   active="sidebar"
-                  children={<Review {...props} {...state} stack={props.match.params.stack} who={props.match.params.who} />}
-                />
+                >
+                  <Review {...props} {...state} stack={props.match.params.stack} who={props.match.params.who} />
+                </Skeleton>
               );
             }}
           />
@@ -73,8 +74,9 @@ export class Root extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   active="sidebar"
-                  children={<Subs {...this.state} api={api} />}
-                />
+                >
+                  <Subs {...this.state} api={api} />
+                </Skeleton>
               );
             }}
           />
@@ -88,8 +90,9 @@ export class Root extends Component {
                   pubs={state.pubs}
                   subs={state.subs}
                   active="sidebar"
-                  children={<Pubs {...state} />}
-                />
+                >
+                  <Pubs {...state} />
+                </Skeleton>
               );
             }}
           />
@@ -103,15 +106,14 @@ export class Root extends Component {
                   spinner={this.state.spinner}
                   pubs={state.pubs}
                   subs={state.subs}
-                  children={
-                    <NewStack
-                      api={api}
-                      {...this.state}
-                      setSpinner={this.setSpinner}
-                      {...props}
-                    />
-                  }
-                />
+                >
+                  <NewStack
+                    api={api}
+                    {...this.state}
+                    setSpinner={this.setSpinner}
+                    {...props}
+                  />
+                </Skeleton>
               );
             }}
           />
@@ -126,15 +128,14 @@ export class Root extends Component {
                   pubs={state.pubs}
                   subs={state.subs}
                   active="sidebar"
-                  children={
-                    <NewItem
-                      api={api}
-                      {...this.state}
-                      setSpinner={this.setSpinner}
-                      {...props}
-                    />
-                  }
-                />
+                >
+                  <NewItem
+                    api={api}
+                    {...this.state}
+                    setSpinner={this.setSpinner}
+                    {...props}
+                  />
+                </Skeleton>
               );
             }}
           />
@@ -147,19 +148,18 @@ export class Root extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   pubs={state.pubs}
-                  subs={state.subs}                  
+                  subs={state.subs}
                   active="sidebar"
-                  children={
-                    <NewItem
-                      api={api}
-                      {...this.state}
-                      stack={props.match.params.stack}
-                      ship={props.match.params.ship}
-                      setSpinner={this.setSpinner}
-                      {...props}
-                    />
-                  }
-                />
+                >
+                  <NewItem
+                    api={api}
+                    {...this.state}
+                    stack={props.match.params.stack}
+                    ship={props.match.params.ship}
+                    setSpinner={this.setSpinner}
+                    {...props}
+                  />
+                </Skeleton>
               );
             }}
           />
@@ -175,18 +175,17 @@ export class Root extends Component {
                   subs={state.subs}
                   path={props.match.params.stack}
                   active="sidebar"
-                  children={
-                    <Stack
-                      view="notes"
-                      stackId={props.match.params.stack}
-                      ship={props.match.params.ship.slice(1)}
-                      api={api}
-                      setSpinner={this.setSpinner}
-                      {...this.state}
-                      {...props}
-                    />
-                  }
-                />
+                >
+                  <Stack
+                    view="notes"
+                    stackId={props.match.params.stack}
+                    ship={props.match.params.ship.slice(1)}
+                    api={api}
+                    setSpinner={this.setSpinner}
+                    {...this.state}
+                    {...props}
+                  />
+                </Skeleton>
               );
             }}
           />
@@ -201,18 +200,17 @@ export class Root extends Component {
                   pubs={state.pubs}
                   subs={state.subs}
                   active="sidebar"
-                  children={
-                    <Item
-                      stackId={props.match.params.stack}
-                      itemId={props.match.params.item}
-                      ship={props.match.params.ship.slice(1)}
-                      setSpinner={this.setSpinner}
-                      api={api}
-                      {...this.state}
-                      {...props}
-                    />
-                  }
-                />
+                >
+                  <Item
+                    stackId={props.match.params.stack}
+                    itemId={props.match.params.item}
+                    ship={props.match.params.ship.slice(1)}
+                    setSpinner={this.setSpinner}
+                    api={api}
+                    {...this.state}
+                    {...props}
+                  />
+                </Skeleton>
               );
             }}
           />

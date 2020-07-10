@@ -1,81 +1,90 @@
 import React, { Component } from 'react';
 import { pour } from '/vendor/sigils-1.2.5';
-import _ from 'lodash';
+
+/* eslint-disable react/display-name */
 
 const ReactSVGComponents = {
-  svg: p => {
+  svg: (p) => {
     return (
       <svg key={Math.random()}
         version={'1.1'}
         xmlns={'http://www.w3.org/2000/svg'}
-        {...p.attr}>
-       { _.map(_.get(p, 'children', []), child => ReactSVGComponents[child.tag](child)) }
+        {...p.attr}
+      >
+       {(p.children || []).map(child => ReactSVGComponents[child.tag](child))}
       </svg>
-    )
+    );
   },
-  circle: p => {
+  circle: (p) => {
     return (
       <circle
-        key={Math.random()} {...p.attr}>
-      { _.map(_.get(p, 'children', []), child => ReactSVGComponents[child.tag](child)) }
+        key={Math.random()} {...p.attr}
+      >
+      {(p.children || []).map(child => ReactSVGComponents[child.tag](child))}
       </circle>
-    )
+    );
   },
-  rect: p => {
+  rect: (p) => {
     return (
       <rect
         key={Math.random()}
-        {...p.attr}>
-      { _.map(_.get(p, 'children', []), child => ReactSVGComponents[child.tag](child)) }
+        {...p.attr}
+      >
+      {(p.children || []).map(child => ReactSVGComponents[child.tag](child))}
       </rect>
-    )
+    );
   },
-  path: p => {
+  path: (p) => {
     return (
       <path
         key={Math.random()}
-        {...p.attr}>
-      { _.map(_.get(p, 'children', []), child => ReactSVGComponents[child.tag](child)) }
+        {...p.attr}
+      >
+      {(p.children || []).map(child => ReactSVGComponents[child.tag](child))}
       </path>
-    )
+    );
   },
-  g: p => {
+  g: (p) => {
     return (
       <g
         key={Math.random()}
-        {...p.attr}>
-        { _.map(_.get(p, 'children', []), child => ReactSVGComponents[child.tag](child)) }
+        {...p.attr}
+      >
+        {(p.children || []).map(child => ReactSVGComponents[child.tag](child))}
       </g>
-    )
+    );
   },
-  polygon: p => {
+  polygon: (p) => {
     return (
       <polygon
         key={Math.random()}
-        {...p.attr}>
-      { _.map(_.get(p, 'children', []), child => ReactSVGComponents[child.tag](child)) }
+        {...p.attr}
+      >
+      {(p.children || []).map(child => ReactSVGComponents[child.tag](child))}
       </polygon>
-    )
+    );
   },
-  line: p => {
+  line: (p) => {
     return (
       <line
         key={Math.random()}
-        {...p.attr}>
-      { _.map(_.get(p, 'children', []), child => ReactSVGComponents[child.tag](child)) }
+        {...p.attr}
+      >
+      {(p.children || []).map(child => ReactSVGComponents[child.tag](child))}
       </line>
-    )
+    );
   },
-  polyline: p => {
+  polyline: (p) => {
     return (
       <polyline
         key={Math.random()}
-        {...p.attr}>
-      { _.map(_.get(p, 'children', []), child => ReactSVGComponents[child.tag](child)) }
+        {...p.attr}
+      >
+      {(p.children || []).map(child => ReactSVGComponents[child.tag](child))}
       </polyline>
-    )
+    );
   }
-}
+};
 
 export class SealDict {
   constructor() {
@@ -88,19 +97,19 @@ export class SealDict {
 
   getSeal(patp, size, prefix) {
     if (patp.length > 13) {
-      patp = "tiz";
+      patp = 'tiz';
     }
 
-    let sigilShip = prefix ? this.getPrefix(patp) : patp;
-    let key = `${sigilShip}+${size}`;
+    const sigilShip = prefix ? this.getPrefix(patp) : patp;
+    const key = `${sigilShip}+${size}`;
 
     if (!this.dict[key]) {
-      this.dict[key] = pour({size: size, patp: sigilShip, renderer: ReactSVGComponents, margin: 0, colorway: ["#fff", "#000"]})
+      this.dict[key] = pour({ size: size, patp: sigilShip, renderer: ReactSVGComponents, margin: 0, colorway: ['#fff', '#000'] });
     }
 
     return this.dict[key];
   }
 }
 
-const sealDict = new SealDict;
-export { sealDict }
+const sealDict = new SealDict();
+export { sealDict };
