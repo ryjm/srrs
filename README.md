@@ -4,11 +4,11 @@ spaced repetition repetition system
 ![UI](srrs.gif)
 
 
-on urbit: `|merge %home ~middev %kids`
+on urbit: `|merge %home ~middev %srrs`
 
 from source: 
 
-install node and npm
+install node and npm, then do `npm install gulp-cli`.
 
 mount your urbit with `|mount %` in the dojo - you should see your files in unix under `/path/to/pier/home`
 
