@@ -312,9 +312,9 @@ export class Stack extends Component {
                 </span>
               </div>
               <div className="flex">
-                <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
+              {localStack && <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
                   New Item
-            </Link>
+               </Link>}
             {localStack && <p className="StackButton bg-light-green green2 ml2" onClick={this.reviewStack}>Review all items</p>}
             <p className="StackButton bg-gray3 black ml2"
             onClick={this.deleteStack}
