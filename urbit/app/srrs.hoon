@@ -288,6 +288,16 @@
       ==
     this
   ::
+  ++  review-stack
+    |=  owner=@p
+    ^+  this
+    =.  ..emit
+      %~  update-stack  stack-emit
+      %=  stack
+        review-items  items.stack
+      ==
+    ~(update-review stack-emit stak)
+  ::
   ++  delete-item
     |=  item=@tas
     ^+  this
@@ -522,6 +532,13 @@
       %edit-stack
     ~&  edit-stack+act
     [~ state]
+    ::
+      %review-stack
+    ?>  =(our.bol who.act)
+    =/  stack  (~(got by stacks) stak.act)
+    =<  abet
+    (~(review-stack stack-emit stack) who.act)
+    ::
       %edit-item
     ~&  edit-item+act
     =/  stack  (~(got by stacks) stak.act)

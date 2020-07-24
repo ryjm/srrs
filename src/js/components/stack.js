@@ -30,6 +30,7 @@ export class Stack extends Component {
     this.viewSettings = this.viewSettings.bind(this);
     this.viewNotes = this.viewNotes.bind(this);
     this.deleteStack = this.deleteStack.bind(this);
+    this.reviewStack = this.reviewStack.bind(this);
 
     this.stack = null;
   }
@@ -151,6 +152,18 @@ export class Stack extends Component {
       });
     });
   }
+
+  reviewStack() {
+    const action = {
+      'review-stack': {
+        who:  `~${this.props.ship}`,
+        stak: this.props.stackId
+      }
+    };
+    this.props.api.action('srrs', 'srrs-action', action);
+    this.props.history.push(`/~srrs/~${this.props.ship}/${this.props.stackId}/review`);
+  }
+
   buildItems(stack) {
     if (!stack) {
       return [];
@@ -249,6 +262,7 @@ export class Stack extends Component {
 
   render() {
     const { props } = this;
+    const localStack = props.ship === window.ship;
 
     if (this.state.notFound) {
       return (
@@ -301,6 +315,7 @@ export class Stack extends Component {
                 <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
                   New Item
             </Link>
+            {localStack && <p className="StackButton bg-light-green green2 ml2" onClick={this.reviewStack}>Review all items</p>}
             <p className="StackButton bg-gray3 black ml2"
             onClick={this.deleteStack}
             >
