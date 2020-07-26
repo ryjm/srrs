@@ -29,6 +29,7 @@
   ::
       [%raise-item who=@p stak=@tas item=@tas]
       [%answered-item owner=@p stak=@tas item=@tas answer=recall-grade]
+      [%review-stack who=@p stak=@tas]
   ::
       [%delete-stack who=@p stak=@tas]
       [%delete-item stak=@tas item=@tas]

@@ -75,6 +75,7 @@
         schedule-item+schedule-item
         raise-item+raise-item
         answered-item+answered-item
+        review-stack+review-stack
     ::
         subscribe+subscribe
         unsubscribe+unsubscribe
@@ -116,6 +117,12 @@
     :~  who+(su fed:ag)
         stak+so
         item+so
+    ==
+  ::
+  ++  review-stack
+    %-  ot
+    :~  who+(su ;~(pfix sig fed:ag))
+        stak+so
     ==
   ::
   ++  answered-item

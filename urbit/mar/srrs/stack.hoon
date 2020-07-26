@@ -16,4 +16,5 @@
   ++  noun  ^stack
   --
 ::
+++  grad  %json
 --
