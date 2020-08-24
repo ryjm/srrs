@@ -146,7 +146,7 @@
   ^-  card
   [%pass /srrs %agent [our-self %srrs] %watch /srrs-primary]
 ::
-++  our-self  (name:title our.bowl)
+++  our-self  our.bowl
 ::  +target-to-path: prepend ship to the path
 ::
 ++  target-to-path

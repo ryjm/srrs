@@ -631,7 +631,6 @@
 ++  peer-stack
   |=  stack-name=@tas
   ^-  (quip card _state)
-  ?<  (team:title our.bol src.bol)
   =/  =stack  (~(got by stacks.state) stack-name)
   :_  state
   :~
