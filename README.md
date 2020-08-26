@@ -4,7 +4,7 @@ spaced repetition repetition system
 ![UI](srrs.gif)
 
 
-on urbit: `|merge %home ~middev %srrs`
+on urbit: `|merge %home ~middev %kids`
 
 from source: 
 
