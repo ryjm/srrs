@@ -54,7 +54,7 @@
         [%pass /srrstile %agent [our.bol %launch] %poke launcha]
     :*  %pass  /srv  %agent  [our.bol %file-server]
             %poke  %file-server-action
-            !>([%serve-dir /'~srrs-files' /app/srrs %.n])
+            !>([%serve-dir /'~srrs-files' /app/srrs %.n %.n])
         ==
     ==
   ::
@@ -133,10 +133,6 @@
         [%pass /srrstile %agent [our.bol %launch] %poke [%launch-action !>([%remove %srrs])]]
         [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
         [%pass /srrstile %agent [our.bol %launch] %poke launcha]
-        :*  %pass  /srv  %agent  [our.bol %file-server]
-            %poke  %file-server-action
-            !>([%serve-dir /'~srrs-files' /app/srrs %.n])
-        ==
       ==
     ?:  ?=(%| -.old-state)
       ~!  p.old-state
@@ -166,7 +162,7 @@
     %2
       [~ this(state [%3 +.p.old-state])]
     %3
-      [init-cards this(state p.old-state)]
+      [~ this(state p.old-state)]
     ==
     ++  convert-stack-1-2
       |=  prev=stack-1
