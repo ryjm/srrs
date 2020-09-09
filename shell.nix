@@ -2,4 +2,4 @@
 
 with pkgs;
 
-mkShell { buildInputs = [ urbit ]; }
+mkShell { buildInputs = [ urbit nodejs ]; }

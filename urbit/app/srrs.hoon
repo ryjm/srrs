@@ -412,14 +412,12 @@
   ::
       [[[~ %json] [%'~srrs' %update-review ~]] ~]
     %-  json-response:gen
-    %-  json-to-octs
     :-  %a
     (turn all-reviews review-to-json)
   ::  learned status as json for given stack
       [[[~ %json] [%'~srrs' %learn @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     %-  json-response:gen
-    %-  json-to-octs
     %-  stack-status-to-json  (~(got by stacks) stack-name)
   ::  learned status as json for given stack and item
       [[[~ %json] [%'~srrs' %learn @ @ ~]] ~]
@@ -428,7 +426,6 @@
     =/  =stack  (~(got by stacks) stack-name)
     =/  =item  (~(got by items.stack) item-name)
     %-  json-response:gen
-    %-  json-to-octs
     %-  status-to-json  learn.item
   ::  home page; redirect
   ::
