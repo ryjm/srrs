@@ -847,7 +847,7 @@
     ?^  fil.ark
       =/  fyl  .^(noun %cx pax)
       =+  `(unit wain)`?@(fyl `(to-wain:format fyl) ((soft wain) fyl))
-      ?^  -  (wain-to-tape u)  !!
+      ?^  -  (wain-to-tape u)  ~&("could not parse" !!)
     !!
   =/  filtered  (murn (need items) |*(a=(unit *) a))
 
@@ -858,16 +858,21 @@
     |=  [stack-name=@tas =tape]
     |^  (rust tape parser)
     ++  parser
-      %+  more  (just `@`10)
+      ~&  >  %parsing
+      %+  more  ;~(pose (just `@`10) (just `@`13))
       %+  cook
         |=  a=wall
         ^-  (unit (pair @tas item))
+        ~&  >  [%parsing a]
         ?.  ?=({* * *} a)  ~
         =/  front  (crip i.a)
         =/  back  (crip i.t.a)
         =/  uid
           %-  string-to-symbol
           "{<(sham %srrs our.bol front eny.bol)>}"
+        ~&  >  [%parsing front]
+        ~&  >  [%parsing back]
+        ~&  >  [%parsing uid]
         :-  ~
         :-  uid
         %-  create-item
@@ -882,6 +887,8 @@
             `@t`front
             `@t`back
          ==
+         ~&  >  [%parsing act]
+         ~&  >  [%parsing `$>(%new-item action)`act]
          `$>(%new-item action)`act
       (most (just `@`9) (star prn))
     --
