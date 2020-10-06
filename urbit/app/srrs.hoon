@@ -568,7 +568,7 @@
     =.  ..emit  ~(update-owner stack-emit their-stack)
     ~(add-stack stack-emit stak:emit)
       %answered-item
-    ~&  answered-item+act
+    ~&  >  answered-item+act
     =/  is-owner=?  =(our.bol owner.act)
     =/  stk=stack
     ?:  is-owner
@@ -658,7 +658,7 @@
     ?+  a
       [~ state]
         %print-json
-      ~&  state+(state-to-json state)
+      ~&  >  state+(state-to-json state)
       [~ state]
         %clear-state
       [~ *[%3 state-two]]
