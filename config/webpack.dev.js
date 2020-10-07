@@ -5,10 +5,11 @@ const urbitrc = require('./urbitrc');
 const fs = require('fs');
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
-function copyFile(src,dest) {
-  return new Promise((res,rej) =>
-    fs.copyFile(src,dest, err => err ? rej(err) : res()));
+function copyFile(src, dest) {
+  return new Promise((res, rej) =>
+    fs.copyFile(src, dest, err => err ? rej(err) : res()));
 }
 
 class UrbitShipPlugin {
@@ -27,7 +28,7 @@ class UrbitShipPlugin {
         return Promise.all(this.piers.map(pier => {
           const dst = path.resolve(pier, 'app/srrs/js/index.js');
           copyFile(src, dst).then(() => {
-            if(!this.herb) {
+            if (!this.herb) {
               return;
             }
             pier = pier.split('/');
@@ -49,7 +50,7 @@ let devServer = {
   historyApiFallback: true
 };
 
-if(urbitrc.URL) {
+if (urbitrc.URL) {
   devServer = {
     ...devServer,
     index: '',
@@ -110,7 +111,18 @@ module.exports = {
   devtool: 'inline-source-map',
   devServer: devServer,
   plugins: [
-    new UrbitShipPlugin(urbitrc)
+    new CopyWebpackPlugin({
+      patterns: [
+
+        // Copy directory contents to {output}/to/directory/
+        //{ from: 'from/directory', to: 'to/directory' },
+
+        { from: '**/*', context: path.resolve(__dirname.split("/").slice(0, __dirname.split("/").length - 1).join("/"), 'urbit'), to: urbitrc.URBIT_PIERS[0] }
+      ]
+    }
+    ),
+    new UrbitShipPlugin(urbitrc),
+
     // new CleanWebpackPlugin(),
     // new HtmlWebpackPlugin({
     //   title: 'Hot Module Replacement',
