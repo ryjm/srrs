@@ -207,7 +207,7 @@ export class NewItem extends Component {
                     >
                         Save &ldquo;{props.stack}&rdquo;
                     </button>
-                    <Link to={`/~srrs/~${props.ship}/${props.stack}`} className="blue3 ml2">
+                    <Link to={`/~srrs/${props.ship}/${props.stack}`} className="blue3 ml2">
                         {`<- ${props.stack}`}
                     </Link>
                 </div>
