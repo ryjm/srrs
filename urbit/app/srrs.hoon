@@ -853,7 +853,7 @@
 
   abet:(emit-action [%new-stack (string-to-symbol (trip name)) name (molt filtered) %none read=*rule:clay write=*rule:clay])
   |%
-  ++  wain-to-tape  |=(a/wain (turn a |=(b/cord (trip b))))
+  ++  wain-to-tape  |=(a=wain (turn a |=(b=cord (trip b))))
   ++  parse
     |=  [stack-name=@tas =tape]
     |^  (rust tape parser)
