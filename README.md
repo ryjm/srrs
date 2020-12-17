@@ -8,13 +8,13 @@ on urbit: `|merge %home ~middev %kids`
 
 from source: 
 
-install node and npm, then do `npm install gulp-cli`.
+install node and npm
 
 mount your urbit with `|mount %` in the dojo - you should see your files in unix under `/path/to/pier/home`
 
-change `.urbitrc` to point your mounted files - `path/to/pier/home`
+change `config/urbitrc` to point your mounted files - `path/to/pier/home`
 
-run with `npm run serve`, and check that the `srrs` files appear under `home/app/srrs`
+run with `npm run build:dev`, and check that the `srrs` files appear under `home/app/srrs`
 
 in the dojo, run `|commit %home` to get urbit to see the added files - you should see the added files in the output
 
