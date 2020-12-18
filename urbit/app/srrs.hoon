@@ -588,7 +588,7 @@
         ==
       [~ [%pass /stacks %agent [our.bol %srrs] %poke %srrs-action !>(new-act)]]
     =<  abet
-    ?.  ?=($~ mov)
+    ?.  ?=(%~ mov)
       (emit (need mov))
     %.  [item answer.act]
     %~  update-learned-status  stack-emit  stk
@@ -685,7 +685,7 @@
       |=  $:  [[who=@p nom=@tas] stack=stack]
               out=(map @t [%o (map @t json)])
           ==
-      =/  shp=@t  (rsh 3 1 (scot %p who))
+      =/  shp=@t  (rsh [3 1] (scot %p who))
       ?:  (~(has by out) shp)
         %+  ~(put by out)
           shp
@@ -846,7 +846,7 @@
         |=  a=wall
         ^-  (unit (pair @tas item))
         ~&  >  [%parsing a]
-        ?.  ?=({* * *} a)  ~
+        ?.  ?=([* * *] a)  ~
         =/  front  (crip i.a)
         =/  back  (crip i.t.a)
         =/  uid

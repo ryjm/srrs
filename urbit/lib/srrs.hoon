@@ -5,9 +5,9 @@
 ++  form-snippet
   |=  file=@t
   ^-  @t
-  =/  front-idx     (add 3 (need (find ";>" (trip file))))
-  =/  front-matter  (cat 3 (end 3 front-idx file) 'dummy text\0a')
-  =/  body  (cut 3 [front-idx (met 3 file)] file)
+  =/  front-id     (add 3 (need (find ";>" (trip file))))
+  =/  front-matter  (cat 3 (end [3 front-id] file) 'dummy text\0a')
+  =/  body  (cut 3 [front-id (met 3 file)] file)
   (of-wain:format (scag 1 (to-wain:format body)))
 ::
 ++  add-front-matter

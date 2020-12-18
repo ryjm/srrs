@@ -1,4 +1,3 @@
-/-  publish
 |%
 ::
 +$  action
@@ -48,7 +47,6 @@
   ::
       [%read who=@p stak=@tas item=@tas]
       [%update-review ~]
-      [%add-books books=(map @tas notebook:publish)]
   ::
       [%import who=@p stack=@tas]
       [%import-file =path]

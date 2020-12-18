@@ -1,5 +1,5 @@
 /-  *srrs, chat-store, *chat-view, *chat-hook,
-    *permission-store, *group-store, *invite-store, sole
+    *group-store, *invite-store, sole
 /+  *srrs, *srrs-json, default-agent, verb, dbug,
     auto=language-server-complete, shoe
 ::
@@ -228,8 +228,8 @@
         (cold %& (jest '%.n'))
       ==
     ++  ship  ;~(pfix sig fed:ag)
-    ++  path  ;~(pfix net ;~(plug urs:ab (easy ~)))  ::NOTE  short only, tmp
-    ++  file-path  ;~(pfix net (more net (cook crip (star ;~(less net prn)))))
+    ++  path  ;~(pfix fas ;~(plug urs:ab (easy ~)))  ::NOTE  short only, tmp
+    ++  file-path  ;~(pfix fas (more fas (cook crip (star ;~(less fas prn)))))
     ::  +mang: un/managed indicator prefix
     ::
     ++  mang

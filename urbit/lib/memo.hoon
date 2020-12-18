@@ -1,4 +1,4 @@
-/-  srrs, *publish
+/-  srrs
 |=  [enabled=? =agent:gall]
 =|  bowl-print=_|
 ^-  agent:gall
