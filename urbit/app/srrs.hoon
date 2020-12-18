@@ -1,5 +1,5 @@
-/-  *srrs, publish
-/+  *server, *srrs, *srrs-json, default-agent, verb, dbug, publish
+/-  *srrs
+/+  *server, *srrs, *srrs-json, default-agent, verb, dbug
 /=  index  /app/srrs/index
 ::
 |%
@@ -558,9 +558,6 @@
     =<  abet
     %.  item
     %~  add-review-item  stack-emit  stack
-      %add-books
-    =^  cards  state  (add-books books.act)
-    [cards state]
       %copy-stack
     =/  their-stack=stack  (~(got by stack-subs) [owner.act stak.act])
 
@@ -758,21 +755,6 @@
   |=  =stack
   %+  turn  ~(val by review-items.stack)
   |=  =item  [author.content.item name.stack name.item]
-::
-++  add-books
-  |=  books=(map @tas notebook:publish)
-  ^-  (quip card _state)
-  %+  roll  ~(tap by books)
-  |=  [book=[@tas notebook:publish] cad=(list card) sty=_state]
-  ?:  (~(has by stacks.sty) -.book)
-    [cad sty]
-  =/  items
-  (~(run by notes.book) |=(note=note:publish (item note (learned-status [.2.5 0 0]))))
-  =/  act
-  [%new-stack -.book title.book items %none read=*rule:clay write=*rule:clay]
-  =/  mov=card
-  [%pass /stacks %agent [our.bol %srrs] %poke %srrs-action !>(act)]
-  [(snoc cad mov) sty]
 ::
 ++  generate-learned-status
   |=  [=item =recall-grade]

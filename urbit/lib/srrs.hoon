@@ -1,5 +1,5 @@
 /-  *srrs
-/+  elem-to-react-json, publish
+/+  elem-to-react-json
 |%
 ::
 ++  form-snippet
