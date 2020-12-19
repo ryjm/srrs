@@ -14,6 +14,8 @@ mount your urbit with `|mount %` in the dojo - you should see your files in unix
 
 change `config/urbitrc` to point your mounted files - `path/to/pier/home`
 
+install with `npm install`
+
 run with `npm run build:dev`, and check that the `srrs` files appear under `home/app/srrs`
 
 in the dojo, run `|commit %home` to get urbit to see the added files - you should see the added files in the output
