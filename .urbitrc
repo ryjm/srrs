@@ -1,6 +1,0 @@
-module.exports = {
-  URBIT_PIERS: [
-
-   "path/to/pier"
-  ]
-};
