@@ -12,7 +12,7 @@ install node and npm
 
 mount your urbit with `|mount %` in the dojo - you should see your files in unix under `/path/to/pier/home`
 
-change `config/urbitrc` to point your mounted files - `path/to/pier/home`
+change `config/urbitrc-sample' to point your mounted files (`path/to/pier/home`) and rename to `urbitrc` 
 
 install with `npm install`
 
