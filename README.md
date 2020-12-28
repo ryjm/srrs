@@ -1,5 +1,8 @@
 spaced repetition repetition system
 ---
+
+This is the Landscape version of [Anki - powerful, intelligent flashcards](https://apps.ankiweb.net/).
+
 ##### Landscape and CLI UI
 ![UI](srrs.gif)
 
