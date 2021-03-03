@@ -3,6 +3,8 @@ spaced repetition repetition system
 
 An Urbit agent that provides spaced repetitition functionality similar to [Anki](https://apps.ankiweb.net/) with a Landscape and CLI interface to the app. Supports importing from other ships and importing from Anki (from `srrs-cli`).
 
+[![awesome urbit badge](https://img.shields.io/badge/~-awesome%20urbit-lightgrey)](https://github.com/urbit/awesome-urbit)
+
 ##### Landscape and CLI UI
 ![UI](srrs.gif)
 
