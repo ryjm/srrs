@@ -12,7 +12,7 @@
     "@tlon/indigo-react": "1.2.7",
     "aws-sdk": "^2.726.0",
     "classnames": "^2.2.6",
-    "codemirror": "^5.55.0",
+    "codemirror": "^5.58.2",
     "css-loader": "^3.5.3",
     "formik": "^2.1.4",
     "lodash": "^4.17.19",
