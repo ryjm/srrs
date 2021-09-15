@@ -1,4 +1,4 @@
-/-  *srrs
+/-  *seer
 /+  elem-to-react-json
 |%
 ::

@@ -8,7 +8,7 @@
     ;meta
       =name     "viewport"
       =content  "width=device-width, initial-scale=1, shrink-to-fit=no";
-    ;link(rel "stylesheet", href "/~srrs-files/css/index.css");
+    ;link(rel "stylesheet", href "/~seer-files/css/index.css");
     ;link(rel "icon", type "image/png", href "/~launch/img/Favicon.png");
     ;script@"/~landscape/js/channel.js";
     ;script@"/~landscape/js/session.js";
@@ -17,6 +17,6 @@
 ::
   ;body
     ;div#root;
-    ;script@"/~srrs-files/js/index.js";
+    ;script@"/~seer-files/js/index.js";
   ==
 ==

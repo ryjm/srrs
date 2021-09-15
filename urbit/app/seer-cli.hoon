@@ -1,6 +1,5 @@
-/-  *srrs, chat-store, *chat-view, *chat-hook,
-    *group-store, *invite-store, sole
-/+  *srrs, *srrs-json, default-agent, verb, dbug,
+/-  *seer, *group-store, *invite-store, sole
+/+  *seer, *seer-json, default-agent, verb, dbug,
     auto=language-server-complete, shoe
 ::
 |%
@@ -20,7 +19,8 @@
 ::
 +$  command
   $%  [%target (set target)]                        ::  set messaging target
-      [%say letter:chat-store]                      ::  send message
+      ::  [%say letter:chat-store]
+      ::  send message
       [%width @ud]                                  ::  display width
       [%help ~]                                     ::  print usage info
       [%all-reviews ~]
@@ -44,8 +44,8 @@
 =<
   |_  =bowl:gall
   +*  this       .
-      srrs-core  +>
-      sc         ~(. srrs-core(eny eny.bowl) bowl)
+      seer-core  +>
+      sc         ~(. seer-core(eny eny.bowl) bowl)
       def        ~(. (default-agent this %|) bowl)
       des        ~(. (default:shoe this command) bowl)
   ::
@@ -86,12 +86,12 @@
           %kick
         :_  state
         ?+  wire  ~
-          [%srrs ~]  ~[connect:sc]
+          [%seer ~]  ~[connect:sc]
         ==
       ::
           %fact
-        ?+  p.cage.sign  ~|([%srrs-cli-bad-sub-mark wire p.cage.sign] !!)
-            %srrs-primary-delta
+        ?+  p.cage.sign  ~|([%seer-cli-bad-sub-mark wire p.cage.sign] !!)
+            %seer-primary-delta
           (handle-delta:sc wire !<(primary-delta q.cage.sign))
         ==
       ==
@@ -135,16 +135,16 @@
     =^  cards  state
       :-  ~[connect]
       %_  state
-        audience  [[| our-self /srrs] ~ ~]
+        audience  [[| our-self /seer] ~ ~]
         width     80
       ==
     [cards state]
-  [~ state(width 80, audience [[| our-self /srrs] ~ ~])]
-::  +connect: connect to srrs
+  [~ state(width 80, audience [[| our-self /seer] ~ ~])]
+::  +connect: connect to seer
 ::
 ++  connect
   ^-  card
-  [%pass /srrs %agent [our-self %srrs] %watch /srrs-primary]
+  [%pass /seer %agent [our-self %seer] %watch /seer-primary]
 ::
 ++  our-self  our.bowl
 ::  +target-to-path: prepend ship to the path
@@ -173,27 +173,28 @@
       %add-review-item  [/[-.wire]/chat %letter]
       %add-item  [/[-.wire]/chat %letter]
     ==
-  =/  cay=cage  [%srrs-primary-delta !>(del)]
+  =/  cay=cage  [%seer-primary-delta !>(del)]
   =+  .^(=tube:clay %cc /(scot %p our.bowl)/home/(scot %da now.bowl)/[p.cay]/[mark])
   =/  =cage  [mark (tube q.cay)]
   ?+  wir  [~ state]
-    [%srrs ~]  (handle-srrs cage)
-    [%srrs %chat ~]  (handle-srrs-chat cage)
+    [%seer ~]  (handle-seer cage)
+    [%seer %chat ~]  (handle-seer-chat cage)
   ==
-::  +handle-srrs: handle updates from the /srrs-primary wire
+::  +handle-seer: handle updates from the /seer-primary wire
 ::
-++  handle-srrs
+++  handle-seer
   |=  =cage
   ^-  (quip card _state)
   [[(show-result:sh-out cage) ~] state]
-::  +handle-srrs-chat: handle updates and send to chat
+::  +handle-seer-chat: handle updates and send to chat
 ::
-++  handle-srrs-chat
+++  handle-seer-chat
   |=  =cage
   ^-  (quip card _state)
   ~!  q.cage
-  =^  say-cards  state  (work:sh [%say !<(letter:chat-store q.cage)])
-  [say-cards state]
+  ::  =^  say-cards  state  (work:sh [%say !<(letter:chat-store q.cage)])
+  ::  [say-cards state]
+  [~ state]
 ::
 ::  +sh: handle user input
 ::
@@ -299,7 +300,7 @@
     ^-  (quip card _state)
     |^  ?-  -.job
           %target    (set-target +.job)
-          %say       (say +.job)
+          ::  %say       (say +.job)
           %width     (set-width +.job)
           %help      help
           %all-reviews  all-reviews
@@ -329,21 +330,21 @@
       ^-  (quip card _state)
       =.  audience  tars
       [~ state]
-    ::  +say: send messages to srrs chat
+    ::  +say: send messages to seer chat
     ::
-    ++  say
-      |=  =letter:chat-store
-      ^-  (quip card _state)
-      =/  =serial  (shaf %msg-uid eny.bowl)
-      :_  state(eny (shax eny.bowl))
-      ^-  (list card)
-      %+  turn  ~(tap in audience)
-      |=  =target
-      %^  act  %out-message  %chat-hook
-      :-  %chat-action
-      !>  ^-  action:chat-store
-      :+  %message  (target-to-path target)
-      [serial *@ our-self now.bowl letter]
+    ::  ++  say
+    ::    |=  =letter:chat-store
+    ::    ^-  (quip card _state)
+    ::    =/  =serial  (shaf %msg-uid eny.bowl)
+    ::    :_  state(eny (shax eny.bowl))
+    ::    ^-  (list card)
+    ::    %+  turn  ~(tap in audience)
+    ::    |=  =target
+    ::    %^  act  %out-message  %chat-hook
+    ::    :-  %chat-action
+    ::    !>  ^-  action:chat-store
+    ::    :+  %message  (target-to-path target)
+    ::    [serial *@ our-self now.bowl letter]
     ::
     ::  +show-settings: print enabled flags, timezone and width settings
     ::
@@ -360,8 +361,8 @@
       |=  [stack=@tas item=@t]
       ^-  (quip card _state)
       =-  [[- ~] state]
-      %^  act  %delete-item  %srrs
-      :-  %srrs-action
+      %^  act  %delete-item  %seer
+      :-  %seer-action
       !>  ^-  action
       [%delete-item stack item]
     ::
@@ -369,8 +370,8 @@
       |=  [who=@p stack=@t]
       ^-  (quip card _state)
       =-  [[- ~] state]
-      %^  act  %delete-stack  %srrs
-      :-  %srrs-action
+      %^  act  %delete-stack  %seer
+      :-  %seer-action
       !>  ^-  action
       [%delete-stack who (string-to-symbol (trip stack))]
     ::
@@ -378,8 +379,8 @@
       |=  [who=@p stack=@t]
       ^-  (quip card _state)
       =-  [[- ~] state]
-      %^  act  %import  %srrs
-      :-  %srrs-action
+      %^  act  %import  %seer
+      :-  %seer-action
       !>  ^-  action
       [%import who (string-to-symbol (trip stack))]
     ::
@@ -387,8 +388,8 @@
       |=  [who=@p stack=@t keep-learned=?]
       ^-  (quip card _state)
       =-  [[- ~] state]
-      %^  act  %copy-stack  %srrs
-      :-  %srrs-action
+      %^  act  %copy-stack  %seer
+      :-  %seer-action
       !>  ^-  action
       [%copy-stack who (string-to-symbol (trip stack)) keep-learned]
     ::
@@ -396,8 +397,8 @@
       |=  =path
       ^-  (quip card _state)
       =-  [[- ~] state]
-      %^  act  %import-file  %srrs
-      :-  %srrs-action
+      %^  act  %import-file  %seer
+      :-  %seer-action
       !>  ^-  action
       [%import-file path]
     ::
@@ -411,22 +412,23 @@
     ++  all-reviews
       ^-  (quip card _state)
       =,  html
-      =/  reviews  (scry-for (list review) %srrs /review)
+      =/  reviews  (scry-for (list review) %seer /review)
       =/  json  :-  %a
         %+  turn
           reviews
         review-to-json
       =/  print-card=card  (print:sh-out "review: {(en-json json)}")
-      =^  say-cards  state
-        (say `letter:chat-store`[%text (crip "review: {(en-json json)}")])
-      [(flop (snoc say-cards print-card)) state]
+      ::  =^  say-cards  state
+      ::    (say `letter:chat-store`[%text (crip "review: {(en-json json)}")])
+      ::  [(flop (snoc say-cards print-card)) state]
+      [print-card^~ state]
     ::
     ::  +help: print (link to) usage instructions
     ::
     ++  help
       ^-  (quip card _state)
       =-  [[- ~] state]
-      (print:sh-out "see https://github.com/ryjm/srrs")
+      (print:sh-out "see https://github.com/ryjm/seer")
     --
   --
 ::
@@ -469,7 +471,7 @@
   ++  prompt
     ^-  card
     %+  effect  %pro
-    :+  &  %srrs-line
+    :+  &  %seer-line
     ^-  tape
     ">"
   ::

@@ -1,15 +1,15 @@
 ::
-::::  /hoon/info/srrs/mar
+::::  /hoon/info/seer/mar
   ::
-/-  srrs
+/-  seer
 !:
-|_  stak=stack-info:srrs
+|_  stak=stack-info:seer
 ::
 ::
 ++  grow
   |%
   ++  mime
-    :-  /text/x-srrs-info
+    :-  /text/x-seer-info
     (as-octs:mimes:html (of-wain:format txt))
   ++  txt
     ^-  wain
@@ -28,7 +28,7 @@
     (txt (to-wain:format q.p))
   ++  txt
     |=  txs=(pole @t)
-    ^-  stack-info:srrs
+    ^-  stack-info:seer
     ?>  ?=  $:  owner=@t
                 title=@t
                 filename=@t
@@ -51,7 +51,7 @@
       %+  rash  allow-edit.txs
       ;~  pfix
         (jest 'allow-edit: ')
-        %+  cook  edit-config:srrs
+        %+  cook  edit-config:seer
         ;~(pose (jest %post) (jest %comment) (jest %all) (jest %none))
       ==
     ::
@@ -67,7 +67,7 @@
         (cook year when:so)
       ==
     ==
-  ++  noun  stack-info:srrs
+  ++  noun  stack-info:seer
   --
 ++  grad  %mime
 --

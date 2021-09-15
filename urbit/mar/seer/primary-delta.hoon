@@ -1,6 +1,6 @@
 /?  309
-/-  *srrs, chat-store
-/+  *srrs, *srrs-json
+/-  *seer, chat-store
+/+  *seer, *seer-json
 
 =,  html
 =,  format

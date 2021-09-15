@@ -1,6 +1,6 @@
 /?  309
-/-  *srrs
-/+  *srrs, *srrs-json
+/-  *seer
+/+  *seer, *seer-json
 ::
 |_  =stack
 ::

@@ -1,7 +1,7 @@
 ::
-::::  /hoon/action/srrs/mar
+::::  /hoon/action/seer/mar
   ::
-/-  *srrs
+/-  *seer
 =,  format
 ::
 |_  del=stack-delta

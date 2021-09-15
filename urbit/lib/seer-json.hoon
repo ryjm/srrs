@@ -1,5 +1,5 @@
-/-  *srrs
-/+  *srrs
+/-  *seer
+/+  *seer
 |%
 ++  primary-delta-to-json
   |=  del=primary-delta
@@ -59,9 +59,9 @@
   |=  jon=json
   =,  dejs:format
   %-  action
-  =<  (srrs-action jon)
+  =<  (seer-action jon)
   |%
-  ++  srrs-action
+  ++  seer-action
     %-  of
     :~  new-stack+new-stack
         new-item+new-item

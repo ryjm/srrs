@@ -1,0 +1,344 @@
+* Tasks
+** TODO seer -> seer migration
+
+*** TODO Migrate to docket
+**** DONE Write docket and bill
+:LOGBOOK:
+CLOCK: [2021-09-13 Mon 12:57]--[2021-09-13 Mon 16:23] =>  3:26
+:END:
+**** TODO Make glob
+**** TODO Clarify eyre bindings
+**** TODO Remove file-server
+**** TODO Remove launch actions
+**** TODO Update state
+* Install
+:PROPERTIES:
+:header-args: :dir /home/jake/vault/projects/urbit/git/urbit/
+:header-args: :results output
+:END:
+
+** Setup
+*** urbit install
+create new desk and mount.
+
+#+begin_src tmux
+|merge %seer our %base-dev
+|mount %seer
+#+end_src
+
+symlink the garden dev desk into the seer desk.
+
+#+begin_src sh
+cd pkg
+./symbolic-merge.sh ./garden-dev ./seer
+./symbolic-merge.sh ./landscape ./seer
+ls seer/mar
+
+#+end_src
+
+#+results:
+| contact                   |
+| css.hoon                  |
+| dm-hook-action.hoon       |
+| docket.hoon               |
+| elem.hoon                 |
+| file-server               |
+| front.hoon                |
+| graph                     |
+| group                     |
+| hark                      |
+| hash.hoon                 |
+| import.hoon               |
+| invite                    |
+| json                      |
+| language-server           |
+| launch                    |
+| letter.hoon               |
+| metadata                  |
+| metadata-hook-action.hoon |
+| observe                   |
+| pull-hook                 |
+| push-hook                 |
+| resource.hoon             |
+| s3                        |
+| seer                      |
+| ships.hoon                |
+| sole                      |
+| x-htm.hoon                |
+
+copy metadata files into mounted unix path
+#+begin_src zsh
+rm -rf /mnt/laptop-sandisk/zod/seer/*
+#+end_src
+
+#+results:
+
+#+begin_src sh
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/zod/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/zod/seer/
+#+end_src
+
+#+results:
+
+copy hoon files into mounted unix path. this is to ensure we don't accidently include files we do not have marks for.
+
+#+begin_src sh :results none
+cd pkg/seer
+
+find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/zod/seer \;
+#+end_src
+
+#+begin_src tmux
+ =dir 
+|commit %seer
+#+end_src
+
+switch to the garden desk and publish
+
+#+begin_src tmux
+=dir /=garden
+:treaty|publish %seer
+#+end_src
+
+install seer
+#+begin_src tmux
+|install our %seer
+#+end_src
+*** unix install
+Mirror the desk setup found in pkg/<desk>
+
+#+begin_src sh
+ls pkg/garden
+#+end_src
+
+#+results:
+| app         |
+| desk.bill   |
+| desk.docket |
+| gen         |
+| lib         |
+| mar         |
+| sur         |
+| sys.kelvin  |
+| ted         |
+
+#+begin_src sh
+cd pkg
+rm -rf ./seer/*
+cp -R ~/vault/projects/seer/urbit/* ./seer
+./symbolic-merge.sh ./garden-dev ./seer
+./symbolic-merge.sh ./landscape ./seer
+ls seer/mar
+#+end_src
+
+#+begin_src sh
+ls ./pkg/seer
+#+end_src
+
+#+results:
+| app         |
+| desk.bill   |
+| desk.docket |
+| gen         |
+| lib         |
+| mar         |
+| seer.org    |
+| sur         |
+| urbit       |
+
+Missing desk.docket, desk.bill, and sys.kelvin.
+
+#+begin_src sh :results none
+cp pkg/garden/desk.* ./pkg/seer
+cp pkg/garden/sys.kelvin ./pkg/seer
+#+end_src
+
+#+begin_src sh
+ls ./pkg/seer
+#+end_src
+
+#+results:
+| app |
+| gen |
+| lib |
+| mar |
+| sur |
+#+begin_src sh :results none
+cp pkg/garden/sys.kelvin ./pkg/seer
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/zod/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/zod/seer/
+#+end_src
+
+Check docket and bill files
+#+begin_src zsh :results output replace :dir /home/jake/vault/projects/urbit/git/urbit/pkg/seer
+cat desk.docket
+cat desk.bill
+#+end_src
+
+#+results:
+#+begin_example
+:~  title+'Garden'
+    info+'An app launcher for Urbit.'
+    color+0xee.5432
+    glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
+    ::glob-ames+~zod
+    base+'grid'
+    version+[0 0 1]
+    website+'https://tlon.io'
+    license+'MIT'
+==
+:~  :-  %apes
+    :~  %docket
+        %treaty
+        %settings-store
+    ==
+    :-  %fish  ~
+==
+#+end_example
+
+*** Manifests
+:PROPERTIES:
+:header-args: :dir /home/jake/vault/projects/urbit/git/urbit/pkg/seer
+:END:
+
+Define the docket and the bill for the desk.
+
+#+begin_src hoon :tangle /home/jake/vault/projects/urbit/git/urbit/pkg/seer/desk.docket
+:~  title+'Seer'
+    info+'Your brain on urbit'
+    color+0xee.5432
+    glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
+    ::glob-ames+~zod
+    base+'seer'
+    version+[0 0 1]
+    website+'https://urbit.land'
+    license+'MIT'
+==
+#+end_src
+
+#+begin_src zsh :tangle /home/jake/vault/projects/urbit/git/urbit/pkg/seer/desk.bill
+:~  :-  %apes
+    :~  %seer
+        %seer-cli
+    ==
+    :-  %fish  ~
+==
+
+#+end_src
+
+#+begin_src zsh :results output
+cat desk.docket
+cat desk.bill
+#+end_src
+
+#+results:
+#+begin_example
+:~  title+'Seer'
+    info+'Your brain on urbit'
+    color+0xee.5432
+    glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
+    ::glob-ames+~zod
+    base+'seer'
+    version+[0 0 1]
+    website+'https://urbit.land'
+    license+'MIT'
+==
+:~  :-  %apes
+    :~  %seer
+        %seer-cli
+    ==
+    :-  %fish  ~
+==
+#+end_example
+*** Desk Install
+**** base install
+:PROPERTIES:
+:header-args: :dir /home/jake/vault/projects/urbit/git/urbit/
+:END:
+#+begin_src tmux
+|merge %base-dev our %base
+|merge %garden our %base
+|mount %base-dev
+|mount %garden
+
+#+end_src
+#+begin_src tmux
+|unmount %base-dev
+|unmount %garden
+#+end_src
+
+#+results:
+
+#+begin_src zsh
+rm -rf /mnt/laptop-sandisk/zod/base-dev/*
+rm -rf /mnt/laptop-sandisk/zod/garden/*
+
+cp -RLn pkg/base-dev/* /mnt/laptop-sandisk/zod/base-dev/
+cp -RLn pkg/garden/* /mnt/laptop-sandisk/zod/garden/
+
+#+end_src
+
+#+results:
+
+
+#+end_src
+
+#+results:
+
+#+begin_src tmux
+|commit %base-dev
+|merge %garden our %base-dev
+|commit %garden
+#+end_src
+
+#+begin_src tmux
+=d -build-file /=base-dev=/lib/docket/hoon
+=io -build-file /=desk=/lib/agentio/hoon
+=desk %garden
+=desk %garden
+=loc [%ship ~zod]
+=tid (cat 3 'docket-' (scot %uv (sham (mix eny desk)))))
+=b *beak
+:spider|start %glob !>(`[loc desk])]
+:spider|start %glob !>(`[%http])]
+
+#+end_src
+#+begin_src tmux
+
+=dir
+|commit %garden
+=dir /=garden
+-glob [[%http ] `%garden]
+-glob [[%ship our] `%garden]
+=dir
+#+end_src
+
+#+begin_src tmux
+=d -build-file /=base-dev=/lib/docket/hoon
+
+
+#+end_src
+
+tadnul-nismyn-dabryn-balhes
+
+
+#+begin_src tmux
+        [ %give
+            p
+          ?(
+            [%fact paths=it(/) cage=[p=@tas q=[#t q=*]]]
+            [%kick paths=it(/) ship=u(@p)]
+            [%poke-ack p=u(it(#13))]
+            [%watch-ack p=u(it(#13))]
+          )
+        ]
+[ [[%give %fact [[i=%~.glob t=[i=@ta t=%~]] %~] %glob #t q=*] %~]
+  [[%give %kick [[i=%~.glob t=[i=@ta t=%~]] %~] %~] %~]
+  %~
+]
+
+#+end_src
+****
+*** Changes
+- No more chat store
+- had to symlink landscape

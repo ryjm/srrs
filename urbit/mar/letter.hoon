@@ -1,5 +1,5 @@
 ::
-::::  /hoon/action/srrs/mar
+::::  /hoon/action/seer/mar
   ::
 /-  *chat-store
 =,  format

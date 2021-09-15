@@ -1,6 +1,6 @@
 /?  309
-/-  *srrs
-/+  *srrs-json
+/-  *seer
+/+  *seer-json
 =,  format
 ::
 |_  act=action

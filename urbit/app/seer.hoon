@@ -1,6 +1,6 @@
-/-  *srrs
-/+  *server, *srrs, *srrs-json, default-agent, verb, dbug
-/=  index  /app/srrs/index
+/-  *seer
+/+  *server, *seer, *seer-json, default-agent, verb, dbug
+/=  index  /app/seer/index
 ::
 |%
 +$  versioned-state
@@ -41,20 +41,20 @@
   %+  verb  |
   |_  bol=bowl:gall
   +*  this       .
-      srrs-core  +>
-      sc         ~(. srrs-core bol)
+      seer-core  +>
+      sc         ~(. seer-core bol)
       def        ~(. (default-agent this %|) bol)
   ::
   ++  on-init
     ^-  (quip card _this)
-    =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '/~srrs-files/img/srrs.png' '/~srrs'] %.y]])]
+    =/  launcha  [%launch-action !>([%add %seer [[%basic 'seer' '/~seer-files/img/seer.png' '/~seer'] %.y]])]
     :_  this
     :~
-        [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
-        [%pass /srrstile %agent [our.bol %launch] %poke launcha]
+        [%pass /bind/seer %arvo %e %connect [~ /'~seer'] %seer]
+        [%pass /seertile %agent [our.bol %launch] %poke launcha]
     :*  %pass  /srv  %agent  [our.bol %file-server]
             %poke  %file-server-action
-            !>([%serve-dir /'~srrs-files' /app/srrs %.n %.n])
+            !>([%serve-dir /'~seer-files' /app/seer %.n %.n])
         ==
     ==
   ::
@@ -67,8 +67,8 @@
         (poke-noun:sc !<(* vase))
           %sign-arvo
         (poke-sign-arvo:sc !<(sign-arvo vase))
-          %srrs-action
-        (poke-srrs-action:sc !<(action vase))
+          %seer-action
+        (poke-seer-action:sc !<(action vase))
           %handle-http-request
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
         :_  state
@@ -83,8 +83,8 @@
     ^-  (quip card _this)
     =^  cards  state
       ?+  path  (on-watch:def path)
-        [%srrstile *]       (peer-srrstile:sc t.path)
-        [%srrs-primary *]   (peer-srrs-primary:sc t.path)
+        [%seertile *]       (peer-seertile:sc t.path)
+        [%seer-primary *]   (peer-seer-primary:sc t.path)
         [%http-response *]  [~ state]
         [%stack @ ~]  (peer-stack:sc i.t.path)
       ==
@@ -98,7 +98,7 @@
       =/  name  i.t.t.wire
       ?+  -.sign  (on-agent:def wire sign)
           %fact
-        ?>  ?=(%srrs-stack p.cage.sign)
+        ?>  ?=(%seer-stack p.cage.sign)
         =/  =stack  !<(stack q.cage.sign)
         =^  cards  state  (handle-import-stack:sc stack)
         [cards this]
@@ -110,7 +110,7 @@
     ^-  (quip card _this)
     =^  cards  state
       ?+  wire  (on-arvo:def wire sign-arvo)
-        [%bind %srrs ~]             [~ state]
+        [%bind %seer ~]             [~ state]
         [%view-bind ~]              [~ state]
         [%review-schedule @ ~]      (wake:sc wire)
         [%review-schedule @ @ @ ~]  (wake:sc wire)
@@ -127,12 +127,12 @@
       (mule |.(!<(versioned-state old)))
     |^
     ^-  (quip card _this)
-    =/  launcha  [%launch-action !>([%add %srrs [[%basic 'srrs' '/~srrs-files/img/srrs.png' '/~srrs'] %.y]])]
+    =/  launcha  [%launch-action !>([%add %seer [[%basic 'seer' '/~seer-files/img/seer.png' '/~seer'] %.y]])]
     =/  init-cards
       :~
-        [%pass /srrstile %agent [our.bol %launch] %poke [%launch-action !>([%remove %srrs])]]
-        [%pass /bind/srrs %arvo %e %connect [~ /'~srrs'] %srrs]
-        [%pass /srrstile %agent [our.bol %launch] %poke launcha]
+        [%pass /seertile %agent [our.bol %launch] %poke [%launch-action !>([%remove %seer])]]
+        [%pass /bind/seer %arvo %e %connect [~ /'~seer'] %seer]
+        [%pass /seertile %agent [our.bol %launch] %poke launcha]
       ==
     ?:  ?=(%| -.old-state)
       ~!  p.old-state
@@ -213,12 +213,12 @@
 ++  emit-primary
   |=  del=primary-delta
   %-  emit
-  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
+  [%give %fact ~[/seer-primary] %seer-primary-delta !>(del)]
 ::
 ++  emit-action
   |=  =action
   %-  emit
-  [%pass /action %agent [our.bol %srrs] %poke %srrs-action !>(action)]
+  [%pass /action %agent [our.bol %seer] %poke %seer-action !>(action)]
 ::
 ++  emil
   |=  rac=(list card)
@@ -392,8 +392,8 @@
     ^+  this
     =/  del  [%update-review (silt all-reviews)]
     %-  emil
-    :~  [%give %fact ~[/srrs-primary] %srrs-primary-delta !>(del)]
-        [%give %fact ~[/srrstile] %json !>(make-tile-json)]
+    :~  [%give %fact ~[/seer-primary] %seer-primary-delta !>(del)]
+        [%give %fact ~[/seertile] %json !>(make-tile-json)]
     ==
   --
 ++  poke-sign-arvo
@@ -410,17 +410,17 @@
     not-found:gen
   ::  send review state as json
   ::
-      [[[~ %json] [%'~srrs' %update-review ~]] ~]
+      [[[~ %json] [%'~seer' %update-review ~]] ~]
     %-  json-response:gen
     :-  %a
     (turn all-reviews review-to-json)
   ::  learned status as json for given stack
-      [[[~ %json] [%'~srrs' %learn @ ~]] ~]
+      [[[~ %json] [%'~seer' %learn @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     %-  json-response:gen
     %-  stack-status-to-json  (~(got by stacks) stack-name)
   ::  learned status as json for given stack and item
-      [[[~ %json] [%'~srrs' %learn @ @ ~]] ~]
+      [[[~ %json] [%'~seer' %learn @ @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     =/  item-name  i.t.t.t.site.request-line
     =/  =stack  (~(got by stacks) stack-name)
@@ -429,49 +429,49 @@
     %-  status-to-json  learn.item
   ::  home page; redirect
   ::
-      [[~ [%'~srrs' ~]] ~]
+      [[~ [%'~seer' ~]] ~]
     =/  hym=manx  (index (state-to-json state))
-    (redirect:gen '/~srrs/review')
+    (redirect:gen '/~seer/review')
   ::  review page
   ::
-      [[~ [%'~srrs' %review ~]] ~]
+      [[~ [%'~seer' %review ~]] ~]
     =/  hym=manx  (index (state-to-json state))
 
     (manx-response:gen hym)
   ::  subscriptions
   ::
-      [[~ [%'~srrs' %stack-subs ~]] ~]
+      [[~ [%'~seer' %stack-subs ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  created
   ::
-      [[~ [%'~srrs' %stacks ~]] ~]
+      [[~ [%'~seer' %stacks ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new item
   ::
-      [[~ [%'~srrs' %new-item ~]] ~]
+      [[~ [%'~seer' %new-item ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new stack
   ::
-      [[~ [%'~srrs' %new-stack ~]] ~]
+      [[~ [%'~seer' %new-stack ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  stack
   ::
-      [[~ [%'~srrs' @t @t ~]] ~]
+      [[~ [%'~seer' @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  stack item
   ::
-      [[~ [%'~srrs' @t @t @t ~]] ~]
+      [[~ [%'~seer' @t @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::
   ==
 ::
-++  poke-srrs-action
+++  poke-seer-action
   |=  act=action
   ^-  (quip card _state)
   ?-  -.act
@@ -586,7 +586,7 @@
           front.content.item
           back.content.item
         ==
-      [~ [%pass /stacks %agent [our.bol %srrs] %poke %srrs-action !>(new-act)]]
+      [~ [%pass /stacks %agent [our.bol %seer] %poke %seer-action !>(new-act)]]
     =<  abet
     ?.  ?=(%~ mov)
       (emit (need mov))
@@ -599,18 +599,18 @@
       %import
     =/  =wire  /import/(scot %p who.act)/[stack.act]
     :_  state
-    [%pass wire %agent [who.act %srrs] %watch /stack/[stack.act]]~
+    [%pass wire %agent [who.act %seer] %watch /stack/[stack.act]]~
       %import-file
     (import-from-file path.act)
   ==
 ::
-++  peer-srrstile
+++  peer-seertile
   |=  wir=wire
   ^-  (quip card _state)
   :_  state
-  [%give %fact ~[/srrstile] %json !>(make-tile-json)]~
+  [%give %fact ~[/seertile] %json !>(make-tile-json)]~
 ::
-++  peer-srrs-primary
+++  peer-seer-primary
   |=  wir=wire
   ^-  (quip card _state)
   ?.  =(our.bol src.bol)
@@ -624,7 +624,7 @@
   =/  =stack  (~(got by stacks.state) stack-name)
   :_  state
   :~
-      [%give %fact ~ %srrs-stack !>(stack)]
+      [%give %fact ~ %seer-stack !>(stack)]
       [%give %kick ~ ~]
   ==
 ::
@@ -640,7 +640,7 @@
         (~(get by stacks) i.t.wire)
       |=(=stack (~(get by items.stack) i.t.t.wire))
     ?~  item
-      ~&  srrs+"{(spud t.t.wire)} scheduled for review, but no longer exists"
+      ~&  seer+"{(spud t.t.wire)} scheduled for review, but no longer exists"
       [~ state]
     =<  abet
     %.  (need item)
@@ -851,7 +851,7 @@
         =/  back  (crip i.t.a)
         =/  uid
           %-  string-to-symbol
-          "{<(sham %srrs our.bol front eny.bol)>}"
+          "{<(sham %seer our.bol front eny.bol)>}"
         ~&  >  [%parsing front]
         ~&  >  [%parsing back]
         ~&  >  [%parsing uid]

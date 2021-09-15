@@ -1,4 +1,4 @@
-/-  srrs
+/-  seer
 |=  [enabled=? =agent:gall]
 =|  bowl-print=_|
 ^-  agent:gall
@@ -39,7 +39,7 @@
   =/  books  (slop !>(%add-books) (slap publish-state [%limb %books]))
   =/  memo-cards=(list card:agent:gall)
   :~
-      [%pass /memo %agent [our.bowl %srrs] %poke %srrs-action books]
+      [%pass /memo %agent [our.bowl %seer] %poke %seer-action books]
   ==
   [(weld memo-cards cards) this]
 ::
@@ -81,7 +81,7 @@
   (slop !>(%add-books) (slap publish-state [%limb %books]))
   =/  memo-cards=(list card:agent:gall)
   :~
-      [%pass /memo %agent [our.bowl %srrs] %poke %srrs-action books]
+      [%pass /memo %agent [our.bowl %seer] %poke %seer-action books]
   ==
   [(weld cards memo-cards) this]
 
