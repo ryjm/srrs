@@ -72,7 +72,7 @@ export class App extends Component {
         <Switch>
           <Route
             exact
-            path="/~srrs/review"
+            path="/seer/review"
             render={(props) => {
               return (
                 <Skeleton
@@ -89,7 +89,7 @@ export class App extends Component {
           />
           <Route
             exact
-            path="/~srrs/:who/:stack/review"
+            path="/seer/:who/:stack/review"
             render={(props) => {
               return (
                 <Skeleton
@@ -106,7 +106,7 @@ export class App extends Component {
           />
           <Route
             exact
-            path="/~srrs/subs"
+            path="/seer/subs"
             render={(props) => {
               return (
                 <Skeleton
@@ -120,7 +120,7 @@ export class App extends Component {
           />
           <Route
             exact
-            path="/~srrs/pubs"
+            path="/seer/pubs"
             render={(props) => {
               return (
                 <Skeleton
@@ -137,7 +137,7 @@ export class App extends Component {
 
           <Route
             exact
-            path="/~srrs/new-stack"
+            path="/seer/new-stack"
             render={(props) => {
               return (
                 <Skeleton
@@ -158,7 +158,7 @@ export class App extends Component {
 
           <Route
             exact
-            path="/~srrs/new-item"
+            path="/seer/new-item"
             render={(props) => {
               return (
                 <Skeleton
@@ -180,7 +180,7 @@ export class App extends Component {
 
           <Route
             exact
-            path="/~srrs/:ship/:stack/new-item"
+            path="/seer/:ship/:stack/new-item"
             render={(props) => {
               return (
                 <Skeleton
@@ -204,7 +204,7 @@ export class App extends Component {
 
           <Route
             exact
-            path="/~srrs/:ship/:stack"
+            path="/seer/:ship/:stack"
             render={(props) => {
               return (
                 <Skeleton
@@ -230,7 +230,7 @@ export class App extends Component {
 
           <Route
             exact
-            path="/~srrs/:ship/:stack/:item"
+            path="/seer/:ship/:stack/:item"
             render={(props) => {
               return (
                 <Skeleton

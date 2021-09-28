@@ -7,7 +7,7 @@ export class NotFound extends Component {
   }
 
   render() {
-    const pathData = [{ text: 'Home', url: '/~srrs/review' }];
+    const pathData = [{ text: 'Home', url: '/seer/review' }];
     const backText = '<- Back';
 
     const back = (this.props.history)

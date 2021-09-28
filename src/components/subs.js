@@ -25,7 +25,7 @@ export class Subs extends Component {
         let stack = this.props.subs[ship][stackId];
         return {
           type: 'regular',
-          url: `/~srrs/${stack.info.owner}/${stackId}`,
+          url: `/seer/${stack.info.owner}/${stackId}`,
           title: stack.info.title,
           host: stack.info.owner,
           lastUpdated: moment(stack["last-update"]).fromNow(),
@@ -45,7 +45,7 @@ export class Subs extends Component {
         stack: stackId,
       }
     };
-    this.props.api.action("srrs", "srrs-action", subscribe);
+    this.props.api.action("seer", "seer-action", subscribe);
   }
 
   reject(host, stackId) {
@@ -55,7 +55,7 @@ export class Subs extends Component {
         stack: stackId,
       }
     };
-    this.props.api.action("srrs", "srrs-action", reject);
+    this.props.api.action("seer", "seer-action", reject);
   }
 
   unsubscribe(host, stackId) {
@@ -65,7 +65,7 @@ export class Subs extends Component {
         stack: stackId,
       }
     };
-    this.props.api.action("srrs", "srrs-action", unsubscribe);
+    this.props.api.action("seer", "seer-action", unsubscribe);
   }
 
   render() {

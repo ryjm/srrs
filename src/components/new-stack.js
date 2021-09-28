@@ -72,8 +72,8 @@ export class NewStack extends Component {
 
     this.props.setSpinner(true);
 
-    this.props.api.action('srrs', 'srrs-action', makeStack);
-    // this.props.api.action("srrs", "srrs-action", sendInvites);
+    this.props.api.action('seer', 'seer-action', makeStack);
+    // this.props.api.action("seer", "seer-action", sendInvites);
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -82,7 +82,7 @@ export class NewStack extends Component {
         this.props.setSpinner(false);
 
         if (this.state.redirect === 'new-item') {
-          this.props.history.push('/~srrs/new-item',
+          this.props.history.push('/seer/new-item',
             {
               lastParams: {
                 ship: `~${window.ship}`,
@@ -92,7 +92,7 @@ export class NewStack extends Component {
           );
         } else if (this.state.redirect === 'home') {
           this.props.history.push(
-            `/~srrs/~${window.ship}/${this.state.awaiting}`);
+            `/seer/~${window.ship}/${this.state.awaiting}`);
         }
       }
     }
@@ -130,7 +130,7 @@ export class NewStack extends Component {
           }
         >
           <div className="w-100 dn-m dn-l dn-xl inter pt1 pb6 f8">
-            <Link to="/~srrs/review">{'⟵ Review'}</Link>
+            <Link to="/seer/review">{'⟵ Review'}</Link>
           </div>
           <div className="w-100">
             <p className="f9 gray2 db mb2 pt1">

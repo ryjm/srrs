@@ -61,7 +61,7 @@ export class Item extends Component {
       if (stack) {
         const item = stack.items[itemId];
         const learn = item.learn;
-        const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
         const itemUrl = `${stackUrl}/${item.name}`;
 
         this.state = {
@@ -73,7 +73,7 @@ export class Item extends Component {
           item,
           learn,
           pathData: [
-            { text: 'Home', url: '/~srrs/review' },
+            { text: 'Home', url: '/seer/review' },
             { text: stack.info.title, url: stackUrl },
             { text: item.title, url: itemUrl }
           ]
@@ -98,7 +98,7 @@ export class Item extends Component {
         this.state = { ...this.state, ...{ notFound: true } };
         return;
       } else {
-        const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
         const itemUrl = `${stackUrl}/${item.name}`;
 
         this.state = {
@@ -110,7 +110,7 @@ export class Item extends Component {
           item: item,
           learn: learn,
           pathData: [
-            { text: 'Home', url: '/~srrs/review' },
+            { text: 'Home', url: '/seer/review' },
             { text: stack.info.title, url: stackUrl },
             { text: item.content.title, url: itemUrl }
           ]
@@ -161,7 +161,7 @@ export class Item extends Component {
         itemId: this.props.itemId
       }
     }, () => {
-      this.props.api.action('srrs', 'srrs-action', data);
+      this.props.api.action('seer', 'seer-action', data);
     });
   }
 
@@ -183,7 +183,7 @@ return;
     }
     if (this.state.awaitingDelete && (item === false) && oldItem) {
       this.props.setSpinner(false);
-      const redirect = `/~srrs/~${this.props.ship}/${this.props.stackId}`;
+      const redirect = `/seer/~${this.props.ship}/${this.props.stackId}`;
       this.props.history.push(redirect);
       return;
     }
@@ -195,7 +195,7 @@ return;
 
     if (this.state.awaitingEdit &&
       ((item.content.title != oldItem.title) || (item.content.front != oldItem.content.front) || (item.content.back != oldItem.content.back))) {
-      const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+      const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
       const itemUrl = `${stackUrl}/${item.name}`;
 
       this.setState({
@@ -206,7 +206,7 @@ return;
         awaitingEdit: false,
         item: item,
         pathData: [
-          { text: 'Home', url: '/~srrs/review' },
+          { text: 'Home', url: '/seer/review' },
           { text: stack.info.title, url: stackUrl },
           { text: item.content.title, url: itemUrl }
         ]
@@ -221,18 +221,18 @@ return;
           item: itemId
         }
       };
-      this.props.api.action('srrs', 'srrs-action', read);
+      this.props.api.action('seer', 'seer-action', read);
     }
 
     if (this.state.awaitingGrade) {
-      const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+      const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
       const itemUrl = `${stackUrl}/${item.name}`;
       let redirect = itemUrl;
       if (this.state.mode === 'review') {
         if (this.props.location.state.prevPath) {
           redirect = this.props.location.state.prevPath;
         } else
-        redirect ='/~srrs/review';
+        redirect ='/seer/review';
       }
 
       this.setState({
@@ -247,7 +247,7 @@ return;
     }
     if (!this.state.temporary) {
       if (oldItem != item) {
-        const stackUrl = `/~srrs/${stack.info.owner}/${stack.info.filename}`;
+        const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
         const itemUrl = `${stackUrl}/${item.name}`;
 
         this.setState({
@@ -256,7 +256,7 @@ return;
           bodyFront: item.content.front,
           bodyBack: item.content.back,
           pathData: [
-            { text: 'Home', url: '/~srrs/review' },
+            { text: 'Home', url: '/seer/review' },
             { text: stack.info.title, url: stackUrl },
             { text: item.content.title, url: itemUrl }
           ]
@@ -269,7 +269,7 @@ return;
             item: itemId
           }
         };
-        this.props.api.action('srrs', 'srrs-action', read);
+        this.props.api.action('seer', 'seer-action', read);
       }
 
       if (oldStack != stack) {
@@ -293,8 +293,8 @@ return;
         itemId: this.props.itemId
       }
     }, () => {
-      this.props.api.action('srrs', 'srrs-action', del).then(() => {
-       const redirect = `/~srrs/~${this.props.ship}/${this.props.stackId}`;
+      this.props.api.action('seer', 'seer-action', del).then(() => {
+       const redirect = `/seer/~${this.props.ship}/${this.props.stackId}`;
         this.props.history.push(redirect);
       });
     });
@@ -345,13 +345,13 @@ return null;
                     {host}
                   </span>
                 </span>
-                <Link to={`/~srrs/${host}/${stackTitle}`} className="blue3 ml2">
+                <Link to={`/seer/${host}/${stackTitle}`} className="blue3 ml2">
                   {`<- ${stackTitle}`}
                 </Link>
 
               </div>
               <div className="flex">
-                <Link to={`/~srrs/${host}/${stackTitle}/new-item`} className="StackButton bg-light-green green2">
+                <Link to={`/seer/${host}/${stackTitle}/new-item`} className="StackButton bg-light-green green2">
                   New Item
             </Link>
               </div>

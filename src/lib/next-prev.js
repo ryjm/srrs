@@ -33,11 +33,11 @@ class Preview extends Component {
       const owner = this.props.stack.info.owner;
       const stackId = this.props.stack.info.filename;
       const previewProps = this.buildProps(this.props.itemId);
-      const prevUrl = `/~srrs/${owner}/${stackId}/${this.props.itemId}`;
+      const prevUrl = `/seer/${owner}/${stackId}/${this.props.itemId}`;
 
       const date = moment(previewProps.date).fromNow();
       const authorDate = `${previewProps.author} • ${date}`;
-      const stackLink = '/~srrs/' +
+      const stackLink = '/seer/' +
         previewProps.stackOwner + '/' +
         previewProps.stackName;
       const itemLink = stackLink + '/' + previewProps.itemName;

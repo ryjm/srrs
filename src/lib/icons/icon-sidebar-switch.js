@@ -19,8 +19,8 @@ export class SidebarSwitcher extends Component {
             className={`pr3 dn ` + popoutSwitcher}
             src={
               this.props.sidebarShown
-                ? "/~srrs/img/SwitcherOpen.png"
-                : "/~srrs/img/SwitcherClosed.png"
+                ? "/seer/img/SwitcherOpen.png"
+                : "/seer/img/SwitcherClosed.png"
             }
             height="16"
             width="16"

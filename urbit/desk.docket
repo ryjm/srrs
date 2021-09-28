@@ -1,10 +1,11 @@
-:~  title+'Seer'
-    info+'Your brain on urbit'
-    color+0xee.5432
-    glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
-    ::glob-ames+~zod
-    base+'seer'
-    version+[0 0 1]
-    website+'https://urbit.land'
-    license+'MIT'
+:~
+  title+'Seer'
+  info+'Your brain on urbit'
+  color+0xee.5432
+  version+[0 0 1]
+  website+'https://urbit.land'
+  license+'MIT'
+  base+'seer'
+  glob-ames+[~wet 0v2.5vn07.1v76a.5ucq2.lkqb5.6eeau]
+
 ==

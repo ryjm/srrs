@@ -1,12 +1,12 @@
 spaced repetition repetition system
 ---
 
-An Urbit agent that provides spaced repetitition functionality similar to [Anki](https://apps.ankiweb.net/) with a Landscape and CLI interface to the app. Supports importing from other ships and importing from Anki (from `srrs-cli`).
+An Urbit agent that provides spaced repetitition functionality similar to [Anki](https://apps.ankiweb.net/) with a Landscape and CLI interface to the app. Supports importing from other ships and importing from Anki (from `seer-cli`).
 
 [![awesome urbit badge](https://img.shields.io/badge/~-awesome%20urbit-lightgrey)](https://github.com/urbit/awesome-urbit)
 
 ##### Landscape and CLI UI
-![UI](srrs.gif)
+![UI](seer.gif)
 
 
 on urbit: `|merge %home ~middev %kids`
@@ -21,17 +21,17 @@ change `config/urbitrc-sample' to point your mounted files (`path/to/pier/home`)
 
 install with `npm install`
 
-run with `npm run build:dev`, and check that the `srrs` files appear under `home/app/srrs`
+run with `npm run build:dev`, and check that the `seer` files appear under `home/app/seer`
 
 in the dojo, run `|commit %home` to get urbit to see the added files - you should see the added files in the output
 
-start with `|start %srrs`
+start with `|start %seer`
 
 #### Usage
 
-- start with `|start %srrs` in the dojo
-- to  use `srrs-cli`, start it with `|start %srrs-cli` and `|link %srrs-cli`,
-switch to it with C-x. create a private channel called `srrs` for notifications
+- start with `|start %seer` in the dojo
+- to  use `seer-cli`, start it with `|start %seer-cli` and `|link %seer-cli`,
+switch to it with C-x. create a private channel called `seer` for notifications
 to show up in chat.
   - tab complete for commands starting with `;`
   
@@ -41,7 +41,7 @@ Note that this currently only supports decks with two fields, like this one: [Ho
 
   - export your deck to text file and place it in your urbit pier
   - run `|commit %home`
-  - run `;import-file /path/to/file/txt` from `srrs-cli`
+  - run `;import-file /path/to/file/txt` from `seer-cli`
   
 ##### Subscribing to other stacks
 

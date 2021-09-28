@@ -10,7 +10,7 @@ export class StackEntry extends Component {
 
     return (
       <Link
-        to={"/~srrs/" + props.path}>
+        to={"/seer/" + props.path}>
         <HoverBox
           bg="white"
           bgActive="washedGray"

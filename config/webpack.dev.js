@@ -26,7 +26,7 @@ class UrbitShipPlugin {
         // uncomment to copy into all piers
         //
         return Promise.all(this.piers.map(pier => {
-          const dst = path.resolve(pier, 'app/srrs/js/index.js');
+          const dst = path.resolve(pier, 'app/seer/js/index.js');
           copyFile(src, dst).then(() => {
             if (!this.herb) {
               return;
@@ -55,7 +55,7 @@ if (urbitrc.URL) {
     ...devServer,
     index: '',
     proxy: {
-      '/~srrs-files/js/index.js': {
+      '/seer-files/js/index.js': {
         target: 'http://localhost:9000',
         pathRewrite: (req, path) => '/index.js'
       },

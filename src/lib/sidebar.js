@@ -93,11 +93,11 @@ export class Sidebar extends Component {
         width={["auto", "250px"]}
       >
         <Box>
-          <Link to="/~srrs/review" className="blue2 pa4 f9 dib">
+          <Link to="/seer/review" className="blue2 pa4 f9 dib">
             Review
           </Link>
           <Box>
-            <Link to="/~srrs/new-stack" className="green2 pa4 f9 dib">
+            <Link to="/seer/new-stack" className="green2 pa4 f9 dib">
               New Stack
           </Link>
           </Box>

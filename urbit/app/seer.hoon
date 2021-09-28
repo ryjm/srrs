@@ -47,16 +47,9 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    =/  launcha  [%launch-action !>([%add %seer [[%basic 'seer' '/~seer-files/img/seer.png' '/~seer'] %.y]])]
     :_  this
-    :~
-        [%pass /bind/seer %arvo %e %connect [~ /'~seer'] %seer]
-        [%pass /seertile %agent [our.bol %launch] %poke launcha]
-    :*  %pass  /srv  %agent  [our.bol %file-server]
-            %poke  %file-server-action
-            !>([%serve-dir /'~seer-files' /app/seer %.n %.n])
-        ==
-    ==
+      [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]~
+
   ::
   ++  on-poke
     |=  [=mark =vase]
@@ -127,12 +120,9 @@
       (mule |.(!<(versioned-state old)))
     |^
     ^-  (quip card _this)
-    =/  launcha  [%launch-action !>([%add %seer [[%basic 'seer' '/~seer-files/img/seer.png' '/~seer'] %.y]])]
     =/  init-cards
       :~
-        [%pass /seertile %agent [our.bol %launch] %poke [%launch-action !>([%remove %seer])]]
-        [%pass /bind/seer %arvo %e %connect [~ /'~seer'] %seer]
-        [%pass /seertile %agent [our.bol %launch] %poke launcha]
+        [%pass /bind/seer %arvo %e %connect [~ /seer] %seer]
       ==
     ?:  ?=(%| -.old-state)
       ~!  p.old-state
@@ -171,7 +161,7 @@
           items
         %-  ~(run by items.prev)
         |=  =item-1
-        ^-  item
+        ^-  item::test
         (item content.item-1 learn.item-1 ~ name.item-1)
           review-items
         %-  ~(run by review-items.prev)
@@ -415,12 +405,12 @@
     :-  %a
     (turn all-reviews review-to-json)
   ::  learned status as json for given stack
-      [[[~ %json] [%'~seer' %learn @ ~]] ~]
+      [[[~ %json] [%apps %seer %learn @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     %-  json-response:gen
     %-  stack-status-to-json  (~(got by stacks) stack-name)
   ::  learned status as json for given stack and item
-      [[[~ %json] [%'~seer' %learn @ @ ~]] ~]
+      [[[~ %json] [%apps %seer %learn @ @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     =/  item-name  i.t.t.t.site.request-line
     =/  =stack  (~(got by stacks) stack-name)
@@ -429,43 +419,43 @@
     %-  status-to-json  learn.item
   ::  home page; redirect
   ::
-      [[~ [%'~seer' ~]] ~]
+      [[~ [%apps %seer ~]] ~]
     =/  hym=manx  (index (state-to-json state))
-    (redirect:gen '/~seer/review')
+    (redirect:gen '/seer/review')
   ::  review page
   ::
-      [[~ [%'~seer' %review ~]] ~]
+      [[~ [%apps %seer %review ~]] ~]
     =/  hym=manx  (index (state-to-json state))
 
     (manx-response:gen hym)
   ::  subscriptions
   ::
-      [[~ [%'~seer' %stack-subs ~]] ~]
+      [[~ [%apps %seer %stack-subs ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  created
   ::
-      [[~ [%'~seer' %stacks ~]] ~]
+      [[~ [%apps %seer %stacks ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new item
   ::
-      [[~ [%'~seer' %new-item ~]] ~]
+      [[~ [%apps %seer %new-item ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new stack
   ::
-      [[~ [%'~seer' %new-stack ~]] ~]
+      [[~ [%apps %seer %new-stack ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  stack
   ::
-      [[~ [%'~seer' @t @t ~]] ~]
+      [[~ [%apps %seer @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  stack item
   ::
-      [[~ [%'~seer' @t @t @t ~]] ~]
+      [[~ [%apps %seer @t @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::

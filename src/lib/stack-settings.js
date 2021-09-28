@@ -48,7 +48,7 @@ export class StackSettings extends Component {
     this.setState({
       awaitingTitleChange: true
     }, () => {
-      this.props.api.action('srrs', 'srrs-action', edit);
+      this.props.api.action('seer', 'seer-action', edit);
     });
   }
 
@@ -62,8 +62,8 @@ export class StackSettings extends Component {
         stack: this.props.stackId
       }
     };
-    this.props.api.action('srrs', 'srrs-action', del);
-    this.props.history.push('/~srrs/review');
+    this.props.api.action('seer', 'seer-action', del);
+    this.props.history.push('/seer/review');
   }
 
   componentDidUpdate(prevProps) {

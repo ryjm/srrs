@@ -88,7 +88,7 @@ export class NewItem extends Component {
           itemId: itemId
         }
       }, () => {
-        this.props.api.action('srrs', 'srrs-action', newItem);
+        this.props.api.action('seer', 'seer-action', newItem);
       }
       );
     } else {
@@ -109,7 +109,7 @@ export class NewItem extends Component {
       this.setState({
         awaiting: awaiting
       }, () => {
-        this.props.api.action('srrs', 'srrs-action', editItem);
+        this.props.api.action('seer', 'seer-action', editItem);
       });
     }
   }
@@ -132,7 +132,7 @@ export class NewItem extends Component {
           });
         } else {
           this.props.setSpinner(false);
-          const redirect = `/~srrs/~${ship}/${stackId}/${itemId}`;
+          const redirect = `/seer/~${ship}/${stackId}/${itemId}`;
           this.props.history.push(redirect);
         }
       }
@@ -160,10 +160,10 @@ export class NewItem extends Component {
         }
       };
 
-      this.props.api.action('srrs', 'srrs-action', del);
+      this.props.api.action('seer', 'seer-action', del);
     }
 
-    const redirect = `/~srrs/~${ship}/${stackId}`;
+    const redirect = `/seer/~${ship}/${stackId}`;
     this.props.history.push(redirect);
   }
 
@@ -207,7 +207,7 @@ export class NewItem extends Component {
                     >
                         Save &ldquo;{props.stack}&rdquo;
                     </button>
-                    <Link to={`/~srrs/${props.ship}/${props.stack}`} className="blue3 ml2">
+                    <Link to={`/seer/${props.ship}/${props.stack}`} className="blue3 ml2">
                         {`<- ${props.stack}`}
                     </Link>
                 </div>

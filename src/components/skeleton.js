@@ -2,7 +2,7 @@ import { HeaderBar } from '~/lib/header-bar';
 import { HeaderMenu } from '~/lib/header-menu';
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
-import { SrrsCreate } from '~/lib/srrs-create';
+import { SrrsCreate } from '~/lib/seer-create';
 import { Sidebar } from '~/lib/sidebar';
 import { withRouter } from 'react-router';
 

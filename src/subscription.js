@@ -7,14 +7,14 @@ import urbitOb from 'urbit-ob';
 export class Subscription {
   start() {
     if (api.authTokens) {
-      this.initializesrrs();
+      this.initializeseer();
     } else {
       console.error("~~~ ERROR: Must set api.authTokens before operation ~~~");
     }
   }
 
-  initializesrrs() {
-    api.bind('/srrs-primary', 'PUT', api.authTokens.ship, 'srrs',
+  initializeseer() {
+    api.bind('/seer-primary', 'PUT', api.authTokens.ship, 'seer',
       this.handleEvent.bind(this),
       this.handleError.bind(this));
   }
@@ -25,7 +25,7 @@ export class Subscription {
 
   handleError(err) {
     console.error(err);
-    api.bind('/srrs-primary', 'PUT', api.authTokens.ship, 'srrs',
+    api.bind('/seer-primary', 'PUT', api.authTokens.ship, 'seer',
       this.handleEvent.bind(this),
       this.handleError.bind(this));
   }

@@ -29,14 +29,14 @@ export class ItemPreview extends Component {
         itemId: this.props.itemId
       }
     }, () => {
-      this.props.api.action('srrs', 'srrs-action', data);
+      this.props.api.action('seer', 'seer-action', data);
     });
   };
   render() {
     const date = moment(this.props.item.date).fromNow();
     const author = this.props.item.author;
 
-    const stackLink = '/~srrs/' +
+    const stackLink = '/seer/' +
       this.props.item.stackOwner + '/' +
       this.props.item.stackName;
     const itemLink = stackLink + '/' + this.props.item.itemName;

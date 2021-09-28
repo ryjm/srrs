@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
-import { SrrsCreate } from '~/lib/srrs-create';
+import { SrrsCreate } from '~/lib/seer-create';
 import { withRouter } from 'react-router';
 
 const PC = withRouter(SrrsCreate);
@@ -32,10 +32,10 @@ export class HeaderMenu extends Component {
         >
 
             <div className="flex" style={{ marginBottom: 24 }}>
-              <Link to="/~srrs/review" className={tabStyles.review}>
+              <Link to="/seer/review" className={tabStyles.review}>
                 Review
               </Link>
-              <Link to="/~srrs/pubs" className={tabStyles.stacks}>
+              <Link to="/seer/pubs" className={tabStyles.stacks}>
                 Stacks
               </Link>
               <div className="bb b--gray4 b--gray2-d gray2 pv4 ph2"

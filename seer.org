@@ -16,8 +16,42 @@ CLOCK: [2021-09-13 Mon 12:57]--[2021-09-13 Mon 16:23] =>  3:26
 :header-args: :dir /home/jake/vault/projects/urbit/git/urbit/
 :header-args: :results output
 :END:
+** unix install
 
-** Setup
+Copy into the urbit/urbit repo so that dependencies can be symlinked without
+messing with the app source.
+
+#+begin_src sh
+# Assumes you are in the urbit/urbit git repo
+cd pkg
+# rm -rf ./seer/*
+# cp -R ~/vault/projects/seer/urbit/* ./seer
+./symbolic-merge.sh ./garden-dev ./seer # for docket agent
+./symbolic-merge.sh ./landscape ./seer # for stuff like group-store
+#+end_src
+
+#+results:
+
+#+begin_src sh
+ls ./pkg/seer
+#+end_src
+
+Metadata files
+
+#+begin_src sh :results none
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/marzod/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/marzod/seer/
+#+end_src
+
+Source files. Ensure we don't accidently include files we do not have marks for.
+
+#+begin_src sh :results none
+cd pkg/seer
+
+find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/marzod/seer \;
+#+end_src
+
+** Initial Setup
 *** urbit install
 create new desk and mount.
 
@@ -32,60 +66,27 @@ symlink the garden dev desk into the seer desk.
 cd pkg
 ./symbolic-merge.sh ./garden-dev ./seer
 ./symbolic-merge.sh ./landscape ./seer
-ls seer/mar
 
 #+end_src
-
-#+results:
-| contact                   |
-| css.hoon                  |
-| dm-hook-action.hoon       |
-| docket.hoon               |
-| elem.hoon                 |
-| file-server               |
-| front.hoon                |
-| graph                     |
-| group                     |
-| hark                      |
-| hash.hoon                 |
-| import.hoon               |
-| invite                    |
-| json                      |
-| language-server           |
-| launch                    |
-| letter.hoon               |
-| metadata                  |
-| metadata-hook-action.hoon |
-| observe                   |
-| pull-hook                 |
-| push-hook                 |
-| resource.hoon             |
-| s3                        |
-| seer                      |
-| ships.hoon                |
-| sole                      |
-| x-htm.hoon                |
 
 copy metadata files into mounted unix path
 #+begin_src zsh
-rm -rf /mnt/laptop-sandisk/zod/seer/*
+rm -rf /mnt/laptop-sandisk/samzod/seer/*
 #+end_src
 
 #+results:
 
-#+begin_src sh
-cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/zod/seer/
-cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/zod/seer/
+#+begin_src sh :results none
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/samzod/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/samzod/seer/
 #+end_src
 
-#+results:
-
-copy hoon files into mounted unix path. this is to ensure we don't accidently include files we do not have marks for.
+Copy hoon files into mounted unix path. this is to ensure we don't accidently include files we do not have marks for.
 
 #+begin_src sh :results none
 cd pkg/seer
 
-find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/zod/seer \;
+find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/samzod/seer \;
 #+end_src
 
 #+begin_src tmux
@@ -165,8 +166,8 @@ ls ./pkg/seer
 | sur |
 #+begin_src sh :results none
 cp pkg/garden/sys.kelvin ./pkg/seer
-cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/zod/seer/
-cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/zod/seer/
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/samzod/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/samzod/seer/
 #+end_src
 
 Check docket and bill files
@@ -195,7 +196,6 @@ cat desk.bill
     :-  %fish  ~
 ==
 #+end_example
-
 *** Manifests
 :PROPERTIES:
 :header-args: :dir /home/jake/vault/projects/urbit/git/urbit/pkg/seer
@@ -207,7 +207,8 @@ Define the docket and the bill for the desk.
 :~  title+'Seer'
     info+'Your brain on urbit'
     color+0xee.5432
-    glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
+
+glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
     ::glob-ames+~zod
     base+'seer'
     version+[0 0 1]
@@ -251,44 +252,82 @@ cat desk.bill
 ==
 #+end_example
 *** Desk Install
-**** base install
+**** Dev install
 :PROPERTIES:
 :header-args: :dir /home/jake/vault/projects/urbit/git/urbit/
 :END:
-#+begin_src tmux
-|merge %base-dev our %base
-|merge %garden our %base
-|mount %base-dev
-|mount %garden
+Do this if not booting with a multi-desk pill containing the necessary desks.
 
-#+end_src
+Unmount if necessary.
+
 #+begin_src tmux
 |unmount %base-dev
 |unmount %garden
+|unmount %landscape
 #+end_src
+
+Create desks and mount.
+#+begin_src tmux
+|merge %base-dev our %base
+|merge %garden our %base
+|merge %landscape our %base
+|merge %seer our %base
+|mount %base-dev
+|mount %garden
+|mount %landscape
+|mount %seer
+#+end_src
+
+
 
 #+results:
 
-#+begin_src zsh
-rm -rf /mnt/laptop-sandisk/zod/base-dev/*
+#+begin_src sh :results none
+unalias cp
+
 rm -rf /mnt/laptop-sandisk/zod/garden/*
-
-cp -RLn pkg/base-dev/* /mnt/laptop-sandisk/zod/base-dev/
-cp -RLn pkg/garden/* /mnt/laptop-sandisk/zod/garden/
+rm -rf /mnt/laptop-sandisk/zod/base/*
+yes | cp -RL pkg/garden/* /mnt/laptop-sandisk/zod/garden/
+yes | cp -RL pkg/arvo/* /mnt/laptop-sandisk/zod/base/
+#+end_src
+#+begin_src sh :results none
+unalias cp
+rm -rf /mnt/laptop-sandisk/zod/seer/*
+yes | cp -RL pkg/seer/* /mnt/laptop-sandisk/zod/seer/
+#+end_src
+#+begin_src sh
+unalias cp
+rm -rf /mnt/laptop-sandisk/dopzod/base/*
+yes | cp -RL pkg/arvo/* /mnt/laptop-sandisk/dopzod/base/
+rm -rf /mnt/laptop-sandisk/dopzod/garden/*
+yes | cp -RL pkg/garden/* /mnt/laptop-sandisk/dopzod/garden/
 
 #+end_src
 
 #+results:
 
+#+begin_src tmux
+|commit %base
+|commit %garden
+#+end_src
+#+results:
 
+#+begin_src sh
+yes | cp -RL /mnt/laptop-sandisk/zod-old/base/* /mnt/laptop-sandisk/zod/base/
+yes | cp -RL /mnt/laptop-sandisk/zod-old/garden/* /mnt/laptop-sandisk/zod/garden/
 #+end_src
 
 #+results:
 
 #+begin_src tmux
 |commit %base-dev
-|merge %garden our %base-dev
 |commit %garden
+|commit %landscape
+|merge %seer our %base-dev
+|merge %seer our %landscape
+|commit %seer
+
+
 #+end_src
 
 #+begin_src tmux
@@ -304,12 +343,10 @@ cp -RLn pkg/garden/* /mnt/laptop-sandisk/zod/garden/
 
 #+end_src
 #+begin_src tmux
-
 =dir
 |commit %garden
 =dir /=garden
--glob [[%http ] `%garden]
--glob [[%ship our] `%garden]
+-glob [[%ames ~dopzod] %seer]
 =dir
 #+end_src
 
@@ -338,7 +375,7 @@ tadnul-nismyn-dabryn-balhes
 ]
 
 #+end_src
-****
+
 *** Changes
 - No more chat store
 - had to symlink landscape

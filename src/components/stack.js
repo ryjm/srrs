@@ -46,10 +46,10 @@ export class Stack extends Component {
         stackHost: stack.info.owner,
         awaiting: false,
         pathData: [
-          { text: 'Home', url: '/~srrs/review' },
+          { text: 'Home', url: '/seer/review' },
           {
             text: stack.info.title,
-            url: `/~srrs/${stack.info.owner}/${stack.info.filename}`
+            url: `/seer/${stack.info.owner}/${stack.info.filename}`
           }
         ]
       });
@@ -59,7 +59,7 @@ export class Stack extends Component {
       if (diff.data.remove.item) {
         // XX TODO
       } else {
-        this.props.history.push('/~srrs/review');
+        this.props.history.push('/seer/review');
       }
     }
   }
@@ -83,7 +83,7 @@ export class Stack extends Component {
       this.setState({ notFound: true });
       return;
     } else if (this.stack && !stack) {
-      this.props.history.push('/~srrs/review');
+      this.props.history.push('/seer/review');
       return;
     }
 
@@ -124,7 +124,7 @@ export class Stack extends Component {
 
       this.props.setSpinner(true);
 
-      this.props.api.bind(`/stack/${stackId}`, 'PUT', ship, 'srrs',
+      this.props.api.bind(`/stack/${stackId}`, 'PUT', ship, 'seer',
         this.handleEvent.bind(this),
         this.handleError.bind(this));
     } else {
@@ -146,8 +146,8 @@ export class Stack extends Component {
         stackId: this.props.stackId
       }
     }, () => {
-      this.props.api.action('srrs', 'srrs-action', del).then(() => {
-       const redirect = '/~srrs/review';
+      this.props.api.action('seer', 'seer-action', del).then(() => {
+       const redirect = '/seer/review';
         this.props.history.push(redirect);
       });
     });
@@ -160,8 +160,8 @@ export class Stack extends Component {
         stak: this.props.stackId
       }
     };
-    this.props.api.action('srrs', 'srrs-action', action);
-    this.props.history.push(`/~srrs/~${this.props.ship}/${this.props.stackId}/review`);
+    this.props.api.action('seer', 'seer-action', action);
+    this.props.history.push(`/seer/~${this.props.ship}/${this.props.stackId}/review`);
   }
 
   buildItems(stack) {
@@ -214,10 +214,10 @@ export class Stack extends Component {
         stackTitle: stack.info.title,
         stackHost: stack.info.owner,
         pathData: [
-          { text: 'Home', url: '/~srrs/review' },
+          { text: 'Home', url: '/seer/review' },
           {
             text: stack.info.title,
-            url: `/~srrs/${stack.info.owner}/${stack.info.filename}`
+            url: `/seer/${stack.info.owner}/${stack.info.filename}`
           }
         ]
       };
@@ -233,7 +233,7 @@ export class Stack extends Component {
     };
     this.props.setSpinner(true);
     this.setState({ awaitingSubscribe: true }, () => {
-      this.props.api.action('srrs', 'srrs-action', sub);
+      this.props.api.action('seer', 'seer-action', sub);
     });
   }
 
@@ -244,8 +244,8 @@ export class Stack extends Component {
         stack: this.props.stackId
       }
     };
-    this.props.api.action('srrs', 'srrs-action', unsub);
-    this.props.history.push('/~srrs/review');
+    this.props.api.action('seer', 'seer-action', unsub);
+    this.props.history.push('/seer/review');
   }
 
   viewSubs() {
@@ -288,7 +288,7 @@ export class Stack extends Component {
         }}
       >
         <div className="w-100 dn-m dn-l dn-xl inter pt4 pb6 f9">
-          <Link to="/~srrs/review">{'<- Review'}</Link>
+          <Link to="/seer/review">{'<- Review'}</Link>
         </div>
         <div className="mw9 f9 h-100"
           style={{ paddingLeft: 16, paddingRight: 16 }}
@@ -312,7 +312,7 @@ export class Stack extends Component {
                 </span>
               </div>
               <div className="flex">
-              {localStack && <Link to={`/~srrs/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
+              {localStack && <Link to={`/seer/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
                   New Item
                </Link>}
             {localStack && <p className="StackButton bg-light-green green2 ml2" onClick={this.reviewStack}>Review all items</p>}
@@ -325,7 +325,7 @@ export class Stack extends Component {
             </div>
 
             <div className="flex" style={{ marginBottom: 24 }}>
-            <Link to={`/~srrs/${data.stack.info.owner}/${data.stack.info.filename}/review`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
+            <Link to={`/seer/${data.stack.info.owner}/${data.stack.info.filename}/review`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
                 Review
               </Link>
 

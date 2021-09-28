@@ -14,7 +14,7 @@ export class SrrsCreate extends Component {
       );
     } else if (this.props.create == 'stack') {
       const link = {
-        pathname: '/~srrs/new-stack',
+        pathname: '/seer/new-stack',
         state: {
           lastPath: this.props.location.pathname,
           lastMatch: this.props.match.path,
@@ -30,7 +30,7 @@ export class SrrsCreate extends Component {
       );
     } else if (this.props.create == 'item') {
       const link = {
-        pathname: '/~srrs/new-item',
+        pathname: '/seer/new-item',
         state: {
           lastPath: this.props.location.pathname,
           lastMatch: this.props.match.path,

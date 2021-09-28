@@ -1,7 +1,7 @@
 module.exports = {
   URBIT_PIERS: [
-    "/Users/user/ships/zod/home",
+    "/mnt/laptop-sandisk/samzod/seer/*"
   ],
   herb: false,
-  URL: 'http://localhost:80'
+  URL: 'http://localhost:8083'
 };

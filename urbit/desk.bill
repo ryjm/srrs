@@ -1,9 +1,5 @@
-:~  :-  %apes
-    :~  %seer
-    ==
-    :-  %fish
-    :~
-        %seer-cli
-    ==
-
+:~
+  %seer
+  %seer-cli
+::test
 ==

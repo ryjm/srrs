@@ -67,9 +67,9 @@ export class EditItem extends Component {
                 itemId: this.props.itemId
             }
         }, () => {
-            this.props.api.action('srrs', 'srrs-action', data).then(() => {
+            this.props.api.action('seer', 'seer-action', data).then(() => {
                 this.setState({ awaiting: false, mode: 'view' });
-                const redirect = `/~srrs/~${props.ship}/${props.stackId}`;
+                const redirect = `/seer/~${props.ship}/${props.stackId}`;
                 props.history.push(redirect);
             });
         });
@@ -114,7 +114,7 @@ export class EditItem extends Component {
                     >
                         Save &ldquo;{props.title}&rdquo;
                     </button>
-                    <Link to={`/~srrs/${props.stack.info.owner}/${props.stack.info.filename}`} className="blue3 ml2">
+                    <Link to={`/seer/${props.stack.info.owner}/${props.stack.info.filename}`} className="blue3 ml2">
                         {`<- ${props.stack.info.filename}`}
                     </Link>
                 </div>

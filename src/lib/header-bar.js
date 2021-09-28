@@ -5,7 +5,7 @@ import { Sigil } from '~/lib/icons/sigil';
 
 export class HeaderBar extends Component {
   render() {
-    const title = document.title === 'Home' ? '' : 'srrs';
+    const title = document.title === 'Home' ? '' : 'seer';
 
     return (
       <div

@@ -14,7 +14,7 @@ export class Pubs extends Component {
     const data = Object.keys(this.props.pubs).map((stackId) => {
       const stack = this.props.pubs[stackId];
       return {
-        url: `/~srrs/${stack.info.owner}/${stackId}`,
+        url: `/seer/${stack.info.owner}/${stackId}`,
         title: stack.info.title,
         host: stack.info.owner,
         lastUpdated: moment(stack['last-update']).fromNow()

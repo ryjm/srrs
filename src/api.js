@@ -6,11 +6,16 @@ class UrbitApi {
     this.authTokens = authTokens;
     this.bindPaths = [];
   }
+  setChannel(ship, channel) {
+    this.ship = ship;
+    this.channel = channel;
+    this.bindPaths = [];
+  }
 
-  bind(path, method, ship = this.authTokens.ship, appl = "srrs", success, fail) {
+  bind(path, method, ship = this.authTokens.ship, appl = "seer", success, fail) {
     this.bindPaths = [...new Set([...this.bindPaths, path])];
 
-    window.subscriptionId = window.urb.subscribe(ship, appl, path, 
+    window.subscriptionId = this.channel.subscribe(ship, appl, path, 
       (err) => {
         fail(err);
       },
@@ -28,13 +33,13 @@ class UrbitApi {
       });
   }
 
-  srrs(data) {
-    this.action("srrs", "json", data);
+  seer(data) {
+    this.action("seer", "json", data);
   }
 
   action(appl, mark, data) {
     return new Promise((resolve, reject) => {
-      window.urb.poke(ship, appl, mark, data,
+      this.channel.poke(ship, appl, mark, data,
         (json) => {
           resolve(json);
         }, 
@@ -45,7 +50,7 @@ class UrbitApi {
   }
 
   fetchStatus(stack, item) {
-    fetch(`/~srrs/learn/${stack}/${item}.json`)
+    fetch(`/seer/learn/${stack}/${item}.json`)
     .then((response) => response.json())
     .then((json) => {
       store.handleEvent({

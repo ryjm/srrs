@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import { withRouter } from 'react-router';
-import { SrrsCreate } from '~/lib/srrs-create';
+import { SrrsCreate } from '~/lib/seer-create';
 
 const PC = withRouter(SrrsCreate);
 
@@ -12,7 +12,7 @@ export class PathControl extends Component {
 
   buildPathData() {
     const path = [
-      { text: 'Home', url: '/~srrs/review' }
+      { text: 'Home', url: '/seer/review' }
     ];
 
     const last = this.props.location.state || false;
@@ -27,23 +27,23 @@ export class PathControl extends Component {
         state: last
       };
 
-      if ((last.lastMatch === '/~srrs/:ship/:stack/:item') ||
-          (last.lastMatch === '/~srrs/:ship/:stack')) {
+      if ((last.lastMatch === '/seer/:ship/:stack/:item') ||
+          (last.lastMatch === '/seer/:ship/:stack')) {
         stack = (ship == window.ship)
           ? this.props.pub[stackId] || false
           : this.props.subs[ship][stackId] || false;
       }
     }
 
-    if (this.props.location.pathname === '/~srrs/new-stack') {
+    if (this.props.location.pathname === '/seer/new-stack') {
       path.push(
         { text: 'New Stack', url: finalUrl }
       );
-    } else if (this.props.location.pathname === '/~srrs/new-item') {
+    } else if (this.props.location.pathname === '/seer/new-item') {
       if (stack) {
         path.push({
           text: stack.info.title,
-          url: `/~srrs/${stack.info.owner}/${stack.info.filename}`
+          url: `/seer/${stack.info.owner}/${stack.info.filename}`
         });
       }
       path.push(
@@ -76,7 +76,7 @@ export class PathControl extends Component {
       );
       if (i < (pathData.length - 1)) {
         path.push(
-          <img src="/~srrs/arrow.png"
+          <img src="/seer/arrow.png"
           className="fl ml1 mr1 relative"
           style={{ top: 5 }}
           key={key++}
@@ -85,8 +85,8 @@ export class PathControl extends Component {
       }
     });
 
-    const create = ((window.location.pathname === '/~srrs/new-stack') ||
-      (window.location.pathname === '/~srrs/new-item')) ||
+    const create = ((window.location.pathname === '/seer/new-stack') ||
+      (window.location.pathname === '/seer/new-item')) ||
       (this.props.create === false)
       ?  false
       :  'item';

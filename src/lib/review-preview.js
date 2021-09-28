@@ -15,7 +15,7 @@ export class ReviewPreview extends Component {
     const date = moment(this.props.item.date).fromNow();
     const author = this.props.item.author;
     const stackLink =
-      '/~srrs/' + this.props.item.author + '/' + this.props.item.stackName;
+      '/seer/' + this.props.item.author + '/' + this.props.item.stackName;
     const itemLink = stackLink + '/' + this.props.item.itemName;
     const loc = {
       pathname: itemLink,
