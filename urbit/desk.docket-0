@@ -1,11 +1,11 @@
 :~
   title+'Seer'
-  info+'Your brain on urbit'
+  info+'urbrain,  urbit'
   color+0xee.5432
   version+[0 0 1]
   website+'https://urbit.land'
   license+'MIT'
   base+'seer'
-  glob-ames+[~wet 0v2.5vn07.1v76a.5ucq2.lkqb5.6eeau]
-
+  site+/seer
+  :: glob-ames+[~matwet 0v7.9r93t.j9pi6.9i6m9.b8ch1.8k3o9]
 ==

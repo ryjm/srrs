@@ -8,15 +8,15 @@
     ;meta
       =name     "viewport"
       =content  "width=device-width, initial-scale=1, shrink-to-fit=no";
-    ;link(rel "stylesheet", href "/~seer-files/css/index.css");
+    ;link(rel "stylesheet", href "/seer/css/index.css");
     ;link(rel "icon", type "image/png", href "/~launch/img/Favicon.png");
-    ;script@"/~landscape/js/channel.js";
-    ;script@"/~landscape/js/session.js";
+
+    ;script@"/session.js";
     ;script: window.injectedState = {(en-json:html inject)}
   ==
 ::
   ;body
     ;div#root;
-    ;script@"/~seer-files/js/index.js";
+    ;script@"/seer/index.js";
   ==
 ==

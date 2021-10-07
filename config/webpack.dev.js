@@ -1,11 +1,11 @@
 const path = require('path');
-// const HtmlWebpackPlugin = require('html-webpack-plugin');
 // const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const urbitrc = require('./urbitrc');
 const fs = require('fs');
 const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 
 function copyFile(src, dest) {
   return new Promise((res, rej) =>
@@ -17,7 +17,6 @@ class UrbitShipPlugin {
     this.piers = urbitrc.URBIT_PIERS;
     this.herb = urbitrc.herb || false;
   }
-
   apply(compiler) {
     compiler.hooks.afterEmit.tapPromise(
       'UrbitShipPlugin',
@@ -42,22 +41,30 @@ class UrbitShipPlugin {
 }
 
 let devServer = {
-  contentBase: path.join(__dirname, '../dist'),
+  static: [
+      {
+        directory: path.join(__dirname, "../dist"),
+        publicPath: "/seer/css",
+        watch: true
+      }
+    ],
   hot: true,
-  port: 9000,
+  port: 9001,
   host: '0.0.0.0',
-  disableHostCheck: true,
-  historyApiFallback: true
+  historyApiFallback: false,
 };
 
 if (urbitrc.URL) {
   devServer = {
     ...devServer,
-    index: '',
     proxy: {
-      '/seer-files/js/index.js': {
-        target: 'http://localhost:9000',
+      '/seer/index.js': {
+        target: 'http://localhost:9001',
         pathRewrite: (req, path) => '/index.js'
+      },
+      '/seer/css/index.css': {
+        target: 'http://localhost:9001',
+        pathRewrite: (req, path) => '/index.css'
       },
       '**': {
         target: urbitrc.URL,
@@ -75,61 +82,67 @@ module.exports = {
   },
   module: {
     rules: [
+         {
+        test: /\.css$/,
+        use: [
+          // Creates `style` nodes from JS strings
+          {
+            loader: MiniCssExtractPlugin.loader,
+            options: {
+              esModule: false
+            }
+          },
+          // Translates CSS into CommonJS
+           {
+            loader: "css-loader",
+            options: {
+              importLoaders: 0,
+              modules:false
+              // 0 => no loaders (default);
+              // 1 => postcss-loader;
+              // 2 => postcss-loader, sass-loader
+            },
+          },
+
+                  ],
+
+                  include: [
+                    /\.css$/,
+                    path.join(__dirname, "../src/css")                  ],
+      },
       {
         test: /\.(j|t)sx?$/,
         use: {
           loader: 'babel-loader',
           options: {
             presets: ['@babel/preset-env', '@babel/typescript', '@babel/preset-react'],
-            plugins: [
-              '@babel/transform-runtime',
-              '@babel/plugin-proposal-object-rest-spread',
-              '@babel/plugin-proposal-optional-chaining',
-              '@babel/plugin-proposal-class-properties',
-              'react-hot-loader/babel'
-            ]
-          }
+                 }
         },
         exclude: /node_modules/
-      },
-      {
-        test: /\.css$/i,
-        use: [
-          // Creates `style` nodes from JS strings
-          'style-loader',
-          // Translates CSS into CommonJS
-          'css-loader',
-          // Compiles Sass to CSS
-          'sass-loader'
-        ]
       }
     ]
   },
   resolve: {
-    extensions: ['.js', '.ts', '.tsx']
+    extensions: ['.js', '.ts', '.tsx'],
+    fallback: {
+
+    }
   },
   devtool: 'inline-source-map',
   devServer: devServer,
   plugins: [
-    new CopyWebpackPlugin({
-      patterns: [
+    new MiniCssExtractPlugin({filename: "index.css"}),
 
-        // Copy directory contents to {output}/to/directory/
-        //{ from: 'from/directory', to: 'to/directory' },
+    //new CopyWebpackPlugin({
+      //patterns: [
 
-        { from: '**/*', context: path.resolve(__dirname.split("/").slice(0, __dirname.split("/").length - 1).join("/"), 'urbit'), to: urbitrc.URBIT_PIERS[0] }
-      ]
-    }
-    ),
-    new UrbitShipPlugin(urbitrc),
 
-    // new CleanWebpackPlugin(),
-    // new HtmlWebpackPlugin({
-    //   title: 'Hot Module Replacement',
-    //   template: './public/index.html',
-    // }),
+//        { from: '**/*', context: path.resolve(__dirname.split('/').slice(0, __dirname.split("/").length - 1).join("/"), 'urbit'), to: urbitrc.URBIT_PIERS[0] }
+      //]
+    //}
+    //),
+    //new UrbitShipPlugin(urbitrc)
   ],
-  watch: true,
   output: {
     filename: 'index.js',
     chunkFilename: 'index.js',

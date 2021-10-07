@@ -1,7 +1,6 @@
 import React, { Component } from 'react';
-
+import '../index.css';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
-import { sigil as sigiljs, stringRenderer } from 'urbit-sigil-js';
 import light from "@tlon/indigo-light";
 import { BrowserRouter, Route } from 'react-router-dom';
 import { api } from '~/api';

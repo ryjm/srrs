@@ -400,17 +400,17 @@
     not-found:gen
   ::  send review state as json
   ::
-      [[[~ %json] [%'~seer' %update-review ~]] ~]
+      [[[~ %json] [%'seer' %update-review ~]] ~]
     %-  json-response:gen
     :-  %a
     (turn all-reviews review-to-json)
   ::  learned status as json for given stack
-      [[[~ %json] [%apps %seer %learn @ ~]] ~]
+      [[[~ %json] [%seer %learn @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     %-  json-response:gen
     %-  stack-status-to-json  (~(got by stacks) stack-name)
   ::  learned status as json for given stack and item
-      [[[~ %json] [%apps %seer %learn @ @ ~]] ~]
+      [[[~ %json] [%seer %learn @ @ ~]] ~]
     =/  stack-name  i.t.t.site.request-line
     =/  item-name  i.t.t.t.site.request-line
     =/  =stack  (~(got by stacks) stack-name)
@@ -419,43 +419,43 @@
     %-  status-to-json  learn.item
   ::  home page; redirect
   ::
-      [[~ [%apps %seer ~]] ~]
+      [[~ [%'seer' ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (redirect:gen '/seer/review')
   ::  review page
   ::
-      [[~ [%apps %seer %review ~]] ~]
+      [[~ [%'seer' %review ~]] ~]
     =/  hym=manx  (index (state-to-json state))
 
     (manx-response:gen hym)
   ::  subscriptions
   ::
-      [[~ [%apps %seer %stack-subs ~]] ~]
+      [[~ [%'seer' %stack-subs ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  created
   ::
-      [[~ [%apps %seer %stacks ~]] ~]
+      [[~ [%'seer' %stacks ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new item
   ::
-      [[~ [%apps %seer %new-item ~]] ~]
+      [[~ [%'seer' %new-item ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new stack
   ::
-      [[~ [%apps %seer %new-stack ~]] ~]
+      [[~ [%'seer' %new-stack ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  stack
   ::
-      [[~ [%apps %seer @t @t ~]] ~]
+      [[~ [%'seer' @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  stack item
   ::
-      [[~ [%apps %seer @t @t @t ~]] ~]
+      [[~ [%'seer' @t @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::
@@ -630,7 +630,7 @@
         (~(get by stacks) i.t.wire)
       |=(=stack (~(get by items.stack) i.t.t.wire))
     ?~  item
-      ~&  seer+"{(spud t.t.wire)} scheduled for review, but no longer exists"
+      ~&  peer+"missing {(spud t.t.wire)} item scheduled for review!"
       [~ state]
     =<  abet
     %.  (need item)
