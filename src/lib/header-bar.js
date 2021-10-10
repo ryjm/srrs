@@ -5,7 +5,7 @@ import { Sigil } from '~/lib/icons/sigil';
 
 export class HeaderBar extends Component {
   render() {
-    const title = document.title === 'Home' ? '' : 'seer';
+    const title = document.title === 'home' ? '' : 'seer';
 
     return (
       <div
@@ -24,7 +24,7 @@ export class HeaderBar extends Component {
             className="ml2 white-d v-top lh-title"
             style={{ paddingTop: 3 }}
           >
-            Home
+            home
           </span>
         </a>
         <span

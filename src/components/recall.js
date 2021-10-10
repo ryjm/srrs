@@ -71,23 +71,23 @@ export class Recall extends React.Component {
                     <p className="label-regular gray-50 pointer tr b"
                         onClick={props.gradeItem}
                     >
-                        Grade
+                        grade
             </p>
 
                     <p className="label-regular gray-50 pointer tr b"
                         onClick={props.editItem}
                     >
-                        Edit
+                        edit
             </p>
                     <p className="label-regular red pointer tr b"
                         onClick={props.deleteItem}
                     >
-                        Delete
+                        delete
             </p>
                     <p className="label-regular gray-50 pointer tr b"
                         onClick={props.toggleAdvanced}
                     >
-                        Advanced
+                        details
             </p>
                 </div>
             );

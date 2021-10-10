@@ -6,7 +6,7 @@ export class StackSubs extends Component {
   }
 
   render() {
-    const back = '<- Back to notes';
+    const back = '<- back to items';
 
     const subscribers = this.props.subs.map((sub, i) => {
       return (
@@ -19,7 +19,7 @@ export class StackSubs extends Component {
     subscribers.unshift(
       <div className="flex w-100" key={0}>
         <p className="label-regular-mono w-100">~{window.ship}</p>
-        <p className="label-regular-mono w-100">Host (You)</p>
+        <p className="label-regular-mono w-100">host (you)</p>
       </div>
     );
 
@@ -30,15 +30,15 @@ export class StackSubs extends Component {
           {back}
         </p>
         <p className="body-large b" style={{ marginTop: 16, marginBottom: 20 }}>
-          Manage Notebook
+          manage notebook
         </p>
         <div className="flex">
           <div className="flex-col w-100">
-            <p className="body-regular-400">Members</p>
+            <p className="body-regular-400">subscribers</p>
             <p className="gray-50 label-small-2"
               style={{ marginTop: 12, marginBottom: 23 }}
             >
-              Everyone subscribed to this notebook
+              everyone subscribed to this stack
             </p>
             {subscribers}
           </div>

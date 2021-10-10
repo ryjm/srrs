@@ -91,8 +91,8 @@ export class NextPrev extends Component {
     if (!(prevId || nextId)) {
       return null;
     } else {
-      const prevText = '<- Previous Item';
-      const nextText = '-> Next Item';
+      const prevText = '<- previous item';
+      const nextText = '-> next item';
 
       return (
         <div>

@@ -130,11 +130,11 @@ export class NewStack extends Component {
           }
         >
           <div className="w-100 dn-m dn-l dn-xl inter pt1 pb6 f8">
-            <Link to="/seer/review">{'⟵ Review'}</Link>
+            <Link to="/seer/review">{'⟵ review'}</Link>
           </div>
           <div className="w-100">
             <p className="f9 gray2 db mb2 pt1">
-              Stack Name
+              stack name
           </p>
             <textarea autoFocus
               ref={(el) => {
@@ -145,7 +145,7 @@ export class NewStack extends Component {
               style={{ resize: 'none' }}
               rows={1}
               name="stackName"
-              placeholder="Add a Title"
+              placeholder="add a title"
               onChange={this.titleChange}
             >
             </textarea>
@@ -154,7 +154,7 @@ export class NewStack extends Component {
               disabled={this.state.disabled}
               onClick={this.firstItem}
               className={createClasses}
-            >Create</button>
+            >create</button>
           </div>
         </div>
       );

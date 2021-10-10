@@ -352,7 +352,7 @@ return null;
               </div>
               <div className="flex">
                 <Link to={`/seer/${host}/${stackTitle}/new-item`} className="StackButton bg-light-green green2">
-                  New Item
+                   new item
             </Link>
               </div>
             </div>

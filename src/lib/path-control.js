@@ -37,7 +37,7 @@ export class PathControl extends Component {
 
     if (this.props.location.pathname === '/seer/new-stack') {
       path.push(
-        { text: 'New Stack', url: finalUrl }
+        { text: 'new stack', url: finalUrl }
       );
     } else if (this.props.location.pathname === '/seer/new-item') {
       if (stack) {
@@ -47,7 +47,7 @@ export class PathControl extends Component {
         });
       }
       path.push(
-        { text: 'New Note', url: finalUrl }
+        { text: 'new note', url: finalUrl }
       );
     }
     return path;

@@ -94,11 +94,11 @@ export class Sidebar extends Component {
       >
         <Box>
           <Link to="/seer/review" className="blue2 pa4 f9 dib">
-            Review
+            review
           </Link>
           <Box>
             <Link to="/seer/new-stack" className="green2 pa4 f9 dib">
-              New Stack
+              new stack
           </Link>
           </Box>
           <Box>

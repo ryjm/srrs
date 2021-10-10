@@ -24,7 +24,7 @@ export class SrrsCreate extends Component {
       return (
         <div className="flex">
           <Link to={link}>
-            <p className="bg-light-green green2 StackButton">New Stack</p>
+            <p className="bg-light-green green2 StackButton">new stack</p>
           </Link>
         </div>
       );
@@ -40,7 +40,7 @@ export class SrrsCreate extends Component {
       return (
         <div className="flex">
           <Link to={link}>
-            <p className="bg-light-green green2 StackButton">New Item</p>
+            <p className="bg-light-green green2 StackButton">new item</p>
           </Link>
         </div>
       );

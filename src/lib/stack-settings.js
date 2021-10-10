@@ -11,13 +11,13 @@ class SaveLink extends Component {
         <button className="label-regular b"
           onClick={this.props.action}
         >
-          -&gt; Save
+          -&gt; save
         </button>
       );
     } else {
       return (
         <p className="label-regular b gray-50">
-          -&gt; Save
+          -&gt; save
         </p>
       );
     }
@@ -89,24 +89,24 @@ export class StackSettings extends Component {
           {back}
         </p>
         <p className="body-large b" style={{ marginTop:16, marginBottom: 20 }}>
-          Settings
+          settings
         </p>
         <div className="flex">
           <div className="flex-col w-100">
-            <p className="body-regular-400">Delete Notebook</p>
+            <p className="body-regular-400">delete stack</p>
             <p className="gray-50 label-small-2" style={{ marginTop:12, marginBottom:8 }}>
-              Permanently delete this notebook
+              permanently delete this stack
             </p>
             <button className="red label-regular b" onClick={this.deleteStack}>
-              -&gt; Delete
+              -&gt; delete
             </button>
           </div>
           <div className="flex-col w-100">
             <p className="body-regular-400">Rename</p>
             <p className="gray-50 label-small-2" style={{ marginTop:12, marginBottom:23 }}>
-              Change the name of this notebook
+              change the name of this notebook
             </p>
-            <p className="label-small-2">Notebook Name</p>
+            <p className="label-small-2">stack name</p>
             <input className="body-regular-400 w-100"
               ref={(el) => {
  this.titleInput = el;

@@ -205,7 +205,7 @@ export class NewItem extends Component {
                         style={submitStyle}
                         onClick={this.itemSubmit}
                     >
-                        Save &ldquo;{props.stack}&rdquo;
+                        save &ldquo;{props.stack}&rdquo;
                     </button>
                     <Link to={`/seer/${props.ship}/${props.stack}`} className="blue3 ml2">
                         {`<- ${props.stack}`}
@@ -218,21 +218,21 @@ export class NewItem extends Component {
                     <div className="EditItem">
                       <CodeMirror
                         value=""
-                        options={{ ...options, ...{ placeholder: 'Title' } }}
+                        options={{ ...options, ...{ placeholder: 'title' } }}
                         onChange={(e, d, v) => this.titleChange(e, d, v)}
                       />
                     </div>
                     <div className="EditItem">
                         <CodeMirror
                             value=""
-                          options={{ ...options, ...{ placeholder: 'Front' } }}
+                          options={{ ...options, ...{ placeholder: 'front' } }}
                             onChange={(e, d, v) => this.bodyFrontChange(e, d, v)}
                         />
                     </div>
                     <div className="EditItem">
                       <CodeMirror
                         value=""
-                          options={{ ...options, ...{ placeholder: 'Back' } }}
+                          options={{ ...options, ...{ placeholder: 'back' } }}
                             onChange={(e, d, v) => this.bodyBackChange(e, d, v)}
                       />
                     </div>

@@ -3,7 +3,7 @@
 ;html
 ::
   ;head
-    ;title: Srrs
+    ;title: %seer
     ;meta(charset "utf-8");
     ;meta
       =name     "viewport"

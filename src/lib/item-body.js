@@ -28,7 +28,7 @@ export class ItemBody extends Component {
  this.props.toggleShowBack();
 }}
           >
-              Hide
+              hide
             </button>
         </div>
       );
@@ -43,7 +43,7 @@ export class ItemBody extends Component {
  this.props.toggleShowBack();
 }}
           >
-              Show
+              reveal
             </button>
         </div>
       );

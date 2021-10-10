@@ -120,7 +120,7 @@ export class Review extends Component {
     let header = [];
     if (this.props.stack) {
       const stackText = `${this.props.stack} ->`;
-      const reviewText = '<- All';
+      const reviewText = '<- all';
 
       header =
         <div className="mt2 flex-auto">

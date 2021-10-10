@@ -12,7 +12,7 @@ class Subscribe extends Component {
         <p className="label-small b pointer"
           onClick={this.props.subscribe}
         >
-          Subscribe
+          subscribe
         </p>
       );
     } else if (this.props.actionType === 'unsubscribe') {
@@ -20,7 +20,7 @@ class Subscribe extends Component {
         <p className="label-small b pointer"
           onClick={this.props.unsubscribe}
         >
-          Unsubscribe
+          unsubscribe
         </p>
       );
     } else {

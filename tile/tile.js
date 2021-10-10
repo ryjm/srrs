@@ -12,8 +12,8 @@ export default class SrrsTile extends Component {
     let info = [];
     if (this.props.data.review > 0) {
       let text = (this.props.data.review == 1)
-        ?  "Review"
-        :  "Reviews"
+        ?  "review"
+        :  "reviews"
       info.push(
         <p key={1}>
           <span className="green-medium">{this.props.data.review} </span>

@@ -112,7 +112,7 @@ export class EditItem extends Component {
                         style={submitStyle}
                         onClick={this.saveItem}
                     >
-                        Save &ldquo;{props.title}&rdquo;
+                        save &ldquo;{props.title}&rdquo;
                     </button>
                     <Link to={`/seer/${props.stack.info.owner}/${props.stack.info.filename}`} className="blue3 ml2">
                         {`<- ${props.stack.info.filename}`}

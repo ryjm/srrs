@@ -288,7 +288,7 @@ export class Stack extends Component {
         }}
       >
         <div className="w-100 dn-m dn-l dn-xl inter pt4 pb6 f9">
-          <Link to="/seer/review">{'<- Review'}</Link>
+          <Link to="/seer/review">{'<- review'}</Link>
         </div>
         <div className="mw9 f9 h-100"
           style={{ paddingLeft: 16, paddingRight: 16 }}
@@ -313,20 +313,20 @@ export class Stack extends Component {
               </div>
               <div className="flex">
               {localStack && <Link to={`/seer/~${this.props.ship}/${data.stack.info.filename}/new-item`} className="StackButton bg-light-green green2">
-                  New Item
+                  new item
                </Link>}
-            {localStack && <p className="StackButton bg-light-green green2 ml2" onClick={this.reviewStack}>Review all items</p>}
+            {localStack && <p className="StackButton bg-light-green green2 ml2" onClick={this.reviewStack}>review all items</p>}
             <p className="StackButton bg-gray3 black ml2"
             onClick={this.deleteStack}
             >
-                  Delete Stack
+                  delete stack
             </p>
               </div>
             </div>
 
             <div className="flex" style={{ marginBottom: 24 }}>
             <Link to={`/seer/${data.stack.info.owner}/${data.stack.info.filename}/review`} className="bb b--gray4 b--gray2-d gray2 pv4 ph2">
-                Review
+              review
               </Link>
 
               <div className="bb b--gray4 b--gray2-d gray2 pv4 ph2"
