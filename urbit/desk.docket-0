@@ -7,5 +7,5 @@
   license+'MIT'
   base+'seer'
   site+/seer
-  :: glob-ames+[~matwet 0v7.9r93t.j9pi6.9i6m9.b8ch1.8k3o9]
+  glob-http+['https://nyc3.digitaloceanspaces.com/archiv/littel-wolfur/2021.10.10..21.15.48-glob-0v1,847km,4loid,76010,0e602,hqe3s.glob' 0v1.847km.4loid.76010.0e602.hqe3s]
 ==

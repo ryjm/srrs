@@ -9,17 +9,17 @@ export class ItemBody extends Component {
   render() {
     const front = this.props.bodyFront;
     const back = this.props.bodyBack;
-    const newFront = front.slice(front.indexOf(';>') + 2);
-    const newBack = back.slice(back.indexOf(';>') + 2);
+    const newFront = front.slice(front.indexOf(';>') + 2).trim();
+    const newBack = back.slice(back.indexOf(';>') + 2).trim();
     const toggleStyle = 'v-mid bg-transparent mw6 tl h1 pl4';
     if (this.props.showBack) {
       return (
         <div>
           <div className="md">
-            <ReactMarkdown source={newFront} />
+            <ReactMarkdown children={newFront} />
           </div>
           <div className="md">
-            <ReactMarkdown source={newBack} />
+            <ReactMarkdown children={newBack} />
           </div>
           <button
               className={toggleStyle}
@@ -35,7 +35,7 @@ export class ItemBody extends Component {
     } else {
       return (
         <div className="md">
-          <ReactMarkdown source={newFront} />
+          <ReactMarkdown children={newFront} />
           <button
               className={toggleStyle}
               style={{ color: '#2AA779', cursor: 'pointer' }}

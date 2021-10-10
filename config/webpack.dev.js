@@ -58,11 +58,11 @@ if (urbitrc.URL) {
   devServer = {
     ...devServer,
     proxy: {
-      '/seer/index.js': {
+      '/apps/seer/index.js': {
         target: 'http://localhost:9001',
         pathRewrite: (req, path) => '/index.js'
       },
-      '/seer/css/index.css': {
+      '/apps/seer/index.css': {
         target: 'http://localhost:9001',
         pathRewrite: (req, path) => '/index.css'
       },

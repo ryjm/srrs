@@ -13,7 +13,7 @@ export class ItemSnippet extends Component {
       >
         <ReactMarkdown
           unwrapDisallowed
-          allowedTypes={['text', 'root', 'break', 'paragraph']}
+          allowedElements={['text', 'root', 'break', 'paragraph']}
           source={this.props.body}
         />
       </div>
