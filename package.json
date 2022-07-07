@@ -17,7 +17,7 @@
     "formik": "^2.1.4",
     "lodash": "^4.17.19",
     "markdown-to-jsx": "^6.11.4",
-    "moment": "^2.20.1",
+    "moment": "^2.29.4",
     "mousetrap": "^1.6.5",
     "mousetrap-global-bind": "^1.1.0",
     "oembed-parser": "^1.4.1",
