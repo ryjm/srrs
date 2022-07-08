@@ -11,6 +11,22 @@ CLOCK: [2021-09-13 Mon 12:57]--[2021-09-13 Mon 16:23] =>  3:26
 **** TODO Remove file-server
 **** TODO Remove launch actions
 **** TODO Update state
+**** TODO Make changes to docket
+
+***** NEXT Store glob in spot
+:LOGBOOK:
+CLOCK: [2021-10-25 Mon 16:16]--[2021-10-28 Thu 16:58] => 72:42
+CLOCK: [2021-10-25 Mon 15:58]--[2021-10-25 Mon 16:04] =>  0:06
+CLOCK: [2021-10-25 Mon 10:53]--[2021-10-25 Mon 15:57] =>  5:04
+:END:
+instead of  storing the glob reference in the =href= of the docket structure, we should
+store it in =spot= and populate a =chad= from there. this means adding a new
+attribute to the docket mold called =spot= and modifying lib/docket
+accordingly.
+
+=chad= will still hold the actual glob, and the structure of the docket file
+itself will remain unchanged.
+
 * Install
 :PROPERTIES:
 :header-args: :dir /home/jake/vault/projects/urbit/git/urbit/
@@ -18,8 +34,14 @@ CLOCK: [2021-09-13 Mon 12:57]--[2021-09-13 Mon 16:23] =>  3:26
 :END:
 ** unix install
 
+
 Copy into the urbit/urbit repo so that dependencies can be symlinked without
 messing with the app source.
+
+#+begin_src sh
+watch cp -RL /home/jake/vault/projects/srrs/urbit/* pkg/seer/
+watch cp -RL pkg/seer/* /mnt/laptop-sandisk/zod/seer/
+#+end_src
 
 #+begin_src sh
 # Assumes you are in the urbit/urbit git repo
@@ -39,8 +61,13 @@ ls ./pkg/seer
 Metadata files
 
 #+begin_src sh :results none
-cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/marzod/seer/
-cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/marzod/seer/
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/zod/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/zod/seer/
+#+end_src
+
+Base
+#+begin_src shell
+
 #+end_src
 
 Source files. Ensure we don't accidently include files we do not have marks for.
@@ -51,16 +78,18 @@ cd pkg/seer
 find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/marzod/seer \;
 #+end_src
 
+
+
 ** Initial Setup
 *** urbit install
 create new desk and mount.
 
 #+begin_src tmux
-|merge %seer our %base-dev
+|merge %seer our %base
 |mount %seer
 #+end_src
 
-symlink the garden dev desk into the seer desk.
+symlink the garden dev and landscape desk into the seer desk.
 
 #+begin_src sh
 cd pkg
@@ -69,13 +98,15 @@ cd pkg
 
 #+end_src
 
-copy metadata files into mounted unix path
-#+begin_src zsh
-rm -rf /mnt/laptop-sandisk/samzod/seer/*
-#+end_src
-
 #+results:
 
+Remove files from seer desk
+#+begin_src sh :results none
+rm -rf /mnt/laptop-sandisk/zod/seer/*
+#+end_src
+
+
+copy metadata files into mounted unix path
 #+begin_src sh :results none
 cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/samzod/seer/
 cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/samzod/seer/
@@ -90,21 +121,26 @@ find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name
 #+end_src
 
 #+begin_src tmux
- =dir 
++cat /=seer=/sys/kelvin
++ls /=seer=
 |commit %seer
 #+end_src
+
+Run globulator.
 
 switch to the garden desk and publish
 
 #+begin_src tmux
 =dir /=garden
-:treaty|publish %seer
+:treaty|garden!publish %seer
 #+end_src
 
 install seer
 #+begin_src tmux
 |install our %seer
 #+end_src
+
+
 *** unix install
 Mirror the desk setup found in pkg/<desk>
 

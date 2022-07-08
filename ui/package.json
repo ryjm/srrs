@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "dependencies": {
+    "react-scripts": "5.0.0",
     "@babel/runtime": "^7.15.4",
     "@reach/disclosure": "^0.10.5",
     "@reach/menu-button": "^0.10.5",
@@ -95,7 +96,8 @@
     "tsc:watch": "tsc --watch",
     "build:dev": "cross-env NODE_ENV=development webpack --config config/webpack.dev.js",
     "build:prod": "cross-env NODE_ENV=production webpack --config config/webpack.prod.js",
-    "start": "webpack-dev-server --config config/webpack.dev.js",
+    "build": "react-scripts build",
+    "start": "react-scripts start --config config/webpack.dev.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "",
