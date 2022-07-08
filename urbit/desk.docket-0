@@ -1,11 +1,11 @@
 :~
   title+'Seer'
-  info+'urbrain,  urbit'
+  info+'urbrain, urbit'
   color+0xee.5432
   version+[0 0 1]
   website+'https://urbit.land'
   license+'MIT'
   base+'seer'
   site+/seer
-  glob-http+['https://nyc3.digitaloceanspaces.com/archiv/littel-wolfur/2021.10.10..21.15.48-glob-0v1,847km,4loid,76010,0e602,hqe3s.glob' 0v1.847km.4loid.76010.0e602.hqe3s]
+  glob-http+['https://nyc3.digitaloceanspaces.com/archiv/littel-wolfur/2021.10.11..03.56.09-glob-0v5,8boau,lpf2q,mik4c,oh99p,qko2l.glob' 0v5.8boau.lpf2q.mik4c.oh99p.qko2l]
 ==
