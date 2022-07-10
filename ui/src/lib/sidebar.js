@@ -1,12 +1,12 @@
 import React, { Component } from 'react';
 import { Route, Link } from 'react-router-dom';
-import { StackEntry } from '~/components/stack-entry';
-import { Col, Box } from '@tlon/indigo-react';
-
+import { StackEntry } from '../components/stack-entry';
+import { Col, Box, Row } from '@tlon/indigo-react';
+import { isMobileCheck } from './util';
 export class Sidebar extends Component {
   render() {
     const { props, state } = this;
-    const display = props.hidden ? ['none', 'block'] : 'block';
+    const display = props.hidden ? 'none' : 'block';
     const stacks = {};
     Object.keys(props.pubs).map((stack) => {
       const title = `${stack}`;
@@ -80,30 +80,34 @@ export class Sidebar extends Component {
       }
       ));
     });
-
+    const isMobile = isMobileCheck()
     return (
       <Col
         borderRight={[0, 1]}
+        style={{ flexDirection: isMobile ? 'column' : 'row' }}
         borderRightColor={["washedGray", "washedGray"]}
-        height="100%"
+        borderBottom={isMobile ? '1px solid lightgray' : undefined}
+        height={isMobile ? "20%" : "100%"}
         pt={[3, 0]}
-        overflowY="auto"
         display={display}
-        flexShrink={0}
-        width={["auto", "250px"]}
+        width={["auto"]}
       >
-        <Box>
-          <Link to="/seer/review" className="blue2 pa4 f9 dib">
-            review
-          </Link>
+        <Box height='100%' style={{ flexDirection: isMobile ? 'column' : 'column' }} className='flex'>
           <Box>
+            <Link to="/seer/review" className="blue2 pa4 f9 dib">
+              review
+            </Link>
             <Link to="/seer/new-stack" className="green2 pa4 f9 dib">
               new stack
-          </Link>
+            </Link>
           </Box>
           <Box>
             <div className="w-100 f9 gray2 pa4 f9 dib">your stacks</div>
-            {groupedItems}
+            <Box className="flex" height='100%' display='block' overflowY='auto' >
+
+              {groupedItems}
+
+            </Box>
             <div className="w-100 f9 gray2 pa4 f9 dib">subscriptions</div>
             {groupedSubs}
           </Box>

@@ -1,9 +1,9 @@
 import React, { Component } from 'react';
-import { TitleSnippet } from '~/lib/title-snippet';
-import { ItemSnippet } from '~/lib/item-snippet';
+import { TitleSnippet } from '../lib/title-snippet';
+import { ItemSnippet } from '../lib/item-snippet';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
-import momentConfig from '~/config/moment';
+import momentConfig from '../config/moment';
 
 class Preview extends Component {
   constructor(props) {

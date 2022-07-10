@@ -41,7 +41,9 @@ export class PrimaryReducer {
   addStack(json, state) {
     const host   = Object.keys(json)[0];
     const stack   = Object.keys(json[host])[0];
+    console.log("checking pubs")
     if (state.pubs) {
+      console.log("updating pubs")
       state.pubs[stack] = json[host][stack];
     }
   }

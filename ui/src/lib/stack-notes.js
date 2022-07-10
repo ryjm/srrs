@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { ItemPreview } from '~/lib/item-preview';
+import { ItemPreview } from '../lib/item-preview';
 
 export class StackNotes extends Component {
   constructor(props) {

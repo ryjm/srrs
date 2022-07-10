@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
-import { StackNotes } from '~/lib/stack-notes';
+import { StackNotes } from '../lib/stack-notes';
 import { withRouter } from 'react-router';
-import { NotFound } from '~/components/not-found';
+import { NotFound } from './not-found';
 import { Link } from 'react-router-dom';
 
 const NF = withRouter(NotFound);

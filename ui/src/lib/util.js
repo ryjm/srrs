@@ -1,7 +1,6 @@
-import classnames from 'classnames';
 export function stringToSymbol(str) {
   let result = '';
-  for (var i=0; i<str.length; i++){
+  for (var i=0; i<str.length; i++) {
     var n = str.charCodeAt(i);
     if (( (n >= 97) && (n <= 122) ) ||
         ( (n >= 48) && (n <= 57) ))
@@ -16,7 +15,7 @@ export function stringToSymbol(str) {
   }
   result = result.replace(/^[\-\d]+|\-+/g, '-');
   result = result.replace(/^\-+|\-+$/g, '');
-  if (result === ''){
+  if (result === '') {
     return dateToDa(new Date());
   }
   return result;
@@ -101,4 +100,6 @@ export function cite(ship) {
   }
   return `~${patp}`;
 }
+export const isMobileCheck = () => window.innerWidth <= 600
 
+export default this;

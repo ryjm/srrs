@@ -1,10 +1,12 @@
-import { HeaderBar } from '~/lib/header-bar';
-import { HeaderMenu } from '~/lib/header-menu';
+import { HeaderBar } from '../lib/header-bar';
+import { HeaderMenu } from '../lib/header-menu';
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
-import { SrrsCreate } from '~/lib/seer-create';
-import { Sidebar } from '~/lib/sidebar';
+import { SrrsCreate } from '../lib/seer-create';
+import { Sidebar } from '../lib/sidebar';
 import { withRouter } from 'react-router';
+import { flexBasis, flexGrow, flexWrap } from 'styled-system';
+import { isMobileCheck } from '~/lib/util';
 
 
 export class Skeleton extends Component {
@@ -23,19 +25,23 @@ render() {
       ? "" : "ba-m ba-l ba-xl b--gray4 b--gray1-d br1"
 
     return (
-      <div className={"absolute h-100 w-100 " + popoutWindow}>
+      <div className={"absolute h-100 w-100 " + popoutWindow}
+      >
         <HeaderBar spinner={this.props.spinner} />
-        <div className={`cf w-100 h-100 flex ` + popoutBorder}>
+        <div className={`cf w-100 h-100 flex ` + popoutBorder}
+             style={{
+              flexDirection: isMobileCheck() ? 'column' : 'row',
+             }}>
               <Sidebar
                 popout={popout}
                 pubs={this.props.pubs}
                 subs={this.props.subs}
                 path={this.props.path}
               />
-              <div className={"h-100 w-100 relative white-d flex-auto " + rightPanelHide} style={{
+              <div className={"h-100 w-100 white-d flex relative " + rightPanelHide} style={{
                 flexGrow: 1,
               }}>
-                {props.children}
+                              {props.children}
               </div>
             </div>
           </div>

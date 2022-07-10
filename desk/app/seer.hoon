@@ -48,7 +48,11 @@
   ++  on-init
     ^-  (quip card _this)
     :_  this
-      [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]~
+    :~
+      [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]
+      [%pass /bind/seer %arvo %e %connect [~ /apps/seer] dap.bol]
+      [%pass /eyre %arvo %e %connect [~ /apps/seer/static] %docket]
+    ==
 
   ::
   ++  on-poke
@@ -77,7 +81,7 @@
     =^  cards  state
       ?+  path  (on-watch:def path)
         [%seertile *]       (peer-seertile:sc t.path)
-        [%seer-primary *]   (peer-seer-primary:sc t.path)
+        [%seer-primary *]   ~&  >>  "in on-watch: primary {<t.path>})"  [~ state]
         [%http-response *]  [~ state]
         [%stack @ ~]  (peer-stack:sc i.t.path)
       ==
@@ -86,15 +90,32 @@
   ++  on-agent
     |=  [=wire =sign:agent:gall]
     ^-  (quip card _this)
-    ?+  wire  (on-agent:def wire sign)
-        [%import @ @ ~]
-      =/  name  i.t.t.wire
-      ?+  -.sign  (on-agent:def wire sign)
-          %fact
-        ?>  ?=(%seer-stack p.cage.sign)
-        =/  =stack  !<(stack q.cage.sign)
-        =^  cards  state  (handle-import-stack:sc stack)
-        [cards this]
+    ?+    -.sign  (on-agent:def wire sign)
+        %kick
+      ~&  >>  "in kick"
+      :_  this
+      ?+  wire  ~
+        [%primary @ ~]  ~[[%pass /seer-primary %agent [our.bol %seer] %watch /seer-primary]]
+      ==
+        %fact
+      ?+    wire  (on-agent:def wire sign)
+          [%seer-primary ~]
+            ~&  >>  seer-primary+p.cage.sign
+            =/  del  !<(primary-delta q.cage.sign)
+            ~&  >>  del+del
+
+            [~ this]
+          [%import @ @ ~]
+        =/  name  i.t.t.wire
+        ?+  p.cage.sign  ~|([%seer-cli-bad-sub-mark wire p.cage.sign] !!)
+            %seer-primary-delta
+          ~&  >>  primary+p.cage.sign
+          [~ this]
+            %seer-stack
+          =/  =stack  !<(stack q.cage.sign)
+          =^  cards  state  (handle-import-stack:sc stack)
+          [cards this]
+        ==
       ==
     ==
   ::
@@ -122,7 +143,10 @@
     ^-  (quip card _this)
     =/  init-cards
       :~
-        [%pass /bind/seer %arvo %e %connect [~ /seer] %seer]
+
+        [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]
+        [%pass /bind/seer %arvo %e %connect [~ /apps/seer] dap.bol]
+        [%pass /eyre %arvo %e %connect [~ /apps/seer/static] %docket]
       ==
     ?:  ?=(%| -.old-state)
       ~!  p.old-state
@@ -152,7 +176,7 @@
     %2
       [~ this(state [%3 +.p.old-state])]
     %3
-      [~ this(state p.old-state)]
+      [init-cards this(state p.old-state)]
     ==
     ++  convert-stack-1-2
       |=  prev=stack-1
@@ -202,13 +226,16 @@
 ::
 ++  emit-primary
   |=  del=primary-delta
+  ~&  emit-primary+del
   %-  emit
   [%give %fact ~[/seer-primary] %seer-primary-delta !>(del)]
 ::
 ++  emit-action
   |=  =action
-  %-  emit
-  [%pass /action %agent [our.bol %seer] %poke %seer-action !>(action)]
+  %-  emil
+  :~
+    [%pass /action %agent [our.bol %seer] %poke %seer-action !>(action)]
+  ==
 ::
 ++  emil
   |=  rac=(list card)
@@ -396,11 +423,12 @@
   |=  =inbound-request:eyre
   ^-  simple-payload:http
   =+  request-line=(parse-request-line url.request.inbound-request)
+
   ?+  request-line
-    not-found:gen
+    ~&  >>  request-line  not-found:gen
   ::  send review state as json
   ::
-      [[[~ %json] [%'seer' %update-review ~]] ~]
+      [[[~ %json] [%seer %update-review ~]] ~]
     %-  json-response:gen
     :-  %a
     (turn all-reviews review-to-json)
@@ -419,43 +447,45 @@
     %-  status-to-json  learn.item
   ::  home page; redirect
   ::
-      [[~ [%'seer' ~]] ~]
+  [[~ [%apps %seer @ ~]] ~]
+    =/  hym=manx  (index (state-to-json state))
+    (redirect:gen '/seer/review')
+      [[~ [%seer ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (redirect:gen '/seer/review')
   ::  review page
   ::
-      [[~ [%'seer' %review ~]] ~]
+      [[~ [%seer %review ~]] ~]
     =/  hym=manx  (index (state-to-json state))
-
     (manx-response:gen hym)
   ::  subscriptions
   ::
-      [[~ [%'seer' %stack-subs ~]] ~]
+      [[~ [%seer %stack-subs ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  created
   ::
-      [[~ [%'seer' %stacks ~]] ~]
+      [[~ [%seer %stacks ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new item
   ::
-      [[~ [%'seer' %new-item ~]] ~]
+      [[~ [%seer %new-item ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  new stack
   ::
-      [[~ [%'seer' %new-stack ~]] ~]
+      [[~ [%seer %new-stack ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  stack
   ::
-      [[~ [%'seer' @t @t ~]] ~]
+      [[~ [%seer @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::  stack item
   ::
-      [[~ [%'seer' @t @t @t ~]] ~]
+      [[~ [%seer @t @t @t ~]] ~]
     =/  hym=manx  (index (state-to-json state))
     (manx-response:gen hym)
   ::

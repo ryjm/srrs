@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import { withRouter } from 'react-router';
-import { SrrsCreate } from '~/lib/seer-create';
+import { SrrsCreate } from '../lib/seer-create';
 
 const PC = withRouter(SrrsCreate);
 

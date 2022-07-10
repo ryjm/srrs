@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
-import { cite } from '~/lib/util';
-import { IconHome } from '~/lib/icons/icon-home';
-import { Sigil } from '~/lib/icons/sigil';
+import { cite } from '../lib/util';
+import { IconHome } from '../lib/icons/icon-home';
+import { Sigil } from '../lib/icons/sigil';
 
 export class HeaderBar extends Component {
   render() {

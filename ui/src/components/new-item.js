@@ -3,9 +3,9 @@ import { Link } from 'react-router-dom';
 import { UnControlled as CodeMirror } from 'react-codemirror2';
 import 'codemirror/mode/markdown/markdown';
 import 'codemirror/addon/display/placeholder';
-import { dateToDa } from '~/lib/util';
+import { dateToDa } from '../lib/util';
 import _ from 'lodash';
-import { uuid } from '~/lib/util';
+import { uuid } from '../lib/util';
 
 export class NewItem extends Component {
   constructor(props) {

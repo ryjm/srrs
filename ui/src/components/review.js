@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-import { ReviewPreview } from '~/lib/review-preview';
-import { MessageScreen } from '~/components/message-screen';
+import { ReviewPreview } from '../lib/review-preview';
+import { MessageScreen } from './message-screen';
 import { Link } from 'react-router-dom';
 
 export class Review extends Component {

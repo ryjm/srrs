@@ -1,0 +1,7 @@
+module.exports = {
+  URBIT_PIERS: [
+    "/mnt/laptop-sandisk/distem-bottus-littel-wolfur/seer/*"
+  ],
+  herb: false,
+  URL: 'http://localhost:8085'
+};

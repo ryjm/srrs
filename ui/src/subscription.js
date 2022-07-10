@@ -1,31 +1,28 @@
-import { api } from '~/api';
-import { store } from '~/store';
+import api from './api';
+import { store } from './store';
 
 import urbitOb from 'urbit-ob';
 
 
 export class Subscription {
   start() {
-    if (api.authTokens) {
-      this.initializeseer();
-    } else {
-      console.error("~~~ ERROR: Must set api.authTokens before operation ~~~");
-    }
+ this.initializeSeer()
   }
 
-  initializeseer() {
-    api.bind('/seer-primary', 'PUT', api.authTokens.ship, 'seer',
+  initializeSeer() {
+    api.bind('/seer-primary', 'PUT', {app: 'seer', path: '/seer-primary', ship: window.ship}, 'seer',
       this.handleEvent.bind(this),
       this.handleError.bind(this));
   }
 
   handleEvent(diff) {
+    console.log("handling event: ", diff)
     store.handleEvent(diff);
   }
 
   handleError(err) {
     console.error(err);
-    api.bind('/seer-primary', 'PUT', api.authTokens.ship, 'seer',
+    api.bind('/seer-primary', 'PUT', window.ship, 'seer',
       this.handleEvent.bind(this),
       this.handleError.bind(this));
   }

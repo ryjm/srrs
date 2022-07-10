@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import { Route, Link } from 'react-router-dom';
-import { HoverBox } from '~/components/HoverBox';
+import { HoverBox } from './HoverBox';
 import { Box } from '@tlon/indigo-react';
 
 export class StackEntry extends Component {

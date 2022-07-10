@@ -1,23 +1,23 @@
-import React from "react";
-import { Link } from "react-router-dom";
-import styled from "styled-components";
-import { Box } from "@tlon/indigo-react";
+import React from 'react';
+import { Link } from 'react-router-dom';
+import styled from 'styled-components';
+import { Box } from '@tlon/indigo-react';
 interface HoverBoxProps {
   selected: boolean;
   bg: string;
   bgActive: string;
 }
 export const HoverBox = styled(Box)<HoverBoxProps>`
-  background-color: ${(p) =>
+  background-color: ${p =>
     p.selected ? p.theme.colors[p.bgActive] : p.theme.colors[p.bg]};
   pointer: cursor;
   &:hover {
-    background-color: ${(p) => p.theme.colors[p.bgActive]};
+    background-color: ${p => p.theme.colors[p.bgActive]};
   }
 `;
 
-export const HoverBoxLink = ({ to, children, ...rest }) => (
+export const HoverBoxLink = ({ to, children, theme }) => (
   <Link to={to}>
-    <HoverBox {...rest}>{children}</HoverBox>
+    <HoverBox {...theme}>{children}</HoverBox>
   </Link>
 );

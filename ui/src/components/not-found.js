@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { PathControl } from '~/lib/path-control';
+import { PathControl } from '../lib/path-control';
 
 export class NotFound extends Component {
   constructor(props) {

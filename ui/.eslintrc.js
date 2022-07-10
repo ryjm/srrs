@@ -5,7 +5,7 @@ const env = {
 };
 
 const rules = {
-  "array-bracket-spacing": ["error", "never"],
+ /*  "array-bracket-spacing": ["error", "never"],
   "arrow-parens": [
     "error",
     "as-needed",
@@ -97,7 +97,7 @@ const rules = {
   "no-tabs": "error",
   "no-trailing-spaces": "error",
   "no-unused-vars": [
-    "error",
+    "warn",
     {
       "vars": "all",
       "args": "none",
@@ -105,50 +105,43 @@ const rules = {
     }
   ],
   "no-use-before-define": [
-    "error",
+    "warn",
     {
       "functions": false,
       "classes": false
     }
   ],
   "no-useless-escape": "off",
-  "no-var": "error",
+  "no-var": "warn",
   "nonblock-statement-body-position": ["error", "below"],
   "object-curly-spacing": ["error", "always"],
   "padded-blocks": ["error", "never"],
   "prefer-arrow-callback": "error",
   "prefer-const": [
-    "error",
+    "warn",
     {
       "destructuring": "all",
       "ignoreReadBeforeAssign": true
     }
   ],
   "prefer-template": "off",
-  "quotes": ["error", "single"],
-  "semi": ["error", "always"],
+  "quotes": ["warn", "single"],
+  "semi": ["warn", "always"],
   "spaced-comment": [
     "error",
     "always",
     {
       "exceptions": ["!"]
     }
-  ],
-  "space-before-blocks": "error",
-  "unicode-bom": ["error", "never"],
-  "valid-jsdoc": "error",
-  "wrap-iife": ["error", "inside"],
-  "react/jsx-closing-bracket-location": 1,
-  "react/jsx-tag-spacing": 1,
-  "react/jsx-max-props-per-line": ["error", { "maximum": 2, "when": "multiline" }],
-  "react/prop-types": 0
+  ], */
+
 };
 
 module.exports = {
   "env": env,
   "extends": [
-    "plugin:react/recommended",
-    "eslint:recommended",
+    /* "plugin:react/recommended",
+    "eslint:recommended", */
   ],
   "settings": {
     "react": {
@@ -167,7 +160,7 @@ module.exports = {
     {
       "files": ["**/*.ts", "**/*.tsx"],
       "env": env,
-      "extends": [
+/*       "extends": [
         "eslint:recommended",
         "plugin:@typescript-eslint/eslint-recommended",
         "plugin:@typescript-eslint/recommended"
@@ -179,7 +172,7 @@ module.exports = {
         "requireConfigFile": false,
         "sourceType": "module"
       },
-      "plugins": ["@typescript-eslint"],
+      "plugins": ["@typescript-eslint", "eslint-plugin-react"], */
       "rules": rules
     }
   ]

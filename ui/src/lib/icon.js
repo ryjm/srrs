@@ -1,9 +1,9 @@
 import React, { Component } from 'react';
-import { IconInbox } from '~/lib/icons/icon-inbox';
-import { IconComment } from '~/lib/icons/icon-comment';
-import { IconSig } from '~/lib/icons/icon-sig';
-import { IconDecline } from '~/lib/icons/icon-decline';
-import { IconUser } from '~/lib/icons/icon-user';
+import { IconInbox } from '../lib/icons/icon-inbox';
+import { IconComment } from '../lib/icons/icon-comment';
+import { IconSig } from '../lib/icons/icon-sig';
+import { IconDecline } from '../lib/icons/icon-decline';
+import { IconUser } from '../lib/icons/icon-user';
 
 export class Icon extends Component {
   render() {

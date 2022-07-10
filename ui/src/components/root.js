@@ -1,18 +1,18 @@
 import React, { Component } from 'react';
 import '../index.css';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
-import light from "@tlon/indigo-light";
+import light from '@tlon/indigo-light';
 import { BrowserRouter, Route } from 'react-router-dom';
-import { api } from '~/api';
-import { store } from '~/store';
-import { Review } from '~/components/review';
-import { NewStack } from '~/components/new-stack';
-import { NewItem } from '~/components/new-item';
-import { Skeleton } from '~/components/skeleton';
-import { Stack } from '~/components/stack';
-import { Item } from '~/components/item';
-import { Subs } from '~/components/subs';
-import { Pubs } from '~/components/pubs';
+import api from '../api';
+import { store } from '../store';
+import { Review } from '../components/review';
+import NewStack from '../components/new-stack';
+import { NewItem } from '../components/new-item';
+import { Skeleton } from '../components/skeleton';
+import { Stack } from './stack';
+import { Item } from './item';
+import { Subs } from './subs';
+import { Pubs } from './pubs';
 import { Switch } from 'react-router';
 const Root = styled.div`
   font-family: ${p => p.theme.fonts.sans};
@@ -80,6 +80,7 @@ export class App extends Component {
                   api={api}
                   spinner={this.state.spinner}
                   active="sidebar"
+                  popout={false}
                 >
                   <Review {...props} {...state} />
                 </Skeleton>

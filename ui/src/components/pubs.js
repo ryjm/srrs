@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
-import momentConfig from '~/config/moment';
+import momentConfig from '../config/moment';
 
 export class Pubs extends Component {
   constructor(props) {

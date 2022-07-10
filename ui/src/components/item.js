@@ -1,12 +1,12 @@
 import React, { Component } from 'react';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
-import { ItemBody } from '~/lib/item-body';
-import { EditItem } from '~/components/edit-item';
-import { Recall } from '~/components/recall';
-import { NotFound } from '~/components/not-found';
+import { ItemBody } from '../lib/item-body';
+import { EditItem } from './edit-item';
+import { Recall } from './recall';
+import { NotFound } from './not-found';
 import { withRouter } from 'react-router';
-import momentConfig from '~/config/moment';
+import momentConfig from '../config/moment';
 
 const NF = withRouter(NotFound);
 

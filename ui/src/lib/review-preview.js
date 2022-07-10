@@ -1,8 +1,8 @@
 import React, { Component } from 'react';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
-import { ItemSnippet } from '~/lib/item-snippet';
-import momentConfig from '~/config/moment';
+import { ItemSnippet } from '../lib/item-snippet';
+import momentConfig from '../config/moment';
 
 export class ReviewPreview extends Component {
   constructor(props) {

@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-import { pour } from '~/vendor/sigils-1.2.5';
+import { pour } from './vendor/sigils-1.2.5';
 
 /* eslint-disable react/display-name */
 

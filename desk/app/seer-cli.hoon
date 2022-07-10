@@ -169,12 +169,13 @@
   |=  [=wire del=primary-delta]
   ^-  (quip card _state)
   =/  [wir=^wire mark=@tas]
+  ~&  >>  wire+wire
     ?+  -.del  [wire %txt]
       %add-review-item  [/[-.wire]/chat %letter]
       %add-item  [/[-.wire]/chat %letter]
     ==
   =/  cay=cage  [%seer-primary-delta !>(del)]
-  =+  .^(=tube:clay %cc /(scot %p our.bowl)/home/(scot %da now.bowl)/[p.cay]/[mark])
+  =+  .^(=tube:clay %cc /(scot %p our.bowl)/[q.byk.bowl]/(scot %da now.bowl)/[p.cay]/[mark])
   =/  =cage  [mark (tube q.cay)]
   ?+  wir  [~ state]
     [%seer ~]  (handle-seer cage)
@@ -428,7 +429,7 @@
     ++  help
       ^-  (quip card _state)
       =-  [[- ~] state]
-      (print:sh-out "see https://github.com/ryjm/seer")
+      (print:sh-out "see https://github.com/ryjm/srrs")
     --
   --
 ::

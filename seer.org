@@ -29,18 +29,41 @@ itself will remain unchanged.
 
 * Install
 :PROPERTIES:
-:header-args: :dir /home/jake/vault/projects/urbit/git/urbit/
-:header-args: :results output
+:header-args+: :dir /home/jake/vault/projects/urbit/git/urbit/
+:header-args:sh+: :var desk='distem-bottus-littel-wolfur
 :END:
 ** unix install
-
-
 Copy into the urbit/urbit repo so that dependencies can be symlinked without
 messing with the app source.
 
 #+begin_src sh
-watch cp -RL /home/jake/vault/projects/srrs/urbit/* pkg/seer/
-watch cp -RL pkg/seer/* /mnt/laptop-sandisk/zod/seer/
+ls ./pkg
+#+end_src
+
+#+results:
+| arvo              |
+| base-dev          |
+| bitcoin           |
+| btc-wallet        |
+| docker-image      |
+| ent               |
+| garden            |
+| garden-dev        |
+| grid              |
+| herb              |
+| hs                |
+| interface         |
+| landscape         |
+| npm               |
+| seer              |
+| symbolic-merge.sh |
+| urbit             |
+| urcrypt           |
+| webterm           |
+
+#+begin_src sh :results none
+watch cp -RL /home/jake/vault/projects/srrs/desk/* ./pkg/seer/
+watch cp -RL ./pkg/seer/* /mnt/laptop-sandisk/$desk/seer/
 #+end_src
 
 #+begin_src sh
@@ -61,13 +84,8 @@ ls ./pkg/seer
 Metadata files
 
 #+begin_src sh :results none
-cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/zod/seer/
-cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/zod/seer/
-#+end_src
-
-Base
-#+begin_src shell
-
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/$desk/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/$desk/seer/
 #+end_src
 
 Source files. Ensure we don't accidently include files we do not have marks for.
@@ -75,7 +93,7 @@ Source files. Ensure we don't accidently include files we do not have marks for.
 #+begin_src sh :results none
 cd pkg/seer
 
-find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/marzod/seer \;
+find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/$desk/seer \;
 #+end_src
 
 
@@ -83,7 +101,6 @@ find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name
 ** Initial Setup
 *** urbit install
 create new desk and mount.
-
 #+begin_src tmux
 |merge %seer our %base
 |mount %seer
@@ -95,50 +112,53 @@ symlink the garden dev and landscape desk into the seer desk.
 cd pkg
 ./symbolic-merge.sh ./garden-dev ./seer
 ./symbolic-merge.sh ./landscape ./seer
-
 #+end_src
 
 #+results:
 
 Remove files from seer desk
 #+begin_src sh :results none
-rm -rf /mnt/laptop-sandisk/zod/seer/*
+rm -rf /mnt/laptop-sandisk/$desk/seer/*
 #+end_src
 
 
 copy metadata files into mounted unix path
 #+begin_src sh :results none
-cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/samzod/seer/
-cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/samzod/seer/
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/$desk/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/$desk/seer/
 #+end_src
 
-Copy hoon files into mounted unix path. this is to ensure we don't accidently include files we do not have marks for.
+Copy hoon files into mounted unix path. this is to ensure we don't include files we do not have marks for.
 
 #+begin_src sh :results none
 cd pkg/seer
 
-find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/samzod/seer \;
+find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name \*.js\* \) -exec cp -v --parents -RL {} /mnt/laptop-sandisk/$desk/seer \;
 #+end_src
 
-#+begin_src tmux
+#+begin_src hoon :session testnet:distem.0
 +cat /=seer=/sys/kelvin
++cat /=seer=/desk/docket-0
 +ls /=seer=
 |commit %seer
 #+end_src
+
+#+results:
 
 Run globulator.
 
 switch to the garden desk and publish
 
 #+begin_src tmux
-=dir /=garden
 :treaty|garden!publish %seer
 #+end_src
 
 install seer
-#+begin_src tmux
+#+begin_src hoon :session testnet:distem.0
 |install our %seer
 #+end_src
+
+#+results:
 
 
 *** unix install
@@ -149,87 +169,86 @@ ls pkg/garden
 #+end_src
 
 #+results:
-| app         |
-| desk.bill   |
-| desk.docket |
-| gen         |
-| lib         |
-| mar         |
-| sur         |
-| sys.kelvin  |
-| ted         |
+| app           |
+| desk.bill     |
+| desk.docket-0 |
+| desk.ship     |
+| gen           |
+| lib           |
+| mar           |
+| sur           |
+| sys.kelvin    |
+| ted           |
+| tests         |
 
 #+begin_src sh
-cd pkg
-rm -rf ./seer/*
-cp -R ~/vault/projects/seer/urbit/* ./seer
-./symbolic-merge.sh ./garden-dev ./seer
-./symbolic-merge.sh ./landscape ./seer
-ls seer/mar
+rm -rf ./pkg/seer/*
+cp -R ~/vault/projects/seer/desk/* ./pkg/seer
+./symbolic-merge.sh ./garden-dev ./pkg/seer
+./symbolic-merge.sh ./landscape ./pkg/seer
+ls ./pkg/seer/mar
 #+end_src
+
+#+begin_src sh
+ls pkg/seer/
+#+end_src
+
+#+results:
+| app           |
+| desk.bill     |
+| desk.docket-0 |
+| gen           |
+| lib           |
+| mar           |
+| sur           |
+| sys.kelvin    |
+| ted           |
+| tests         |
 
 #+begin_src sh
 ls ./pkg/seer
 #+end_src
 
 #+results:
-| app         |
-| desk.bill   |
-| desk.docket |
-| gen         |
-| lib         |
-| mar         |
-| seer.org    |
-| sur         |
-| urbit       |
-
-Missing desk.docket, desk.bill, and sys.kelvin.
-
-#+begin_src sh :results none
-cp pkg/garden/desk.* ./pkg/seer
-cp pkg/garden/sys.kelvin ./pkg/seer
-#+end_src
-
-#+begin_src sh
-ls ./pkg/seer
-#+end_src
-
-#+results:
-| app |
-| gen |
-| lib |
-| mar |
-| sur |
+| app           |
+| desk.bill     |
+| desk.docket-0 |
+| gen           |
+| lib           |
+| mar           |
+| sur           |
+| sys.kelvin    |
+| ted           |
+| tests         |
 #+begin_src sh :results none
 cp pkg/garden/sys.kelvin ./pkg/seer
-cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/samzod/seer/
-cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/samzod/seer/
+cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/$desk/seer/
+cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/$desk/seer/
 #+end_src
 
 Check docket and bill files
-#+begin_src zsh :results output replace :dir /home/jake/vault/projects/urbit/git/urbit/pkg/seer
-cat desk.docket
+#+begin_src zsh :results output replace :dir /mnt/laptop-sandisk/distem-bottus-littel-wolfur/seer/
+pwd
+cat desk.docket-0
 cat desk.bill
 #+end_src
 
 #+results:
 #+begin_example
-:~  title+'Garden'
-    info+'An app launcher for Urbit.'
-    color+0xee.5432
-    glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
-    ::glob-ames+~zod
-    base+'grid'
-    version+[0 0 1]
-    website+'https://tlon.io'
-    license+'MIT'
+/mnt/laptop-sandisk/distem-bottus-littel-wolfur/seer
+:~
+  title+'Seer'
+  info+'urbrain, urbit'
+  color+0xee.5432
+  version+[0 0 1]
+  website+'https://urbit.land'
+  license+'MIT'
+  base+'seer'
+  glob-ames+[~distem-bottus-littel-wolfur 0x0]
 ==
-:~  :-  %apes
-    :~  %docket
-        %treaty
-        %settings-store
-    ==
-    :-  %fish  ~
+:~
+  %seer
+  %seer-cli
 ==
 #+end_example
 *** Manifests
@@ -239,52 +258,46 @@ cat desk.bill
 
 Define the docket and the bill for the desk.
 
-#+begin_src hoon :tangle /home/jake/vault/projects/urbit/git/urbit/pkg/seer/desk.docket
-:~  title+'Seer'
-    info+'Your brain on urbit'
-    color+0xee.5432
-
-glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
-    ::glob-ames+~zod
-    base+'seer'
-    version+[0 0 1]
-    website+'https://urbit.land'
-    license+'MIT'
+#+begin_src hoon :tangle /home/jake/vault/projects/urbit/git/urbit/pkg/seer/desk.docket-0
+:~
+  title+'Seer'
+  info+'urbrain, urbit'
+  color+0xee.5432
+  version+[0 0 1]
+  website+'https://urbit.land'
+  license+'MIT'
+  base+'seer'
+  site+/seer
+  glob-http+['https://nyc3.digitaloceanspaces.com/archiv/littel-wolfur/2021.10.11..03.56.09-glob-0v5,8boau,lpf2q,mik4c,oh99p,qko2l.glob' 0v5.8boau.lpf2q.mik4c.oh99p.qko2l]
 ==
 #+end_src
-
 #+begin_src zsh :tangle /home/jake/vault/projects/urbit/git/urbit/pkg/seer/desk.bill
-:~  :-  %apes
     :~  %seer
         %seer-cli
     ==
-    :-  %fish  ~
-==
-
 #+end_src
 
-#+begin_src zsh :results output
-cat desk.docket
+#+begin_src sh :results output
+cat desk.docket-0
 cat desk.bill
 #+end_src
 
 #+results:
 #+begin_example
-:~  title+'Seer'
-    info+'Your brain on urbit'
-    color+0xee.5432
-    glob-http+'https://bootstrap.urbit.org/glob-0v2.dne76.9hibl.1o442.h6l11.cn7os.glob'
-    ::glob-ames+~zod
-    base+'seer'
-    version+[0 0 1]
-    website+'https://urbit.land'
-    license+'MIT'
+:~
+  title+'Seer'
+  info+'urbrain, urbit'
+  color+0xee.5432
+  version+[0 0 1]
+  website+'https://urbit.land'
+  license+'MIT'
+  base+'seer'
+  site+/seer
+  glob-http+['https://nyc3.digitaloceanspaces.com/archiv/littel-wolfur/2021.10.11..03.56.09-glob-0v5,8boau,lpf2q,mik4c,oh99p,qko2l.glob' 0v5.8boau.lpf2q.mik4c.oh99p.qko2l]
 ==
-:~  :-  %apes
-    :~  %seer
-        %seer-cli
-    ==
-    :-  %fish  ~
+:~
+  %seer
+  %seer-cli
 ==
 #+end_example
 *** Desk Install
@@ -321,22 +334,22 @@ Create desks and mount.
 #+begin_src sh :results none
 unalias cp
 
-rm -rf /mnt/laptop-sandisk/zod/garden/*
-rm -rf /mnt/laptop-sandisk/zod/base/*
-yes | cp -RL pkg/garden/* /mnt/laptop-sandisk/zod/garden/
-yes | cp -RL pkg/arvo/* /mnt/laptop-sandisk/zod/base/
+rm -rf /mnt/laptop-sandisk/$desk/garden/*
+rm -rf /mnt/laptop-sandisk/$desk/base/*
+yes | cp -RL pkg/garden/* /mnt/laptop-sandisk/$desk/garden/
+yes | cp -RL pkg/arvo/* /mnt/laptop-sandisk/$desk/base/
 #+end_src
 #+begin_src sh :results none
 unalias cp
-rm -rf /mnt/laptop-sandisk/zod/seer/*
-yes | cp -RL pkg/seer/* /mnt/laptop-sandisk/zod/seer/
+rm -rf /mnt/laptop-sandisk/$desk/seer/*
+yes | cp -RL pkg/seer/* /mnt/laptop-sandisk/$desk/seer/
 #+end_src
 #+begin_src sh
 unalias cp
-rm -rf /mnt/laptop-sandisk/dopzod/base/*
-yes | cp -RL pkg/arvo/* /mnt/laptop-sandisk/dopzod/base/
-rm -rf /mnt/laptop-sandisk/dopzod/garden/*
-yes | cp -RL pkg/garden/* /mnt/laptop-sandisk/dopzod/garden/
+rm -rf /mnt/laptop-sandisk/dop$desk/base/*
+yes | cp -RL pkg/arvo/* /mnt/laptop-sandisk/dop$desk/base/
+rm -rf /mnt/laptop-sandisk/dop$desk/garden/*
+yes | cp -RL pkg/garden/* /mnt/laptop-sandisk/dop$desk/garden/
 
 #+end_src
 
@@ -349,8 +362,8 @@ yes | cp -RL pkg/garden/* /mnt/laptop-sandisk/dopzod/garden/
 #+results:
 
 #+begin_src sh
-yes | cp -RL /mnt/laptop-sandisk/zod-old/base/* /mnt/laptop-sandisk/zod/base/
-yes | cp -RL /mnt/laptop-sandisk/zod-old/garden/* /mnt/laptop-sandisk/zod/garden/
+yes | cp -RL /mnt/laptop-sandisk/$desk-old/base/* /mnt/laptop-sandisk/$desk/base/
+yes | cp -RL /mnt/laptop-sandisk/$desk-old/garden/* /mnt/laptop-sandisk/$desk/garden/
 #+end_src
 
 #+results:
@@ -371,7 +384,7 @@ yes | cp -RL /mnt/laptop-sandisk/zod-old/garden/* /mnt/laptop-sandisk/zod/garden
 =io -build-file /=desk=/lib/agentio/hoon
 =desk %garden
 =desk %garden
-=loc [%ship ~zod]
+=loc [%ship ~$desk]
 =tid (cat 3 'docket-' (scot %uv (sham (mix eny desk)))))
 =b *beak
 :spider|start %glob !>(`[loc desk])]
@@ -382,35 +395,12 @@ yes | cp -RL /mnt/laptop-sandisk/zod-old/garden/* /mnt/laptop-sandisk/zod/garden
 =dir
 |commit %garden
 =dir /=garden
--glob [[%ames ~dopzod] %seer]
+-glob [[%ames $desk] %seer]
 =dir
-#+end_src
-
-#+begin_src tmux
-=d -build-file /=base-dev=/lib/docket/hoon
-
-
 #+end_src
 
 tadnul-nismyn-dabryn-balhes
 
-
-#+begin_src tmux
-        [ %give
-            p
-          ?(
-            [%fact paths=it(/) cage=[p=@tas q=[#t q=*]]]
-            [%kick paths=it(/) ship=u(@p)]
-            [%poke-ack p=u(it(#13))]
-            [%watch-ack p=u(it(#13))]
-          )
-        ]
-[ [[%give %fact [[i=%~.glob t=[i=@ta t=%~]] %~] %glob #t q=*] %~]
-  [[%give %kick [[i=%~.glob t=[i=@ta t=%~]] %~] %~] %~]
-  %~
-]
-
-#+end_src
 
 *** Changes
 - No more chat store

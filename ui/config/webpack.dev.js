@@ -6,6 +6,7 @@ const util = require('util');
 const exec = util.promisify(require('child_process').exec);
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const { FALSE } = require('sass');
 
 function copyFile(src, dest) {
   return new Promise((res, rej) =>
@@ -21,11 +22,11 @@ class UrbitShipPlugin {
     compiler.hooks.afterEmit.tapPromise(
       'UrbitShipPlugin',
       async (compilation) => {
-        const src = path.resolve(compiler.options.output.path, 'index.js');
+        const src = path.resolve(compiler.options.output.path, 'index.tsx');
         // uncomment to copy into all piers
         //
         return Promise.all(this.piers.map(pier => {
-          const dst = path.resolve(pier, 'app/seer/js/index.js');
+          const dst = path.resolve(pier, 'app/seer/js/index.tsx');
           copyFile(src, dst).then(() => {
             if (!this.herb) {
               return;
@@ -44,41 +45,48 @@ let devServer = {
   static: [
       {
         directory: path.join(__dirname, "../dist"),
-        publicPath: "/seer/css",
-        watch: true
-      }
+        watch: true,
+        publicPath: '/'
+      },
+
     ],
   hot: true,
-  port: 9001,
-  host: '0.0.0.0',
+  port: 3002,
+  host: 'localhost',
   historyApiFallback: false,
 };
 
-if (urbitrc.URL) {
   devServer = {
     ...devServer,
     proxy: {
-      '/apps/seer/index.js': {
-        target: 'http://localhost:9001',
-        pathRewrite: (req, path) => '/index.js'
+      '/apps/seer/static/js/*.*.js': {
+        target: 'http://localhost:3002',
+        pathRewrite: { '/apps/seer/static/js/*.*.js': 'index.js' },
+        secure: false,
+        changeOrigin: true
       },
-      '/apps/seer/index.css': {
-        target: 'http://localhost:9001',
-        pathRewrite: (req, path) => '/index.css'
+
+      '/apps/seer/static/css/*.*.css': {
+        target: 'http://localhost:3002',
+        pathRewrite: { '/apps/seer/static/css/*.*.css': 'index.css' },
+        secure: false,
+        changeOrigin: true
+
       },
       '**': {
         target: urbitrc.URL,
         // ensure proxy doesn't timeout channels
-        proxyTimeout: 0
+        proxyTimeout: 0,
+        secure: false,
+        changeOrigin: true
       }
     }
   };
-}
-
+console.log(devServer);
 module.exports = {
   mode: 'development',
   entry: {
-    app: './src/index.js'
+    app: './src/index.tsx'
   },
   module: {
     rules: [

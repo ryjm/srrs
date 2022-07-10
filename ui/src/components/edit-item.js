@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { Controlled as CodeMirror } from 'react-codemirror2';
 import { Link } from 'react-router-dom';
-import { dateToDa } from '~/lib/util';
+import { dateToDa } from '../lib/util';
 import 'codemirror/mode/markdown/markdown';
 
 export class EditItem extends Component {

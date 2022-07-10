@@ -1,9 +1,9 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
 import { withRouter } from 'react-router';
-import { HeaderMenu } from '~/lib/header-menu';
+import { HeaderMenu } from '../lib/header-menu';
 import moment from 'moment';
-import momentConfig from '~/config/moment';
+import momentConfig from '../config/moment';
 
 const HM = withRouter(HeaderMenu);
 
