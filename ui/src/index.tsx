@@ -10,11 +10,12 @@ window.util = util;
 window._ = _;
 // @ts-ignore TODO window typings
 window.api = api
-// @ts-ignore TODO window typings
-window.subscription= subscription;
-subscription.initializeSeer();
 
-console.log(api)
+subscription.initializeSeer();
+// @ts-ignore TODO window typings
+window.subscription = subscription;
+
+console.log(subscription)
 ReactDOM.render(
   <React.StrictMode>
     <App />

@@ -197,7 +197,7 @@ export class NewItem extends Component {
         : { color: '#B1B2B3', cursor: 'auto' };
 
     return (
-         <div className="f9 h-100 relative">
+         <div className="f9 h-100 w-100 relative">
                 <div className="w-100 tl pv4 flex justify-center">
                     <button
                         className="v-mid bg-transparent w-100 w-80-m w-90-l mw6 tl h1 pl4"

@@ -57,8 +57,6 @@ in mkShell {
   # ]
   #  ;
   buildInputs = with yarn-scripts; [
-    nodejs
-    yarn
     jq
     scripts.urbit-watch
     build

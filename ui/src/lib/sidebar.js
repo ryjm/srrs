@@ -4,8 +4,18 @@ import { StackEntry } from '../components/stack-entry';
 import { Col, Box, Row } from '@tlon/indigo-react';
 import { isMobileCheck } from './util';
 export class Sidebar extends Component {
+  constructor(props) {
+    super(props);
+    this.hideStacks = this.hideStacks.bind(this);
+    this.state = { hidden: false };
+  }
+  hideStacks() {
+    this.setState({ hidden: this.state.hidden ? false : true });
+    this.setState({ redirect: 'review' });
+  }
   render() {
     const { props, state } = this;
+
     const display = props.hidden ? 'none' : 'block';
     const stacks = {};
     Object.keys(props.pubs).map((stack) => {
@@ -59,7 +69,6 @@ export class Sidebar extends Component {
           );
         });
     }
-
     Object.keys(groupedStacks).forEach((host, i, arr) => {
       if (host === '/~/' || host.slice(1) === window.ship) {
         return null;
@@ -94,22 +103,22 @@ export class Sidebar extends Component {
       >
         <Box height='100%' style={{ flexDirection: isMobile ? 'column' : 'column' }} className='flex'>
           <Box>
-            <Link to="/seer/review" className="blue2 pa4 f9 dib">
+            <Link to="/seer/review" className="shadow-hover ba flex blue2 pv1 ph1 f9 dib">
               review
             </Link>
-            <Link to="/seer/new-stack" className="green2 pa4 f9 dib">
+            <Link to="/seer/new-stack" className="shadow-hover ba flex green2 ph1 pv1 f9 dib">
               new stack
             </Link>
           </Box>
-          <Box>
-            <div className="w-100 f9 gray2 pa4 f9 dib">your stacks</div>
-            <Box className="flex" height='100%' display='block' overflowY='auto' >
-
+          <Box overflow='auto'>
+            <div onClick={this.hideStacks} className="w-100 f9 gray2 pa4 f9 dib shadow-hover ba">your stacks</div>
+            <Box height='50%' overflow='auto' className="flex-auto" display={this.state.hidden ? 'none' : 'block'} >
               {groupedItems}
-
             </Box>
+            <Box overflow='auto'> 
             <div className="w-100 f9 gray2 pa4 f9 dib">subscriptions</div>
             {groupedSubs}
+            </Box>
           </Box>
         </Box>
       </Col>

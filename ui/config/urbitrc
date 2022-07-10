@@ -3,5 +3,5 @@ module.exports = {
     "/mnt/laptop-sandisk/distem-bottus-littel-wolfur/seer/*"
   ],
   herb: false,
-  URL: 'http://localhost:8085'
+  URL: 'http://monadnock:8085'
 };

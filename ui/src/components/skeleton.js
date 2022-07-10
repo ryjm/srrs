@@ -33,6 +33,7 @@ render() {
               flexDirection: isMobileCheck() ? 'column' : 'row',
              }}>
               <Sidebar
+                hidden={false}
                 popout={popout}
                 pubs={this.props.pubs}
                 subs={this.props.subs}

@@ -26,14 +26,16 @@ class SeerApi {
     this.bindPaths = [];
   }
 
-  bind(path, method, ship = this.authTokens.ship, appl = 'seer', success, fail) {
+  bind(path, method, ship = window.ship, appl = 'seer', success, fail) {
     this.bindPaths = [...new Set([...this.bindPaths, path])];
     // @ts-ignore TODO window typings
     window.subscriptionId = this.upi.subscribe(ship, appl, path,
       (err) => {
+        console.log("error", err);
         fail(err);
       },
       (event) => {
+        console.log("event", event);
         success({
           data: event,
           from: {
@@ -42,8 +44,9 @@ class SeerApi {
           }
         });
       },
-      (err) => {
-        fail(err);
+      (quit) => {
+        console.log("quit", quit);
+        fail(quit);
       });
   }
 
@@ -92,7 +95,6 @@ const api = createInstance(SeerApi)
 api.ship = window.ship;
 api.upi = new Urbit('', '', 'seer')
 api.seer = new SeerApi()
-console.log(api)
 // api.verbose = true;
 // @ts-ignore TODO window typings
 window.api = api;

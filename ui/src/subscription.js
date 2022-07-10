@@ -10,6 +10,7 @@ export class Subscription {
   }
 
   initializeSeer() {
+    console.log("initializing seer")
     api.bind('/seer-primary', 'PUT', {app: 'seer', path: '/seer-primary', ship: window.ship}, 'seer',
       this.handleEvent.bind(this),
       this.handleError.bind(this));
@@ -21,7 +22,7 @@ export class Subscription {
   }
 
   handleError(err) {
-    console.error(err);
+    console.error("handling error:", err);
     api.bind('/seer-primary', 'PUT', window.ship, 'seer',
       this.handleEvent.bind(this),
       this.handleError.bind(this));
