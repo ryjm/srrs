@@ -1,52 +1,49 @@
-import { HeaderBar } from '../lib/header-bar';
-import { HeaderMenu } from '../lib/header-menu';
-import React, { Component } from 'react';
-import { Link } from 'react-router-dom';
-import { SrrsCreate } from '../lib/seer-create';
-import { Sidebar } from '../lib/sidebar';
-import { withRouter } from 'react-router';
-import { flexBasis, flexGrow, flexWrap } from 'styled-system';
-import { isMobileCheck } from '~/lib/util';
-
+import HeaderBar from "../lib/header-bar";
+import React, { Component } from "react";
+import { Sidebar } from "../lib/sidebar";
+import { isMobileCheck } from "../lib/util";
 
 export class Skeleton extends Component {
-render() {
+  render() {
+    const { props, state } = this;
 
-  const { props, state } = this;
-    
-    let rightPanelHide = true
-    let popout = !!props.popout
-      ? props.popout : false;
+    let rightPanelHide = true;
+    let popout = !!props.popout ? props.popout : false;
 
-    let popoutWindow = (popout)
-      ? "" : "h-100-m-40-ns ph4-m ph4-l ph4-xl pb4-m pb4-l pb4-xl"
+    let popoutWindow = popout
+      ? ""
+      : "h-100-m-40-ns ph4-m ph4-l ph4-xl pb4-m pb4-l pb4-xl";
 
-    let popoutBorder = (popout)
-      ? "" : "ba-m ba-l ba-xl b--gray4 b--gray1-d br1"
+    let popoutBorder = popout ? "" : "ba-m ba-l ba-xl b--gray4 b--gray1-d br1";
 
     return (
-      <div className={"absolute h-100 w-100 " + popoutWindow}
-      >
-        <HeaderBar spinner={this.props.spinner} />
-        <div className={`cf w-100 h-100 flex ` + popoutBorder}
-             style={{
-              flexDirection: isMobileCheck() ? 'column' : 'row',
-             }}>
-              <Sidebar
-                hidden={false}
-                popout={popout}
-                pubs={this.props.pubs}
-                subs={this.props.subs}
-                path={this.props.path}
-              />
-              <div className={"h-100 w-100 white-d flex relative " + rightPanelHide} style={{
-                flexGrow: 1,
-              }}>
-                              {props.children}
-              </div>
-            </div>
+      <div className={"absolute h-100 w-100 " + popoutWindow}>
+        <HeaderBar open={false} api={this.props.api} spinner={this.props.spinner} />
+        <div
+          className={`cf w-100 h-100 flex ` + popoutBorder}
+          style={{
+            flexDirection: isMobileCheck() ? "column-reverse" : "row",
+          }}
+        >
+          <Sidebar
+            hidden={false}
+            popout={popout}
+            pubs={props.pubs}
+            subs={props.subs}
+            path={props.path}
+            api={props.api}
+            review={props.review}
+          />
+          <div
+            className={"h-100 w-100 white-d flex relative " + rightPanelHide}
+            style={{
+              flexGrow: 1,
+            }}
+          >
+            {props.children}
           </div>
+        </div>
+      </div>
     );
   }
 }
-

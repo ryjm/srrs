@@ -1,5 +1,5 @@
 /-  *seer
-/+  *server, *seer, *seer-json, default-agent, verb, dbug
+/+  *server, *seer, *seer-json, default-agent, verb, dbug, agentio
 /=  index  /app/seer/index
 ::
 |%
@@ -42,6 +42,7 @@
   |_  bol=bowl:gall
   +*  this       .
       seer-core  +>
+      io         ~(. agentio bol)
       sc         ~(. seer-core bol)
       def        ~(. (default-agent this %|) bol)
   ::
@@ -68,6 +69,7 @@
         (poke-seer-action:sc !<(action vase))
           %handle-http-request
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
+        ~&  >>  'in handle-http-req'
         :_  state
         %+  give-simple-payload:app  eyre-id
         %+  require-authorization:app  inbound-request
@@ -81,15 +83,15 @@
     =^  cards  state
       ?+  path  (on-watch:def path)
         [%seertile *]       (peer-seertile:sc t.path)
-        [%seer-primary *]   ~&  >>  "in on-watch: primary {<t.path>})"  [~ state]
-        [%http-response *]  [~ state]
+        [%seer-primary *]   ~&  >>  "in on-watch: primary {<path>})"  [~ state]
+        [%http-response *]  ~&  >>  "in http-resonse: {<path>}"  [~ state]
         [%stack @ ~]  (peer-stack:sc i.t.path)
       ==
     [cards this]
   ::
   ++  on-agent
     |=  [=wire =sign:agent:gall]
-    ^-  (quip card _this)
+    |^  ^-  (quip card _this)
     ?+    -.sign  (on-agent:def wire sign)
         %kick
       ~&  >>  "in kick"
@@ -103,8 +105,8 @@
             ~&  >>  seer-primary+p.cage.sign
             =/  del  !<(primary-delta q.cage.sign)
             ~&  >>  del+del
-
-            [~ this]
+            :_  this
+            ~
           [%import @ @ ~]
         =/  name  i.t.t.wire
         ?+  p.cage.sign  ~|([%seer-cli-bad-sub-mark wire p.cage.sign] !!)
@@ -118,6 +120,11 @@
         ==
       ==
     ==
+    ++  pass-through
+    |=  =cage
+    ^-  card
+    (fact:io cage ~[wire])
+  --
   ::
   ++  on-arvo
     |=  [=wire =sign-arvo]
@@ -125,6 +132,7 @@
     =^  cards  state
       ?+  wire  (on-arvo:def wire sign-arvo)
         [%bind %seer ~]             [~ state]
+        [%eyre ~]             [~ state]
         [%view-bind ~]              [~ state]
         [%review-schedule @ ~]      (wake:sc wire)
         [%review-schedule @ @ @ ~]  (wake:sc wire)
@@ -143,7 +151,6 @@
     ^-  (quip card _this)
     =/  init-cards
       :~
-
         [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]
         [%pass /bind/seer %arvo %e %connect [~ /apps/seer] dap.bol]
         [%pass /eyre %arvo %e %connect [~ /apps/seer/static] %docket]
@@ -445,6 +452,8 @@
     =/  =item  (~(got by items.stack) item-name)
     %-  json-response:gen
     %-  status-to-json  learn.item
+      [[[~ %json] [%seer %stacks ~]] ~]
+    %-  json-response:gen  (state-to-json state)
   ::  home page; redirect
   ::
   [[~ [%apps %seer @ ~]] ~]

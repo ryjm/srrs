@@ -1,3 +1,4 @@
+
 import React, { Component } from 'react';
 import moment from 'moment';
 import { Link } from 'react-router-dom';
@@ -33,8 +34,8 @@ export class ItemPreview extends Component {
     });
   };
   render() {
+    const lastReview =  (this.props.item.lastReview === null) ? 'never' : moment(this.props.item.lastReview).fromNow();
     const date = moment(this.props.item.date).fromNow();
-    const author = this.props.item.author;
 
     const stackLink = '/seer/' +
       this.props.item.stackOwner + '/' +
@@ -42,18 +43,17 @@ export class ItemPreview extends Component {
     const itemLink = stackLink + '/' + this.props.item.itemName;
 
     return (
-      <div className="mv2 link black dim db mw5 pa2 br2 bt b--green0 shadow-hover ma2">
-        <Link to={{ pathname: itemLink, state: { prevPath: location.pathname } }}>
+      <div>
+        <Link to={{ pathname: itemLink, state: { prevPath: location.pathname } }} className="mv2 link db mw5 pa2 br2 bt b--green0 shadow-hover ma2">
           <TitleSnippet title={this.props.item.itemTitle} />
           <ItemSnippet
             body={this.props.item.itemSnippet}
           />
+          <div className="flex">
+            <div className="green3 mr2">{lastReview}</div>
+            <div className="gray2 mr2">{date}</div>
+          </div>
         </Link>
-        <div className="flex">
-          <div className="gray2 mr3">{author}</div>
-          <div className="gray2 mr2">{date}</div>
-        </div>
-
       </div>
 
     );

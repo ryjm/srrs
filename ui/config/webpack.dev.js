@@ -52,33 +52,43 @@ let devServer = {
     ],
   hot: true,
   port: 3002,
-  host: 'localhost',
+  host: '0.0.0.0',
   historyApiFallback: false,
 };
 
   devServer = {
     ...devServer,
+    allowedHosts: 'all',
+    compress: false,
+    headers: {
+      "Content-Type": "no-transform",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+      "Access-Control-Allow-Headers": "X-Requested-With, content-type, Authorization"
+    },
     proxy: {
-      '/apps/seer/static/js/*.*.js': {
+      '/apps/seer/static/js/*.js': {
         target: 'http://localhost:3002',
-        pathRewrite: { '/apps/seer/static/js/*.*.js': 'index.js' },
+        pathRewrite: { '/apps/seer/static/js/main.js': 'index.js' },
         secure: false,
-        changeOrigin: true
+        changeOrigin: true,
+        compress: false
       },
 
-      '/apps/seer/static/css/*.*.css': {
+      '/apps/seer/static/css/*.css': {
         target: 'http://localhost:3002',
-        pathRewrite: { '/apps/seer/static/css/*.*.css': 'index.css' },
+        pathRewrite: { '/apps/seer/static/css/main.css': 'index.css' },
         secure: false,
-        changeOrigin: true
-
+        changeOrigin: true,
+        compress: false
       },
       '**': {
         target: urbitrc.URL,
         // ensure proxy doesn't timeout channels
         proxyTimeout: 0,
         secure: false,
-        changeOrigin: true
+        changeOrigin: true,
+        compress: false
       }
     }
   };

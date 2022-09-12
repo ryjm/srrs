@@ -6,5 +6,5 @@
   website+'https://urbit.land'
   license+'MIT'
   base+'seer'
-  glob-http+['https://nyc3.digitaloceanspaces.com/archiv/littel-wolfur/2021.10.11..03.56.09-glob-0v5,8boau,lpf2q,mik4c,oh99p,qko2l.glob' 0v5.8boau.lpf2q.mik4c.oh99p.qko2l]
+  glob-ames+[~distem-bottus-littel-wolfur 0v0]
 ==

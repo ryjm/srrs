@@ -1,3 +1,4 @@
+//@ts-nocheck
 import { withRouter } from "react-router";
 import { Link, RouteComponentProps, useLocation } from "react-router-dom";
 import { PathControl } from "../lib/path-control";
@@ -87,7 +88,7 @@ export default class NewStack extends React.Component<
     this.props.setSpinner(true);
 
     this.props.api.seer.action("seer", "seer-action", makeStack);
-
+    
     // this.props.api.action("seer", "seer-action", sendInvites);
   }
   shouldComponentUpdate(
@@ -105,18 +106,10 @@ export default class NewStack extends React.Component<
   componentDidUpdate(prevProps, prevState) {
     console.log(prevState.awaiting);
     if (this.state.redirect === "new-item") {
-      this.props.history.push({
-        path: "/seer/review",
-        lastParams: {
-          // @ts-ignore TODO window typings
-          ship: `~${window.ship}`,
-          stack: this.state.awaiting,
-        }
-      });
-      return
+      this.props.history.push(`/seer/~${window.ship}/${this.state.awaiting}/new-item`);
     } else if (this.state.redirect === "home") {
       // @ts-ignore TODO window typing
-      this.props.history.push(`/seer/~${window.ship}/${this.state.awaiting}`);
+      this.props.history.push(`/seer/review`);
     }
   }
 

@@ -1,8 +1,12 @@
 import React, { Component } from 'react';
-import { Controlled as CodeMirror } from 'react-codemirror2';
 import { Link } from 'react-router-dom';
 import { dateToDa } from '../lib/util';
-import 'codemirror/mode/markdown/markdown';
+import CodeMirror from '@uiw/react-codemirror'
+
+import { basicSetup } from 'codemirror';
+import { emacs } from '@replit/codemirror-emacs';
+import { markdown, markdownLanguage} from '@codemirror/lang-markdown';
+
 
 export class EditItem extends Component {
     constructor(props) {
@@ -19,15 +23,15 @@ export class EditItem extends Component {
         this.bodyFrontChange = this.bodyFrontChange.bind(this);
         this.bodyBackChange = this.bodyBackChange.bind(this);
     }
-    titleChange(editor, data, value) {
+    titleChange(value) {
         const submit = !(value === '');
         this.setState({ title: value, submit: submit });
     }
-    bodyFrontChange(editor, data, value) {
+    bodyFrontChange(value) {
         const submit = !(value === '');
         this.setState({ bodyFront: value, submit: submit });
     }
-    bodyBackChange(editor, data, value) {
+    bodyBackChange(value) {
         const submit = !(value === '');
         this.setState({ bodyBack: value, submit: submit });
     }
@@ -67,11 +71,10 @@ export class EditItem extends Component {
                 itemId: this.props.itemId
             }
         }, () => {
-            this.props.api.action('seer', 'seer-action', data).then(() => {
-                this.setState({ awaiting: false, mode: 'view' });
-                const redirect = `/seer/~${props.ship}/${props.stackId}`;
-                props.history.push(redirect);
-            });
+            this.props.api.action('seer', 'seer-action', data)
+            this.setState({ awaiting: false, mode: 'view' });
+            const redirect = `/seer/~${props.ship}/${props.stackId}`;
+            props.history.push(redirect);
         });
     }
     componentDidMount() {
@@ -89,13 +92,12 @@ export class EditItem extends Component {
     render() {
         const { props, state } = this;
         const options = {
-            mode: 'markdown',
-            theme: 'tlon',
+            
             lineNumbers: false,
             lineWrapping: true,
             cursorHeight: 0.85
         };
-
+        
         /* let stackLinkText = `<- Back to ${this.state.stack.info.title}`; */
         let date = dateToDa(new Date(props.item.content['date-created']));
         date = date.slice(1, -10);
@@ -104,7 +106,7 @@ export class EditItem extends Component {
             : { color: '#B1B2B3', cursor: 'auto' };
 
         return (
-            <div className="f9 h-100 relative">
+            <div className="f9 h-100 w-100 relative">
                 <div className="w-100 tl pv4 flex justify-center">
                     <button
                         className="v-mid bg-transparent w-100 w-80-m w-90-l mw6 tl h1 pl4"
@@ -122,32 +124,42 @@ export class EditItem extends Component {
                     <div className="pl4">
                         <div className="gray2">{date}</div>
                     </div>
-                    <div className="EditItem">
-                        <CodeMirror
-                            value={state.title}
-                            options={options}
-                            onBeforeChange={(e, d, v) => this.titleChange(e, d, v)}
-                            onChange={(editor, data, value) => { }}
-                        />
-                    </div>
-                    <div className="EditItem">
-                        <CodeMirror
-                            value={state.bodyFront}
-                            options={options}
-                            onBeforeChange={(e, d, v) => this.bodyFrontChange(e, d, v)}
-                            onChange={(editor, data, value) => { }}
-                        />
-                    </div>
-                    <div className="EditItem">
-                        <CodeMirror
-                            value={state.bodyBack}
-                            options={options}
-                            onBeforeChange={(e, d, v) => this.bodyBackChange(e, d, v)}
-                            onChange={(editor, data, value) => { }}
-                        />
-                    </div>
-                </div>
-            </div>
+                    <div>
+            <CodeMirror
+              height='20%'
+              width='50%'
+              basicSetup={{
+                lineNumbers: false
+              }}
+              className='EditItem'
+              extensions={[emacs(), markdown({ base: markdownLanguage })]}
+              value={props.title}
+              options={{ ...options }}
+              onChange={(editor, value) => {
+                this.titleChange(editor)
+              }}
+            />
+          </div>
+          <div>
+            <CodeMirror
+              height='20%'
+              extensions={[emacs(), basicSetup, markdown({ base: markdownLanguage })]}
+              value={state.bodyFront}
+              options={{ ...options }}
+              onChange={(e, v) => { this.bodyFrontChange(e) }}
+            />
+          </div>
+          <div>
+            <CodeMirror
+              height='20%'
+              extensions={[emacs(), basicSetup, markdown({ base: markdownLanguage })]}
+              value={state.bodyBack}
+              options={{ ...options }}
+              onChange={(e, v) => { this.bodyBackChange(e) }}
+            />
+          </div>
+        </div>
+      </div>
         );
     }
 }

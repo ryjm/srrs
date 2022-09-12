@@ -21,6 +21,7 @@ export class PrimaryReducer {
       break;
     case 'update-stack':
       this.addStack(json['update-stack'], state);
+      break;
     default:
       break;
     }
@@ -41,14 +42,13 @@ export class PrimaryReducer {
   addStack(json, state) {
     const host   = Object.keys(json)[0];
     const stack   = Object.keys(json[host])[0];
-    console.log("checking pubs")
     if (state.pubs) {
-      console.log("updating pubs")
       state.pubs[stack] = json[host][stack];
     }
   }
   deleteStack(json, state) {
-    const host = json['who'].slice(1);
+    console.log("deleting stack", json)
+    const host = json['who'];
     if (state.subs[host]) {
       delete state.subs[host][json['stack']];
     } else if (state.pubs) {
@@ -56,6 +56,7 @@ export class PrimaryReducer {
         delete state.pubs[json['stack']];
       }
     }
+    return state.pubs;
   }
 
   updateReview(json, state) {

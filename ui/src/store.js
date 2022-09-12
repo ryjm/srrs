@@ -17,7 +17,7 @@ class Store {
         this.updateReducer = new UpdateReducer();
         this.primaryReducer = new PrimaryReducer();
         this.learnReducer = new LearnReducer();
-        this.setState = () => { };
+        this.setState = (s) => { this.state = {...s}; };
     }
 
     setStateHandler(setState) {
@@ -27,12 +27,13 @@ class Store {
     handleEvent(data) {
         let json = data.data;
         console.log("handling event", json);
-        this.initialReducer.reduce(json, this.state);
-        this.configReducer.reduce(json, this.state);
-        this.updateReducer.reduce(json, this.state);
-        this.primaryReducer.reduce(json, this.state);
-        this.learnReducer.reduce(data, this.state);
-        
+        let updatedState = {...this.state}
+        this.initialReducer.reduce(json, updatedState);
+        this.configReducer.reduce(json, updatedState);
+        this.updateReducer.reduce(json, updatedState);
+        this.primaryReducer.reduce(json, updatedState);
+        this.learnReducer.reduce(data, updatedState);
+        this.state = {...updatedState};
         this.setState(this.state);
     }
 }

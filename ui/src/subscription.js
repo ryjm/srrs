@@ -11,7 +11,7 @@ export class Subscription {
 
   initializeSeer() {
     console.log("initializing seer")
-    api.bind('/seer-primary', 'PUT', {app: 'seer', path: '/seer-primary', ship: window.ship}, 'seer',
+    api.bind('/seer-primary', 'PUT',
       this.handleEvent.bind(this),
       this.handleError.bind(this));
   }

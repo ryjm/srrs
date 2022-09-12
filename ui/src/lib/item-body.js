@@ -15,11 +15,11 @@ export class ItemBody extends Component {
     if (this.props.showBack) {
       return (
         <div>
-          <div className="md">
-            <ReactMarkdown children={newFront} />
+          <div>
+            <ReactMarkdown className="md" children={newFront} />
           </div>
-          <div className="md">
-            <ReactMarkdown children={newBack} />
+          <div >
+            <ReactMarkdown className="md" children={newBack} />
           </div>
           <button
               className={toggleStyle}
@@ -34,8 +34,8 @@ export class ItemBody extends Component {
       );
     } else {
       return (
-        <div className="md">
-          <ReactMarkdown children={newFront} />
+        <div>
+          <ReactMarkdown  className="md" children={newFront} />
           <button
               className={toggleStyle}
               style={{ color: '#2AA779', cursor: 'pointer' }}

@@ -43,4 +43,6 @@
   ++  noun  primary-delta
   --
 ::
+++  grad  %noun
+::
 --

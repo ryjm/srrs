@@ -98,7 +98,7 @@ textarea, select, input, button {
   }
 }
 
-@media all and (min-width: 34.375em) {
+@media all {
   .db-ns {
     display: block;
   }
@@ -307,7 +307,7 @@ textarea, select, input, button {
   width: 100% !important;
   cursor: text;
   font-size: 12px;
-  line-height: 20px;
+  line-height: 50px;
 }
 
 .CodeMirror * {
@@ -392,7 +392,12 @@ textarea, select, input, button {
   top: 16px;
   color: #7f7f7f;
 }
-
+.flex {
+  display: flex;
+  overflow: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;

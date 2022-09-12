@@ -1,10 +1,7 @@
 // @ts-nocheck
-import React from 'react';
-import ReactDOM from 'react-dom';
 import { store } from './store';
 import Urbit from '@urbit/http-api';
 import APIType from './types/API';
-import { SeerApiType } from './types/SeerApi';
 
 function createInstance<T extends APIType>(c: new () => T): T {
   return new c();
@@ -25,18 +22,26 @@ class SeerApi {
     this.channel = channel;
     this.bindPaths = [];
   }
-
-  bind(path, method, ship = window.ship, appl = 'seer', success, fail) {
+  createSubscription(app: string, path: string, e: (data: any) => void): SubscriptionRequestInterface {
+    const request = {
+      app,
+      path,
+      event: e,
+      err: () => console.warn('SUBSCRIPTION ERROR'),
+      quit: () => {
+        throw new Error('subscription clogged');
+      }
+    };
+    // TODO: err, quit handling (resubscribe?)
+    return request;
+  }
+  bind(path, method?, ship = window.ship, appl = 'seer', success: (data: any) => void, fail?: () => void) {
     this.bindPaths = [...new Set([...this.bindPaths, path])];
     // @ts-ignore TODO window typings
-    window.subscriptionId = this.upi.subscribe(ship, appl, path,
-      (err) => {
-        console.log("error", err);
-        fail(err);
-      },
+    return this.upi.subscribe(this.createSubscription(appl, path,
       (event) => {
         console.log("event", event);
-        success({
+        store.handleEvent({
           data: event,
           from: {
             ship,
@@ -44,26 +49,27 @@ class SeerApi {
           }
         });
       },
-      (quit) => {
-        console.log("quit", quit);
-        fail(quit);
-      });
+      (err) => {
+        console.log("error", err);
+        if (fail) fail(err);
+      }))
   }
 
-  action(appl, mark, data) {
-    return new Promise((resolve, reject) => {
+  action(appl, mark, data): Promise<number> {
       this.upi.poke({
-        ship: window.ship,
         app: appl,
         mark: mark,
         json: data,
+        onSuccess: () => {
+          console.log('success')
+        },
         onError: (err) => {
          console.log(err)
-        }});
+        }
     });
   }
 
-  fetchStatus(stack, item) {
+  fetchStatus(stack, item): Promise<any> {
     fetch(`/seer/learn/${stack}/${item}.json`)
     .then(response => response.json())
     .then((json) => {
@@ -72,6 +78,15 @@ class SeerApi {
         data: json,
         stack: stack,
         item: item
+      });
+    });
+  }
+  fetchStacks() {
+    fetch(`/seer/stacks.json`)
+    .then(response => response.json())
+    .then((json) => {
+      store.handleEvent({
+        data: json
       });
     });
   }
@@ -94,9 +109,15 @@ const api = createInstance(SeerApi)
 // @ts-ignore TODO window typings
 api.ship = window.ship;
 api.upi = new Urbit('', '', 'seer')
+
+api.upi.ship = window.ship;
 api.seer = new SeerApi()
+api.seer.upi.ship = window.ship;
 // api.verbose = true;
 // @ts-ignore TODO window typings
+api.bind('/seer-primary');
+
+
 window.api = api;
 
 export default api;

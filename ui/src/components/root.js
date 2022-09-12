@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { CssVarsProvider } from '@mui/joy/styles';
 import '../index.css';
 import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
 import light from '@tlon/indigo-light';
@@ -66,7 +67,8 @@ export class App extends Component {
   render() {
     const { state } = this;
     return (
-      <ThemeProvider theme={light}>
+      
+      <ThemeProvider  theme={light}>
       <BrowserRouter>
         <Switch>
           <Route
@@ -81,6 +83,7 @@ export class App extends Component {
                   spinner={this.state.spinner}
                   active="sidebar"
                   popout={false}
+                  {...state}
                 >
                   <Review {...props} {...state} />
                 </Skeleton>
@@ -98,6 +101,8 @@ export class App extends Component {
                   api={api}
                   spinner={this.state.spinner}
                   active="sidebar"
+                  {...state}
+
                 >
                   <Review {...props} {...state} stack={props.match.params.stack} who={props.match.params.who} />
                 </Skeleton>
@@ -112,6 +117,8 @@ export class App extends Component {
                 <Skeleton
                   spinner={this.state.spinner}
                   active="sidebar"
+                  {...state}
+
                 >
                   <Subs {...this.state} api={api} />
                 </Skeleton>
@@ -128,6 +135,8 @@ export class App extends Component {
                   pubs={state.pubs}
                   subs={state.subs}
                   active="sidebar"
+                  {...state}
+
                 >
                   <Pubs {...state} />
                 </Skeleton>
@@ -144,12 +153,16 @@ export class App extends Component {
                   spinner={this.state.spinner}
                   pubs={state.pubs}
                   subs={state.subs}
+                  {...state}
+
                 >
                   <NewStack
                     api={api}
                     {...this.state}
                     setSpinner={this.setSpinner}
                     {...props}
+                    {...state}
+
                   />
                 </Skeleton>
               );
@@ -166,6 +179,8 @@ export class App extends Component {
                   pubs={state.pubs}
                   subs={state.subs}
                   active="sidebar"
+                  {...state}
+
                 >
                   <NewItem
                     api={api}
@@ -188,6 +203,8 @@ export class App extends Component {
                   pubs={state.pubs}
                   subs={state.subs}
                   active="sidebar"
+                  {...state}
+
                 >
                   <NewItem
                     api={api}
@@ -213,6 +230,9 @@ export class App extends Component {
                   subs={state.subs}
                   path={props.match.params.stack}
                   active="sidebar"
+                  api={api}
+                  {...state}
+
                 >
                   <Stack
                     view="notes"
@@ -238,6 +258,8 @@ export class App extends Component {
                   pubs={state.pubs}
                   subs={state.subs}
                   active="sidebar"
+                  {...state}
+
                 >
                   <Item
                     stackId={props.match.params.stack}

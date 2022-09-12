@@ -1,18 +1,24 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
-import { UnControlled as CodeMirror } from 'react-codemirror2';
-import 'codemirror/mode/markdown/markdown';
-import 'codemirror/addon/display/placeholder';
+import { Chance } from 'chance';
+//import { UnControlled as CodeMirror } from 'react-codemirror2';
+import CodeMirror from '@uiw/react-codemirror'
+import { keymap } from '@codemirror/view';
+import { defaultKeymap } from '@codemirror/commands';
+import { basicSetup } from 'codemirror';
+import { emacs } from '@replit/codemirror-emacs';
+import { markdown, markdownLanguage} from '@codemirror/lang-markdown';
 import { dateToDa } from '../lib/util';
-import _ from 'lodash';
+import _, { random, stubString } from 'lodash';
 import { uuid } from '../lib/util';
+
 
 export class NewItem extends Component {
   constructor(props) {
     super(props);
-
+    const chance = new Chance();
     this.state = {
-      title: '',
+      title: chance.word({ length: 4 }),
       bodyFront: '',
       bodyBack: '',
       awaiting: false,
@@ -167,77 +173,91 @@ export class NewItem extends Component {
     this.props.history.push(redirect);
   }
 
-    titleChange(editor, data, value) {
-        const submit = !(value === '');
-        this.setState({ title: value, submit: submit });
-    }
-    bodyFrontChange(editor, data, value) {
-        const submit = !(value === '');
-        this.setState({ bodyFront: value, submit: submit });
-    }
-    bodyBackChange(editor, data, value) {
-        const submit = !(value === '');
-        this.setState({ bodyBack: value, submit: submit });
-    }
+  titleChange(value) {
+    const submit = !(value === '');
+    this.setState({ title: value, submit: submit });
+  }
+  bodyFrontChange(value) {
+    const submit = !(value === '');
+    this.setState({ bodyFront: value, submit: submit });
+  }
+  bodyBackChange(value) {
+    const submit = !(value === '');
+    this.setState({ value: value, bodyBack: value, submit: submit });
+  }
 
   render() {
     const { props, state } = this;
+
     const options = {
-            mode: 'markdown',
-            theme: 'tlon',
-            lineNumbers: false,
-            lineWrapping: true,
-            cursorHeight: 0.85
-        };
+      lineNumbers: false,
+      lineWrapping: true,
+      readOnly: false,
+      cursorHeight: 0.85,
+
+    };
 
     let date = dateToDa(new Date());
     date = date.slice(1, -10);
     const submitStyle = (state.submit)
-        ? { color: '#2AA779', cursor: 'pointer' }
-        : { color: '#B1B2B3', cursor: 'auto' };
+      ? { color: '#2AA779', cursor: 'pointer' }
+      : { color: '#B1B2B3', cursor: 'auto' };
 
     return (
-         <div className="f9 h-100 w-100 relative">
-                <div className="w-100 tl pv4 flex justify-center">
-                    <button
-                        className="v-mid bg-transparent w-100 w-80-m w-90-l mw6 tl h1 pl4"
-                        disabled={!state.submit}
-                        style={submitStyle}
-                        onClick={this.itemSubmit}
-                    >
-                        save &ldquo;{props.stack}&rdquo;
-                    </button>
-                    <Link to={`/seer/${props.ship}/${props.stack}`} className="blue3 ml2">
-                        {`<- ${props.stack}`}
-                    </Link>
-                </div>
-                <div className="mw6 center">
-                    <div className="pl4">
-                        <div className="gray2">{date}</div>
-                    </div>
-                    <div className="EditItem">
-                      <CodeMirror
-                        value=""
-                        options={{ ...options, ...{ placeholder: 'title' } }}
-                        onChange={(e, d, v) => this.titleChange(e, d, v)}
-                      />
-                    </div>
-                    <div className="EditItem">
-                        <CodeMirror
-                            value=""
-                          options={{ ...options, ...{ placeholder: 'front' } }}
-                            onChange={(e, d, v) => this.bodyFrontChange(e, d, v)}
-                        />
-                    </div>
-                    <div className="EditItem">
-                      <CodeMirror
-                        value=""
-                          options={{ ...options, ...{ placeholder: 'back' } }}
-                            onChange={(e, d, v) => this.bodyBackChange(e, d, v)}
-                      />
-                    </div>
-                </div>
-            </div>
-        );
-    }
+      <div className="f9 h-100 w-100 relative">
+        <div className="w-100 tl pv4 flex justify-center">
+          <button
+            className="v-mid bg-transparent w-100 w-80-m w-90-l mw6 tl h1 pl4"
+            disabled={!state.submit}
+            style={submitStyle}
+            onClick={this.itemSubmit}
+          >
+            save &ldquo;{props.stack}&rdquo;
+          </button>
+          <Link to={`/seer/${props.ship}/${props.stack}`} className="blue3 ml2">
+            {`<- ${props.stack}`}
+          </Link>
+        </div>
+        <div className="mw6 center">
+          <div className="pl4">
+            <div className="gray2">{date}</div>
+          </div>
+          <div>
+            <CodeMirror
+              height='20%'
+              width='50%'
+              basicSetup={{
+                lineNumbers: false
+              }}
+              className='EditItem'
+              extensions={[emacs(), markdown({ base: markdownLanguage })]}
+              value=''
+              options={{ ...options }}
+              onChange={(editor, value) => {
+                this.titleChange(editor)
+              }}
+            />
+          </div>
+          <div>
+            <CodeMirror
+              height='20%'
+              extensions={[emacs(), basicSetup, markdown({ base: markdownLanguage })]}
+              value=''
+              options={{ ...options }}
+              onChange={(e, v) => { this.bodyFrontChange(e) }}
+            />
+          </div>
+          <div>
+            <CodeMirror
+              height='20%'
+              extensions={[emacs(), basicSetup, markdown({ base: markdownLanguage })]}
+              value=''
+              options={{ ...options }}
+              onChange={(e, v) => { this.bodyBackChange(e) }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
 }

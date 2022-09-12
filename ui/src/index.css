@@ -3,5 +3,6 @@
 @import 'css/custom.css';
 @import 'css/spinner.css';
 
-@import '../node_modules/codemirror/lib/codemirror.css';
-@import '../node_modules/codemirror/theme/material.css';
+/* @import '../node_modules/codemirror/lib/codemirror.css';
+@import '../node_modules/codemirror/theme/material.css'; */
+@import '../node_modules/materialize-css/dist/css/materialize.css'; 
