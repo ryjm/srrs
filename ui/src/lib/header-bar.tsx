@@ -1,17 +1,19 @@
 import { AlarmTwoTone } from '@mui/icons-material';
-import { AppBar, ButtonGroup, Fade, IconButton, LinearProgress, Toolbar } from '@mui/material';
+import { IconButton } from '@mui/joy';
+import { AppBar, ButtonGroup, Fade, LinearProgress, Toolbar } from '@mui/material';
+
 import { usePopupState } from 'material-ui-popup-state/hooks';
 import React, { Component, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import Import from '~/components/import';
+import Import from '../components/import';
 
 const HeaderBar = (props) => {
   const title = document.title === "home" ? "" : "%srrs";
 
   return (
-    <AppBar position="static" color="transparent">
+    <AppBar position="static" color="inherit">
       <Toolbar>
-        <IconButton size="large" edge="start" color="inherit" sx={{ mr: 2 }}>
+        <IconButton size="lg" color="neutral" sx={{ mr: 2 }}>
           <Link className="mono green-text" to="/seer/review">
             <AlarmTwoTone /> {title}
           </Link>

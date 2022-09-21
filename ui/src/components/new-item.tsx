@@ -11,6 +11,8 @@ import { markdown, markdownLanguage} from '@codemirror/lang-markdown';
 import { dateToDa } from '../lib/util';
 import _, { random, stubString } from 'lodash';
 import { uuid } from '../lib/util';
+import { Grid, IconButton, Stack, Button } from '@mui/joy';
+import { ArrowCircleLeft } from '@mui/icons-material';
 
 
 export class NewItem extends Component {
@@ -30,13 +32,13 @@ export class NewItem extends Component {
     this.titleChange = this.titleChange.bind(this);
     this.bodyFrontChange = this.bodyFrontChange.bind(this);
     this.bodyBackChange = this.bodyBackChange.bind(this);
-    this.itemSubmit = this.itemSubmit.bind(this);
+    this.saveItem = this.saveItem.bind(this);
     this.discardItem = this.discardItem.bind(this);
 
     this.item = false;
   }
 
-  itemSubmit() {
+  saveItem() {
     const last = this.props.location.state || false;
     let ship = window.ship;
     let stackId = null;
@@ -203,61 +205,87 @@ export class NewItem extends Component {
       ? { color: '#2AA779', cursor: 'pointer' }
       : { color: '#B1B2B3', cursor: 'auto' };
 
-    return (
-      <div className="f9 h-100 w-100 relative">
-        <div className="w-100 tl pv4 flex justify-center">
-          <button
-            className="v-mid bg-transparent w-100 w-80-m w-90-l mw6 tl h1 pl4"
-            disabled={!state.submit}
-            style={submitStyle}
-            onClick={this.itemSubmit}
+    
+      return (
+        <Grid
+          sx={{ marginLeft: 2, width: "80%" }}
+          display="flex"
+          alignContent="flex-start"
+          justifyContent="space-evenly"
+          container
+          spacing={2}
+        >
+          <Stack
+            sx={{ p: 2 }}
+            alignItems="flex-start"
+            justifyItems="space-between"
+            width="50%"
           >
-            save &ldquo;{props.stack}&rdquo;
-          </button>
-          <Link to={`/seer/${props.ship}/${props.stack}`} className="blue3 ml2">
-            {`<- ${props.stack}`}
-          </Link>
-        </div>
-        <div className="mw6 center">
-          <div className="pl4">
-            <div className="gray2">{date}</div>
-          </div>
-          <div>
             <CodeMirror
-              height='20%'
-              width='50%'
+              width="100%"
               basicSetup={{
-                lineNumbers: false
+                lineNumbers: false,
               }}
-              className='EditItem'
+              placeholder="Title"
+              className="EditItem"
               extensions={[emacs(), markdown({ base: markdownLanguage })]}
-              value=''
+              value={props.title}
               options={{ ...options }}
               onChange={(editor, value) => {
-                this.titleChange(editor)
+                this.titleChange(editor);
               }}
             />
-          </div>
-          <div>
             <CodeMirror
-              height='20%'
-              extensions={[emacs(), basicSetup, markdown({ base: markdownLanguage })]}
-              value=''
+              width="100%"
+              
+              placeholder={"Front"}
+              basicSetup={{
+                  lineNumbers: false,
+              }}
+              extensions={[
+                emacs(),
+                markdown({ base: markdownLanguage }),
+              ]}
+              value={state.bodyFront}
               options={{ ...options }}
-              onChange={(e, v) => { this.bodyFrontChange(e) }}
+              onChange={(e, v) => {
+                this.bodyFrontChange(e);
+              }}
             />
-          </div>
-          <div>
             <CodeMirror
-              height='20%'
-              extensions={[emacs(), basicSetup, markdown({ base: markdownLanguage })]}
-              value=''
+              width="100%"
+              
+              placeholder={"Back"}
+              basicSetup={{
+                  lineNumbers: false,
+              }}
+              extensions={[
+                emacs(),
+                markdown({ base: markdownLanguage }),
+              ]}
+              value={state.bodyBack}
               options={{ ...options }}
-              onChange={(e, v) => { this.bodyBackChange(e) }}
+              onChange={(e, v) => {
+                this.bodyBackChange(e);
+              }}
             />
-          </div>
-        </div>
-      </div>
-    );
+          </Stack>
+  
+          <Stack
+            sx={{ alignItems: "flex-start", p: 2, float: "right" }}
+            spacing={2}
+          >
+            <Button
+              disabled={!state.submit}
+              onClick={this.saveItem}
+              variant="soft"
+            >
+              Save {props.title}
+            </Button>
+          
+          </Stack>
+        </Grid>
+      );
+    }
   }
-}
+  

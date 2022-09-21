@@ -6,6 +6,7 @@ import { stringToSymbol } from "../lib/util";
 import History from "history";
 import API from "~/types/API";
 import React from "react";
+import { Button } from "@mui/joy";
 
 const PC = withRouter<IStackProps, any>(PathControl);
 export interface IStackProps extends RouteComponentProps {
@@ -144,10 +145,7 @@ export default class NewStack extends React.Component<
 
       return (
         <div className={outerName}>
-          <div className="w-100 dn-m dn-l dn-xl inter pt1 pb6 f8">
-            <Link to="/seer/review">{"⟵ review"}</Link>
-          </div>
-          <div className="w-100">
+            <div className="w-100">
             <p className="f9 gray2 db mb2 pt1">stack name</p>
             <textarea
               autoFocus
@@ -164,13 +162,14 @@ export default class NewStack extends React.Component<
               placeholder="add a title"
               onChange={this.titleChange}
             ></textarea>
-            <button
+            <Button
               disabled={this.state.disabled}
+              variant="soft"
+              color="neutral"
               onClick={this.firstItem}
-              className={createClasses}
             >
               create
-            </button>
+            </Button>
           </div>
         </div>
       );

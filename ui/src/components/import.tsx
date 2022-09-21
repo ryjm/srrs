@@ -1,5 +1,7 @@
 import { CloudDownload } from '@mui/icons-material';
-import { Button, IconButton, Popover, Stack, TextField } from '@mui/material';
+import { Button, IconButton, Stack, TextField } from '@mui/joy';
+import { Popover } from '@mui/material';
+
 import { Box } from '@mui/system';
 import { bindPopover, bindTrigger, usePopupState } from 'material-ui-popup-state/hooks';
 import React, { ChangeEventHandler, useState } from 'react';
@@ -61,18 +63,18 @@ const Import = (api) => {
         <Stack spacing={2} >
           
     <TextField
-          size="small"
+          size="sm"
           placeholder="@p"
           onChange={handleWhoChange}
         />
         <TextField
-          size="small"
+          size="sm"
           placeholder="stack name"
           onChange={handleStackChange}
         />
         <Button
-          color="secondary"
-          variant="contained"
+          color="primary"
+          variant="soft"
           onClick={(e) => importStack({ api, who, stack })}
         >
           import

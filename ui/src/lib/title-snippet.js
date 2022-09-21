@@ -1,5 +1,6 @@
-import React, { Component } from 'react';
-import { color } from 'styled-system';
+import { Typography } from "@mui/joy";
+import React, { Component } from "react";
+import { color } from "styled-system";
 
 export class TitleSnippet extends Component {
   constructor(props) {
@@ -9,23 +10,19 @@ export class TitleSnippet extends Component {
   render() {
     if (this.props.badge) {
       return (
-          <div className=""
-            style={{ overflowWrap: 'break-word', alignContent: 'center' }}
-          >
-            {this.props.title}
+        <div
+          className=""
+          style={{ overflowWrap: "break-word", alignContent: "center" }}
+        >
+          {this.props.title}
         </div>
       );
     } else {
       return (
-          <div 
-            className="label-small-mono"
-            style={{ overflowWrap: 'break-word',
-           }}
-          >
-            {this.props.title}
-          </div>
+        <Typography textColor='text.primary' level="h6" textOverflow="ellipsis">
+          {this.props.title}
+        </Typography>
       );
     }
   }
 }
-

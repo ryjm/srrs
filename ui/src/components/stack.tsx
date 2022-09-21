@@ -2,16 +2,30 @@
 import {
   Add,
   ClearAllOutlined,
+  CodeOutlined,
   DeleteForeverOutlined,
+  Houseboat,
   ReadMore,
 } from "@mui/icons-material";
-import { Button, Paper } from "@mui/material";
+import { ButtonGroup, Divider, Paper, Tooltip } from "@mui/material";
+import {
+  Stack as MuiStack,
+  Box,
+  Button,
+  Card,
+  Chip,
+  Grid,
+  Sheet,
+  Typography,
+} from "@mui/joy";
 import React, { Component } from "react";
 import { withRouter } from "react-router";
 import { Link } from "react-router-dom";
 import { marginBottom } from "styled-system";
 import { StackNotes } from "../lib/stack-notes";
 import { NotFound } from "./not-found";
+import { width } from "@mui/system";
+import Grid2 from "@mui/material/Unstable_Grid2/Grid2";
 
 const NF = withRouter(NotFound);
 const BN = withRouter(StackNotes);
@@ -299,30 +313,83 @@ export class Stack extends Component {
       }
 
       return (
-        <div className="w-100">
-          <div className="w-100 dn-m dn-l dn-xl inter pt4 pb6 f9">
-            <Link to="/seer/review">{"<- review"}</Link>
-          </div>
-          <div
-            className="mw9 f9 h-100 w-100 flex"
-            style={{ paddingLeft: 16, paddingRight: 16 }}
-          >
-            <div className="h-100 w-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
-              <div
-                className="flex justify-between"
-                style={{ marginBottom: 12 }}
+        <div
+          className="mw9 f9 h-100 w-100"
+          style={{ paddingLeft: 16, paddingRight: 16 }}
+        >
+          <div className="h-100 w-100 pt0 pt8-m pt8-l pt8-xl no-scrollbar">
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "row",
+                justifyContent: "space-between",
+              }}
+            >
+              <Box
+                sx={{
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "left",
+                }}
               >
-                <Paper className="flex-col z-depth-1 grey lighten-3">
-                  <h6>{data.stackTitle}</h6>
-                  <span>
-                    <span className="mr1">by</span>
-                    <span className="gray3 mono" title={data.stackHost}>
-                      {data.stackHost}
-                    </span>
-                  </span>
-                </Paper>
-                <div className="flex">
-                  {localStack && (
+                <Box
+                  sx={{
+                    mb: 1,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                  }}
+                >
+                  <Card variant="soft">
+                    <Typography
+                      textColor="neutral.500"
+                      fontWeight={700}
+                      sx={{
+                        fontSize: "10px",
+                        textTransform: "uppercase",
+                        letterSpacing: ".1rem",
+                      }}
+                    >
+                      {data.stackTitle}
+                    </Typography>
+                    <Divider />
+                    {!localStack && (
+                      <Box sx={{ py: 1 }}>
+                        <Chip
+                          endDecorator={<Houseboat />}
+                          variant="outlined"
+                          size="sm"
+                        >
+                          {data.stackHost}
+                        </Chip>
+                      </Box>
+                    )}
+                  </Card>
+                </Box>
+                <Tooltip label="View active items">
+                  <Link
+                    to={`/seer/${data.stack.info.owner}/${data.stack.info.filename}/review`}
+                  >
+                    <Button>
+                      <ReadMore />
+                    </Button>
+                  </Link>
+                </Tooltip>
+              </Box>
+
+              <MuiStack
+                sx={{
+                  mb: 8,
+                  display: "flex",
+                  alignItems: "center",
+
+                  justifyContent: "space-between",
+                }}
+                spacing={2}
+                direction="row"
+              >
+                {localStack && (
+                  <Tooltip title="Add Item">
                     <Link
                       to={`/seer/~${this.props.ship}/${data.stack.info.filename}/new-item`}
                     >
@@ -330,43 +397,29 @@ export class Stack extends Component {
                         <Add />
                       </Button>
                     </Link>
-                  )}
-                  {localStack && (
-                    <Button onClick={this.reviewStack}>
-                      <ClearAllOutlined></ClearAllOutlined>
-                    </Button>
-                  )}
-                  {localStack && (
-                    <Button
-                      onClick={this.deleteStack}
-                      className="red darken-1 ml4"
-                    >
-                      <DeleteForeverOutlined />
-                    </Button>
-                  )}
-                </div>
-              </div>
+                  </Tooltip>
+                )}
 
-              <div className="flex" style={{ marginBottom: 24 }}>
-                <Link
-                  to={`/seer/${data.stack.info.owner}/${data.stack.info.filename}/review`}
-                  className="bb b--gray4 b--gray2-d gray2 pv4 ph2"
-                >
-                  <Button>
-                    <ReadMore />
+                <Tooltip title="Review all">
+                  <Button onClick={this.reviewStack}>
+                    <ClearAllOutlined />
                   </Button>
-                </Link>
+                </Tooltip>
 
-                <div
-                  className="bb b--gray4 b--gray2-d gray2 pv4 ph2"
-                  style={{ flexGrow: 1 }}
-                ></div>
-              </div>
-
-              <div style={{ height: "auto" }} className="f9 lh-solid flex ml2">
-                {inner}
-              </div>
-            </div>
+                <Button onClick={this.deleteStack} color="danger">
+                  <DeleteForeverOutlined />
+                </Button>
+              </MuiStack>
+            </Box>
+            <Divider />
+            <Grid
+              container
+              spacing={1}
+              justifyContent="flex-start"
+              alignItems="flex-start"
+            >
+              {inner}
+            </Grid>
           </div>
         </div>
       );

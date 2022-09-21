@@ -2,8 +2,9 @@ import React, { Component } from "react";
 import ReviewPreview from "../lib/review-preview";
 import { MessageScreen } from "./message-screen";
 import { Link } from "react-router-dom";
-import { Chip, Button } from "@mui/material";
+import { Chip, Button, Grid, Box } from "@mui/joy";
 import { ArrowBack, Article } from "@mui/icons-material";
+import { Divider } from "@mui/material";
 
 export class Review extends Component {
   constructor(props) {
@@ -116,14 +117,17 @@ export class Review extends Component {
       }
       stacks.add(el.stack);
       i = i + 1;
+      const next = i < review.length ? [`/seer/~${window.ship}/${review[i].stack}/${review[i].item}`, review[i]] : ["/seer/review", review[0]];
       return (
-        <ReviewPreview
-          item={item}
-          key={i}
-          idx={i}
-          next={review[i]}
-          reviews={review}
-        />
+        <Grid item>
+          <ReviewPreview
+            item={item}
+            key={i}
+            idx={i}
+            next={next}
+            reviews={review}
+          />
+        </Grid>
       );
     });
     if (review.length == 0) {
@@ -161,7 +165,14 @@ export class Review extends Component {
       header = [...stacks].map((el, idx) => {
         return (
           <Link key={idx} to={stackLink(el)} className="f9 gray2 ma5">
-           <Button variant="outlined" color="primary" size="small" startIcon={<Article />}>{el}</Button>
+            <Button
+              variant="outlined"
+              color="primary"
+              size="small"
+              startIcon={<Article />}
+            >
+              {el}
+            </Button>
           </Link>
         );
       });
@@ -188,18 +199,27 @@ export class Review extends Component {
        }} */
       >
         <div className="pt4 flex-wrap no-scrollbar">{header}</div>
-        <div
-          className="mw9 f9 h-100"
-          style={{ paddingLeft: 10, paddingRight: 10 }}
+        <Divider sx={{ pt: 1 }} />
+        <Box
+          sx={{
+            mb: 8,
+            display: "flex",
+            alignItems: "left",
+            justifyContent: "space-between",
+            direction: "row",
+          }}
         >
-          <div className="h-100 pt0 pt4-m pt4-l pt4-xl">
-            <div className="flex flex-wrap" style={{ marginBottom: 15 }}>
-              <div className="bb ph2" style={{ flexGrow: 1 }}></div>
-            </div>
-
-            <div className="flex flex-wrap f9 mb2 p2">{body}</div>
-          </div>
-        </div>
+          <Grid
+            pt={1}
+            container
+            spacing={1}
+            direction="row"
+            justifyContent="left"
+            alignItems="left"
+          >
+            {body}
+          </Grid>
+        </Box>
       </div>
     );
   }

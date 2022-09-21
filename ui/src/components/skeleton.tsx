@@ -1,12 +1,13 @@
-import HeaderBar from "../lib/header-bar";
-import React, { Component } from "react";
-import { Sidebar } from "../lib/sidebar";
-import { isMobileCheck } from "../lib/util";
+import React, { Component } from 'react';
 
-export class Skeleton extends Component {
-  render() {
-    const { props, state } = this;
+import HeaderBar from '../lib/header-bar';
+import { Sidebar } from '../lib/sidebar';
+import { isMobileCheck } from '../lib/util';
 
+
+  
+  function Skeleton(props) {
+    
     let rightPanelHide = true;
     let popout = !!props.popout ? props.popout : false;
 
@@ -18,7 +19,8 @@ export class Skeleton extends Component {
 
     return (
       <div className={"absolute h-100 w-100 " + popoutWindow}>
-        <HeaderBar open={false} api={this.props.api} spinner={this.props.spinner} />
+        
+        <HeaderBar open={false} api={props.api} spinner={props.spinner} />
         <div
           className={`cf w-100 h-100 flex ` + popoutBorder}
           style={{
@@ -46,4 +48,4 @@ export class Skeleton extends Component {
       </div>
     );
   }
-}
+export default Skeleton;

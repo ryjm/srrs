@@ -1,13 +1,16 @@
-import React, { Component } from "react";
-import moment from "moment";
-import { Link } from "react-router-dom";
-import { ItemBody } from "../lib/item-body";
-import { EditItem } from "./edit-item";
-import { Recall } from "./recall";
-import { NotFound } from "./not-found";
-import { withRouter } from "react-router";
-import momentConfig from "../config/moment";
-import { isNull } from "lodash";
+import { ArrowCircleLeft } from '@mui/icons-material';
+import { Button, IconButton, Stack } from '@mui/joy';
+import moment from 'moment';
+import React, { Component } from 'react';
+import { withRouter } from 'react-router';
+import { Link } from 'react-router-dom';
+import { justifyContent } from 'styled-system';
+
+import momentConfig from '../config/moment';
+import { ItemBody } from '../lib/item-body';
+import { EditItem } from './edit-item';
+import { NotFound } from './not-found';
+import { Recall } from './recall';
 
 const NF = withRouter(NotFound);
 
@@ -40,7 +43,7 @@ export class Item extends Component {
       notFound: false,
       next: null,
     };
-    
+
     if (this.props.location.state) {
       const mode = this.props.location.state.mode;
       /* this.state.reviews = this.props.location.state.reviews; */
@@ -62,19 +65,29 @@ export class Item extends Component {
     const locstate = this.props.location.state
       ? this.props.location.state
       : undefined;
-    
-    const nextId =
-      locstate && locstate.next ? this.props.location.state.next.item : this.randomReview().item;
-      
+    const localStack = props.ship === window.ship;
     if (ship !== window.ship) {
       const stack = this.props.subs[ship][stackId];
 
       if (stack) {
-        const item = stack.items[itemId];
+        let item = stack.items[itemId];
+        let next =
+          locstate && locstate.next ? locstate.next : this.getNextItem(0);
+        let nextStack =
+          next && next[1].stack
+            ? this.props.pubs[next[1].stack]
+            : localStack
+            ? null
+            : this.props.subs[stack.info.owner.slice(1)][stack.info.title];
+        let nextReview = nextStack
+          ? this.getNextReview(
+              Object.entries(nextStack["review-items"]).indexOf(next[1].item)
+            )
+          : null;
         const learn = item.learn;
         const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
-        const itemUrl = `${stackUrl}/${item.name}`;
-        const next = item.name === nextId ? `${stackUrl}/${this.randomReview().item}` : `${stackUrl}/${nextId}`;
+        const itemUrl = `${stackUrl}/${item.item}`;
+        next = item.item === next[1].item ? nextReview : next;
         this.state = {
           ...this.state,
           title: item.content.title,
@@ -103,6 +116,7 @@ export class Item extends Component {
       }
     } else {
       const stack = this.props.pubs[stackId];
+      this.state = { ...this.state, stack: stack };
       const item = stack.items[itemId];
       const learn = item.learn;
 
@@ -112,13 +126,18 @@ export class Item extends Component {
       } else {
         const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
         const itemUrl = `${stackUrl}/${item.name}`;
-        const next = `${stackUrl}/${nextId}`;
+        let next =
+          locstate && locstate.next
+            ? locstate.next
+            : this.getNextItem(0, stack);
+        let nextStack = next && next[1].name ? stack : null;
+        next = item.name === next[1].name ? this.getNextItem(1, stack) : next;
         this.state = {
           ...this.state,
           title: item.content.title,
           bodyFront: item.content.front,
           bodyBack: item.content.back,
-          next,
+          next: next,
           stack: stack,
           item: item,
           learn: learn,
@@ -131,22 +150,70 @@ export class Item extends Component {
       }
     }
   }
-  getNextReview(ship, stackId, itemId) {
-  const locstate = this.props.location.state
-    const next =
-      locstate && locstate.next ? locstate.next : this.randomReview();
-      
-      const stack = this.props.pubs[next.stack];
-
-      const item = stack.items[next.item];
-      const learn = item.learn;
-      const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
-      const itemUrl = `${stackUrl}/${item.name}`;
-      if (this.state.reviews.length === 1) return itemUrl;
-      return item.name !== this.state.item.name ? itemUrl : `${stackUrl}/${this.randomReview().item}`  
+  getNextItem(idx: number, stack?): any {
+    if (typeof stack === "undefined") {
+      stack = this.state.stack;
     }
-  randomReview() { 
-    return this.state.reviews[Math.floor(Math.random()*this.state.reviews.length)]; }
+    const { item, ship } = this.state;
+
+    const stak = stack ? stack : this.props.pubs[this.props.stackId];
+    idx = idx ? idx : 0;
+    if (this.state.mode !== "review") {
+      const items = Array.from(Object.entries(stak.items));
+      const nextItem = items[idx] ? items[idx] : items[0];
+      const nextId = nextItem[1].name;
+      const stackUrl = `/seer/~${ship}/${stak.info.filename}`;
+      const nextUrl = `${stackUrl}/${nextId}`;
+      return [nextUrl, nextItem[1]];
+    } else if (this.state.mode === "review") {
+      const nextReview = this.getNextReview(idx);
+      return nextReview;
+    }
+  }
+
+  getNextReview(idx: number, stack?): any {
+    if (typeof stack === "undefined") {
+      stack = this.state.stack;
+    }
+    if (idx === -1) {
+      return ["/seer/review", null];
+    }
+    const { ship } = this.state;
+
+    const locstate = this.props.location.state;
+
+    const stackReviews = Array.from(Object.entries(stack["review-items"]));
+    if (stackReviews.length === 0) {
+      return ["/seer/review", null];
+    }
+    if (stackReviews.length === 1) {
+      return ["/seer/review", null];
+    }
+    if (idx >= stackReviews.length) {
+      return this.getNextItem(0);
+    }
+    const item = stackReviews[idx] ? stackReviews[idx] : stackReviews[0];
+
+    const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
+    if (!item) return ["/seer/review", null];
+    const itemUrl = `${stackUrl}/${item[1].name}`;
+
+    if (this.state.reviews.length === 1) return [itemUrl, item[1]];
+    if (item && item[1].name !== this.state.item.name) {
+      return [itemUrl, item[1]];
+    }
+    return this.getNextReview(idx + 1);
+  }
+  randomReview() {
+    if (this.state.reviews.length === 0) {
+      return ["/seer/review", null];
+    }
+    const item =
+      this.state.reviews[Math.floor(Math.random() * this.state.reviews.length)];
+    const stackUrl = `/seer/${item.who}/${item.stack}`;
+    const itemUrl = `${stackUrl}/${item.item}`;
+    return [itemUrl, item];
+  }
   editItem() {
     this.setState({ mode: "edit" });
   }
@@ -164,6 +231,7 @@ export class Item extends Component {
       this.setState({ mode: "advanced" });
     }
   }
+
   toggleShowBack() {
     if (this.state.showBack) {
       this.setState({ showBack: false });
@@ -191,6 +259,7 @@ export class Item extends Component {
           itemId: this.props.itemId,
           answer: value,
         },
+        mode: "grade",
       },
       () => {
         this.props.api.action("seer", "seer-action", data);
@@ -235,7 +304,7 @@ export class Item extends Component {
         item.content.back != oldItem.content.back)
     ) {
       const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
-      const itemUrl = `${stackUrl}/${item.name}`;
+      const itemUrl = `${stackUrl}/${item.item}`;
 
       this.setState({
         mode: "view",
@@ -267,10 +336,12 @@ export class Item extends Component {
       const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
       const itemUrl = `${stackUrl}/${item.name}`;
 
-      let redirect = '/seer/review'
+      let redirect = "/seer/review";
       if (this.state.mode === "review") {
-        redirect = this.getNextReview(ship, stackId, itemId);
-      } else redirect = this.state.next;
+        redirect = this.getNextReview(
+          this.state.reviews.map((rev) => rev.item).indexOf(itemId)
+        )[0];
+      } else redirect = this.state.next[0];
       this.setState(
         {
           recallGrade: this.state.awaitingGrade.answer,
@@ -284,6 +355,7 @@ export class Item extends Component {
         {
           awaitingGrade: false,
           mode: this.state.mode === "review" ? "review" : "view",
+          showBack: false,
         },
         () => {
           this.props.history.push(redirect);
@@ -291,10 +363,20 @@ export class Item extends Component {
       );
     }
     if (!this.state.temporary) {
+      if (
+        this.props.location.state &&
+        this.props.location.state.mode &&
+        this.props.location.state.mode !== this.state.mode
+      ) {
+        this.setState({ mode: this.props.location.state.mode });
+        this.props.location.state.mode = null;
+      }
+
       if (oldItem != item) {
         const stackUrl = `/seer/${stack.info.owner}/${stack.info.filename}`;
         const itemUrl = `${stackUrl}/${item.name}`;
         const locstate = this.props.location.state;
+
         this.setState({
           item: item,
           title: item.content.title,
@@ -302,8 +384,10 @@ export class Item extends Component {
           bodyBack: item.content.back,
           next:
             locstate && locstate.next
-              ? `${stackUrl}/${this.props.location.state.next.item}`
-              : this.state.next,
+              ? locstate.next
+              : this.getNextItem(
+                  Object.entries(stack["review-items"]).indexOf(itemId)
+                ),
           pathData: [
             { text: "Home", url: "/seer/review" },
             { text: stack.info.title, url: stackUrl },
@@ -344,10 +428,9 @@ export class Item extends Component {
         },
       },
       () => {
-        this.props.api.action("seer", "seer-action", del).then(() => {
-          const redirect = `/seer/~${this.props.ship}/${this.props.stackId}`;
-          this.props.history.push(redirect);
-        });
+        this.props.api.action("seer", "seer-action", del);
+        const redirect = `/seer/~${this.props.ship}/${this.props.stackId}`;
+        this.props.history.push(redirect);
       }
     );
   }
@@ -380,60 +463,73 @@ export class Item extends Component {
       const locstate = this.props.location.state
         ? this.props.location.state
         : null;
-      const next =
-        this.state.next === this.props.itemId
-          ? this.props.location.state.next
-          : this.state.next;
-      let nextUrl = null;
-      if (locstate && locstate.next) {
-        const nextStack = locstate.next.stack;
-        const nextOwner = locstate.next.who;
-        nextUrl = `/seer/${nextOwner}/${nextStack}/${locstate.next.item}`;
+
+      const stackLength = Object.entries(
+        this.props.pubs[this.props.stackId].items
+      ).length;
+      let idx = locstate ? locstate.idx : 0;
+      if (idx >= stackLength || Number.isNaN(idx)) {
+        idx = 0;
       }
-      const idx = locstate ? locstate.idx : 0;
+
+      const next =
+        locstate && locstate.next ? locstate.next : this.getNextItem(idx);
+
       const reviews = this.state.reviews;
+      const localStack = props.ship === window.ship;
+
       return (
-        <div
-          className="center mw6 f9 h-100"
-          style={{ paddingLeft: 16, paddingRight: 16 }}
+        <Stack
+          direction="column"
+          sx={{
+            pl: "16",
+            pt: "10",
+            minWidth: "300px",
+          }}
         >
-          <div className="h-100 pt2 pt8-m pt8-l pt8-xl no-scrollbar">
-            <div className="flex justify-between" style={{ marginBottom: 32 }}>
-              <div className="flex-col">
-                <div className="mb1">{title}</div>
-                <span>
-                  <span className="gray3 mr1">by</span>
-                  <span className={"mono"} title={host}>
-                    {host}
-                  </span>
-                </span>
-                <Link to={`/seer/${host}/${stackTitle}`} className="blue3 ml2">
-                  {`<- ${stackTitle}`}
-                </Link>
-              </div>
-              <div className="flex">
-                <Link
-                  to={`/seer/${host}/${stackTitle}/new-item`}
-                  className="ml3 StackButton bg-light-green green2"
-                >
-                  new item
-                </Link>
-              </div>
-              <Link
-                to={{
-                  pathname: nextUrl ? nextUrl : next,
-                  state: {
-                    next: reviews ? reviews[idx + 1] : next,
-                    idx: idx + 1,
-                    mode: "review",
-                    prevPath: location.pathname,
-                  },
-                }}
-                className="ml3 StackButton bg-light-green green3"
+          <Stack spacing={2} direction="row" sx={{ justifyContent: "left" }}>
+            <Link to={`/seer/${host}/${stackTitle}`}>
+              <IconButton variant="soft">
+                <ArrowCircleLeft /> {stackTitle}
+              </IconButton>
+            </Link>
+            <Link to={`/seer/${host}/${stackTitle}/new-item`}>
+              <Button>new item</Button>
+            </Link>
+
+
+              <Button
+                onClick={() =>
+                  this.state.mode === "review"
+                    ? this.setState({ mode: "view" })
+                    : this.setState({ mode: "review" })
+                }
               >
-                next
-              </Link>
-            </div>
+                toggle {this.state.mode}
+              </Button>
+
+            <Link
+              to={{
+                pathname: next[0],
+                state: {
+                  next: this.getNextItem(idx),
+                  idx: idx + 1,
+                  mode: this.state.mode,
+                  prevPath: location.pathname,
+                },
+              }}
+            >
+              <Button>next</Button>
+            </Link>
+          </Stack>
+          <Stack
+            direction="row-reverse"
+            sx={{
+              alignItems: "stretch",
+              pt: 2,
+              justifyContent: "space-between",
+            }}
+          >
             <Recall
               enabled={adminEnabled}
               mode={this.state.mode}
@@ -453,8 +549,33 @@ export class Item extends Component {
               showBack={this.state.showBack}
               toggleShowBack={this.toggleShowBack}
             />
-          </div>
-        </div>
+          </Stack>
+          {/*           <Chip variant="outlined">
+              <Typography
+                textColor="secondary.500"
+                fontWeight={700}
+                sx={{
+                  fontSize: "10px",
+                  textTransform: "uppercase",
+                  letterSpacing: ".1rem",
+                }}
+              >
+                {title}
+              </Typography>
+              <Divider />
+              {!localStack && (
+                <Box sx={{ py: 1 }}>
+                  <Chip
+                    endDecorator={<Houseboat />}
+                    variant="outlined"
+                    size="sm"
+                  >
+                    {host}
+                  </Chip>
+                </Box>
+              )}
+            </Chip> */}
+        </Stack>
       );
     } else if (this.state.mode == "edit") {
       return <EditItem {...state} {...props} />;

@@ -3,7 +3,7 @@ import { Route, Link } from "react-router-dom";
 import Import from "../components/import";
 
 import { StackEntry } from "../components/stack-entry";
-import { Col, Box, Row as R } from "@tlon/indigo-react";
+import { Col, Row as R } from "@tlon/indigo-react";
 import { isMobileCheck } from "./util";
 import {
   Add,
@@ -11,14 +11,8 @@ import {
   LocalLibrary,
   SelfImprovement,
 } from "@mui/icons-material";
-import {
-  Accordion,
-  AccordionSummary,
-  Badge,
-  Button,
-  Tooltip,
-} from "@mui/material";
-
+import { Accordion, AccordionSummary, Tooltip } from "@mui/material";
+import { Box, Badge, Button, Stack } from "@mui/joy";
 
 export class Sidebar extends Component {
   constructor(props, state) {
@@ -127,34 +121,36 @@ export class Sidebar extends Component {
         borderRightColor={["washedGray", "washedGray"]}
         borderBottom={isMobile ? "1px solid lightgray" : undefined}
         height={isMobile ? "auto" : "100%"}
-        pt={[3, 0]}
-        pb={[5, 0]}
         display={display}
         minWidth={150}
         maxWidth={250}
       >
-        <Box style={{ flexDirection: isMobile ? "column-reverse" : "column" }}>
-          <Link to="/seer/new-stack">
-            <Tooltip arrow placement="top-start" title="New Stack">
-              <Button size="large">
-                <Add />
-              </Button>
-            </Tooltip>
-          </Link>
-          <Link to="/seer/review">
-            <Tooltip placement="top-start" arrow title="Review">
-              <Button size="large">
-                <Badge
-                  color="success"
-                  anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
-                  badgeContent={props.review.length}
-                >
-                  <SelfImprovement />
+        <Box sx={{ flexDirection: isMobile ? "column-reverse" : "column" }}>
+          <Stack sx={{ pt: 2, p: 2, pl: .5 }} spacing={1} direction={"row"}>
+            <Link to="/seer/new-stack">
+              <Tooltip arrow placement="top-start" title="New Stack">
+                <Button size="lg">
+                  <Add />
+                </Button>
+              </Tooltip>
+            </Link>
+            <Link to="/seer/review">
+              <Tooltip placement="top-start" arrow title="Review">
+              <Badge
+                    color="success"
+                    anchorOrigin={{ vertical: "top", horizontal: "right" }}
+                    badgeContent={props.review.length}
+                  >
+                  
+                <Button size="lg">
+                <SelfImprovement />
+                    
+                    
+                </Button>
                 </Badge>
-              </Button>
-            </Tooltip>
-          </Link>
-
+              </Tooltip>
+            </Link>
+          </Stack>
           <Accordion>
             <AccordionSummary>
               <LibraryBooks /> Library
