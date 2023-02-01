@@ -1,8 +1,0 @@
-{
-  "dependencies": {
-    "@thumbtack/thumbprint-react": "^14.13.0"
-  },
-  "devDependencies": {
-    "ts-migrate": "^0.1.33"
-  }
-}

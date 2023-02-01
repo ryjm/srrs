@@ -1,7 +1,0 @@
-module.exports = {
-  URBIT_PIERS: [
-    "/mnt/laptop-sandisk/samzod/seer/*"
-  ],
-  herb: false,
-  URL: 'http://localhost:8083'
-};
