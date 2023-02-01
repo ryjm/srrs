@@ -78,7 +78,7 @@
   ==
 ::
 +$  item
-  $:  content=content
+  $:  =content
       learn=learned-status
       last-review=(unit @da)
       name=@tas
