@@ -1,5 +1,5 @@
 /?  309
-/-  *seer, chat-store
+/-  *seer
 /+  *seer, *seer-json
 
 =,  html
@@ -33,9 +33,6 @@
         :~  leaf+"<updated stack>: {(trip name.data.del)}"
         ==
       ==
-  ++  letter
-    ^-  letter:chat-store
-    [%text (crip ~(ram re tank))]
   --
 ::
 ++  grab

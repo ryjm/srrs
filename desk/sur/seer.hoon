@@ -1,12 +1,11 @@
 |%
 ::
++$  items   $+(items-map (map @tas item))
 +$  action
   $%  $:  %new-stack
           name=@tas
           title=@t
-          items=(map @tas item)
-          edit=edit-config
-          perm=perm-config
+          =items
       ==
   ::
       $:  %new-item
@@ -53,7 +52,17 @@
   ::
       [%copy-stack owner=@p stak=@tas keep-learned=?]
   ==
+::  +stack-info: stack information
 ::
+::     all metadata about a stack.
+::
+::    .owner: owner of the stack
+::    .name: name of the stack
+::    .title: title of the stack
+::    .items: items in the stack
+::    .edit: permissions for editing the stack
+::    .date-created: date the stack was created
+::    .date-modified: date the stack was last modified
 +$  stack-info
   $:  owner=@p
       title=@t
@@ -65,13 +74,24 @@
 ::
 +$  perm-config  [read=rule:clay write=rule:clay]
 ::
-+$  edit-config     $?(%item %all %none)
++$  edit-config     $?(%none %item %all)
 ::
+::    $stack: stack
+::
+::  main stack data structure. contains all metadata and review data
+::  for a stack.
+::
+::  .info: stack information
+::  .items: items in the stack
+::  .review-items: review information
+::  .contributors: list of contributors and their permissions
+::  .subscribers: set of subscribers
+::  .last-update: date of last update
 +$  stack
-  $:  stack=(each stack-info tang)
+  $:  info=$+(info-or-error (each stack-info $+(error tang)))
       name=@tas
-      items=(map @tas item)
-      review-items=(map @tas item)
+      =items
+      review-items=items
       contributors=[mod=?(%white %black) who=(set @p)]
       subscribers=(set @p)
       last-update=@da
@@ -79,26 +99,11 @@
 ::
 +$  item
   $:  =content
-      learn=learned-status
+      =learn
       last-review=(unit @da)
       name=@tas
   ==
 ::
-+$  stack-1
-  $:  stack=(each stack-info tang)
-      name=@tas
-      items=(map @tas item-1)
-      review-items=(map @tas item-1)
-      contributors=[mod=?(%white %black) who=(set @p)]
-      subscribers=(set @p)
-      last-update=@da
-  ==
-::
-+$  item-1
-  $:  content=content
-      learn=learned-status
-      name=@tas
-  ==
 +$  content
   $:  author=@p
       title=@t
@@ -122,7 +127,7 @@
 ::
 +$  recall-grade  $?(%again %hard %good %easy)
 ::
-+$  learned-status
++$  learn 
   $:  ease=@rs
       interval=@dr
       box=@
@@ -137,6 +142,7 @@
   $%  [%add-item who=@p stack=@tas data=item]
       [%add-review-item who=@p stack=@tas data=item]
       [%add-stack who=@p data=stack]
+      [%new-stack =term]
       ::
       [%delete-item who=@p stack=@tas item=@tas]
       [%delete-review-item who=@p stack=@tas item=@tas]
@@ -149,5 +155,20 @@
 +$  primary-delta
   $%  stack-delta
       [%read who=@p stack=@tas item=@tas]
+  ==
++$  stack-1
+  $:  stack=(each stack-info tang)
+      name=@tas
+      items=(map @tas item-1)
+      review-items=(map @tas item-1)
+      contributors=[mod=?(%white %black) who=(set @p)]
+      subscribers=(set @p)
+      last-update=@da
+  ==
+::
++$  item-1
+  $:  =content
+      =learn
+      name=@tas
   ==
 --

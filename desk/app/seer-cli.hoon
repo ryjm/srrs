@@ -1,4 +1,4 @@
-/-  *seer, *group-store, *invite-store, sole
+/-  *seer, *sole
 /+  *seer, *seer-json, default-agent, verb, dbug,
     auto=language-server-complete, shoe
 ::
@@ -7,25 +7,35 @@
 ::
 +$  versioned-state
   $%  state-0
+      state-1
   ==
 ::
-+$  state-0
-  $:  audience=(set target)                         ::  active targets
++$  state-1
+  $:  %1
       width=@ud                                     ::  display width
+      sessions=(map sole-id session)                ::  sole sessions
       eny=@uvJ                                      ::  entropy
   ==
 ::
-+$  target  [in-group=? =ship =path]
++$  state-0
+  $:  %0
+      audience=(set target)                         ::  active targets
+      width=@ud                                     ::  display width
+      eny=@uvJ                                      ::  entropy
+  ==
++$  session  version=@ud
+::
++$  target  [in-group=? [=ship =path]]
 ::
 +$  command
-  $%  [%target (set target)]                        ::  set messaging target
-      ::  [%say letter:chat-store]
-      ::  send message
+  $%
       [%width @ud]                                  ::  display width
       [%help ~]                                     ::  print usage info
       [%all-reviews ~]
+      [%stacks ~]
       [%delete-item @tas @t]
-      [%delete-stack @p @t]
+      [%add-stack @tas]
+      [%delete-stack @tas (unit @p)]
       [%import @p @t]
       [%copy-stack @p @t ?]
       [%import-file path]
@@ -33,7 +43,7 @@
   ==
 ::
 --
-=|  state-0
+=|  state-1
 =*  state  -
 ::
 %-  agent:dbug
@@ -57,10 +67,15 @@
   ++  on-save  !>(state)
   ::
   ++  on-load
-    |=  old-state=vase
+    |=  =vase
     ^-  (quip card _this)
-    =/  old  !<(versioned-state old-state)
-    =^  cards  state  (prep:sc `old)
+   =/  maybe-old=(each p=versioned-state tang)
+    (mule |.(!<(versioned-state vase)))
+  =/  [old=versioned-state bad=?]
+    ?.  ?=(%| -.maybe-old)  [p &]:p.maybe-old
+    =;  [sta=versioned-state ba=?]  [sta ba]
+    ~&  >  %bad-load  [state &]
+  =^  cards  state  (prep:sc `old)
     [cards this]
   ::
   ++  on-poke
@@ -101,25 +116,25 @@
   ::
   ++  on-fail   on-fail:def
   ++  command-parser
-    |=  sole-id=@ta
-    parser:sh:sc
+    |=  =sole-id
+    parser:(make:sh:sc sole-id)
   ::
   ++  tab-list
-    |=  sole-id=@ta
+    |=  =sole-id
     %+  turn  tab-list:sh:sc
     |=  [term=cord detail=tank]
     [(cat 3 ';' term) detail]
   ::
   ++  on-command
-    |=  [sole-id=@ta =command]
+    |=  [=sole-id =command]
     =^  cards  state
-      (work:sh:sc command)
+      (work:(make:sh:sc sole-id) command)
     [cards this]
   ::
   ++  on-connect
-    |=  sole-id=@ta
+    |=  =sole-id
     ^-  (quip card _this)
-    [[prompt:sh-out:sc ~] this]
+    [[prompt:(make:sh-out:sc sole-id)]~ this]
   ::
   ++  can-connect     can-connect:des
   ++  on-disconnect   on-disconnect:des
@@ -131,30 +146,30 @@
 ++  prep
   |=  old=(unit versioned-state)
   ^-  (quip card _state)
-  ?~  old
-    =^  cards  state
+  =;    migrate
+    ?~  old  migrate
+  ?-  -.u.old
+    %0  migrate
+    %1  [~ u.old]
+    ==
+  =^  cards  state
       :-  ~[connect]
       %_  state
-        audience  [[| our-self /seer] ~ ~]
         width     80
       ==
-    [cards state]
-  [~ state(width 80, audience [[| our-self /seer] ~ ~])]
+  [cards state]
 ::  +connect: connect to seer
 ::
 ++  connect
   ^-  card
   [%pass /seer %agent [our-self %seer] %watch /seer-primary]
 ::
-++  our-self  our.bowl
-::  +target-to-path: prepend ship to the path
+++  get-session
+  |=  =sole-id
+  ^-  session
+  (~(gut by sessions) sole-id %*(. *session version `@ud`1))
 ::
-++  target-to-path
-  |=  target
-  ^-  ^path
-  %+  weld
-    ?:(in-group ~ /~)
-  [(scot %p ship) path]
+++  our-self  our.bowl
 ::  +poke-noun: debug helpers
 ::
 ++  poke-noun
@@ -186,7 +201,7 @@
 ++  handle-seer
   |=  =cage
   ^-  (quip card _state)
-  [[(show-result:sh-out cage) ~] state]
+  [[(show-result:sh-out:sh cage) ~] state]
 ::  +handle-seer-chat: handle updates and send to chat
 ::
 ++  handle-seer-chat
@@ -200,7 +215,17 @@
 ::  +sh: handle user input
 ::
 ++  sh
-  |%
+  |_  [=sole-id session]
+  +*  session  +<+
+      sh-out   ~(. ^sh-out sole-id session)
+      put-ses  state(sessions (~(put by sessions) sole-id session))
+  ::
+  ++  make
+    |=  =^sole-id
+    %_  ..make
+      sole-id  sole-id
+      +<+      (get-session sole-id)
+    ==
   ::  +parser: command parser
   ::
   ::    parses the command line buffer.
@@ -212,11 +237,12 @@
       %+  knee  *command  |.  ~+
       =-  ;~(pfix mic -)
       ;~  pose
-        (stag %target tars)
         ;~(plug (tag %help) (easy ~))
         ;~(plug (tag %all-reviews) (easy ~))
+        ;~(plug (tag %stacks) (easy ~))
         ;~((glue ace) (tag %delete-item) sym qut)
-        ;~((glue ace) (tag %delete-stack) ship qut)
+        ;~((glue ace) (tag %add-stack) sym)
+        ;~((glue ace) (tag %delete-stack) ;~(plug sym shup))
         ;~((glue ace) (tag %import) ship qut)
         ;~((glue ace) (tag %copy-stack) ship qut bool)
         ;~((glue ace) (tag %import-file) file-path)
@@ -224,6 +250,7 @@
       ==
     ::
     ++  tag   |*(a=@tas (cold a (jest a)))
+    ++  shup  ;~(pose (cook some ship) (easy ~))
     ++  bool
       ;~  pose
         (cold %| (jest '%.y'))
@@ -239,36 +266,6 @@
         (cold %| (jest '~/'))
         (cold %& (easy ~))
       ==
-    ::  +tarl: local target, as /path
-    ::
-    ++  tarl  (stag our-self path)
-    ::  +tarx: local target, maybe managed
-    ::
-    ++  tarx  ;~(plug mang path)
-    ::  +tarp: sponsor target, as ^/path
-    ::
-    ++  tarp
-      =-  ;~(pfix ket (stag - path))
-      (sein:title our.bowl now.bowl our-self)
-    ::  +targ: any target, as tarl, tarp, ~ship/path
-    ::
-    ++  targ
-      ;~  plug
-        mang
-      ::
-        ;~  pose
-          tarl
-          tarp
-          ;~(plug ship path)
-        ==
-      ==
-    ::  +tars: set of comma-separated targs
-    ::
-    ++  tars
-      %+  cook  ~(gas in *(set target))
-      (most ;~(plug com (star ace)) targ)
-    ::  +ships: set of comma-separated ships
-    ::
     ::  +ships: set of comma-separated ships
     ::
     ++  ships
@@ -287,8 +284,10 @@
     :~
       [%help leaf+";help"]
       [%all-reviews leaf+";all-reviews"]
+      [%stacks leaf+";stacks"]
       [%delete-item leaf+";delete-item [stack-name] [item-id]"]
       [%delete-stack leaf+";delete-stack [stack-name]"]
+      [%add-stack leaf+";add-stack [stack-name]"]
       [%import leaf+";import [who (@p)] [stack-name]"]
       [%copy-stack leaf+";copy-stack [who (@p)] [stack-name] [keep-learned] (add subscribed stacks to main library)"]
       [%import-file leaf+";import-file [path to tab separated file]"]
@@ -300,12 +299,12 @@
     |=  job=command
     ^-  (quip card _state)
     |^  ?-  -.job
-          %target    (set-target +.job)
-          ::  %say       (say +.job)
           %width     (set-width +.job)
           %help      help
           %all-reviews  all-reviews
+          %stacks  stacks
           %delete-item  (delete-item +.job)
+          %add-stack  (add-stack +.job)
           %delete-stack  (delete-stack +.job)
           %import  (import +.job)
           %copy-stack  (copy-stack +.job)
@@ -324,37 +323,10 @@
           %poke
           cage
       ==
-    ::  +set-target: set audience
-    ::
-    ++  set-target
-      |=  tars=(set target)
-      ^-  (quip card _state)
-      =.  audience  tars
-      [~ state]
-    ::  +say: send messages to seer chat
-    ::
-    ::  ++  say
-    ::    |=  =letter:chat-store
-    ::    ^-  (quip card _state)
-    ::    =/  =serial  (shaf %msg-uid eny.bowl)
-    ::    :_  state(eny (shax eny.bowl))
-    ::    ^-  (list card)
-    ::    %+  turn  ~(tap in audience)
-    ::    |=  =target
-    ::    %^  act  %out-message  %chat-hook
-    ::    :-  %chat-action
-    ::    !>  ^-  action:chat-store
-    ::    :+  %message  (target-to-path target)
-    ::    [serial *@ our-self now.bowl letter]
-    ::
-    ::  +show-settings: print enabled flags, timezone and width settings
     ::
     ++  show-settings
       ^-  (quip card _state)
       :_  state
-      =/  targets
-        %+  turn  ~(tap in audience)
-        |=  =target  ~&  target+target  ~
       :~  (print:sh-out "width: {(scow %ud width)}")
       ==
     ::
@@ -368,14 +340,26 @@
       [%delete-item stack item]
     ::
     ++  delete-stack
-      |=  [who=@p stack=@t]
+      |=  [stack=@tas who=(unit @p)]
       ^-  (quip card _state)
       =-  [[- ~] state]
       %^  act  %delete-stack  %seer
       :-  %seer-action
       !>  ^-  action
-      [%delete-stack who (string-to-symbol (trip stack))]
+      [%delete-stack (fall who our-self) stack]
     ::
+    ::    +add-stack: add a stack
+    ::
+    ::  add a stack to the main library
+    ++  add-stack
+      |=  stack=@tas
+      ^-  (quip card _state)
+      =-  [[- ~] state]
+      %^  act  %add-stack  %seer
+      :-  %seer-action
+      !>  ^-  action
+      [%new-stack stack stack ~] ::
+
     ++  import
       |=  [who=@p stack=@t]
       ^-  (quip card _state)
@@ -408,6 +392,15 @@
     ++  set-width
       |=  w=@ud
       [~ state(width w)]
+    ::
+    ::  ++stacks: list of stacks
+    ++  stacks
+      ^-  (quip card _state)
+      =/  stacks  (scry-for (map @tas stack) %seer /all)
+      :_  state
+      %+  turn  ~(tap by stacks)
+      |=  [name=@tas =stack]
+      (print:sh-out "{(trip name)}: {<(lent items.stack)>}")
     ::  +all-reviews: show items needing review
     ::
     ++  all-reviews
@@ -436,13 +429,24 @@
 ::  +sh-out: output to the cli
 ::
 ++  sh-out
-  |%
-  ::  +effect: console effect card
+  |_  [=sole-id session]
+
+  ++  make
+    |=  =^sole-id
+    %_  ..make
+      sole-id  sole-id
+      +<+      (get-session sole-id)
+    ==
+  ++  effex
+    |=  effect=shoe-effect:shoe
+    ^-  card
+    [%shoe ~[sole-id] effect]
+  ::  +effect: emit console effect card
   ::
   ++  effect
-    |=  effect=sole-effect:sole
+    |=  effect=sole-effect:shoe
     ^-  card
-    [%shoe ~ %sole effect]
+    (effex %sole effect)
   ::  +print: puts some text into the cli as-is
   ::
   ++  print
@@ -474,7 +478,7 @@
     %+  effect  %pro
     :+  &  %seer-line
     ^-  tape
-    ">"
+    "[r]> "
   ::
   ++  show-result
     |=  =cage

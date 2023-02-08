@@ -24,7 +24,7 @@
   ==
 ::
 +$  state-two
-  $:  stacks=(map @tas stack)
+  $:  stacks=$+(stacks-map (map @tas stack))
       paths=(list path)
       stack-subs=(map [ship @tas] stack)
   ==
@@ -278,8 +278,8 @@
   ::
   ++  add-stack-subs
     ^+  this
-    ?>  ?=(%.y -.stack.stack)
-    =/  info=stack-info  +.stack.stack
+    ?>  ?=(%.y -.info.stack)
+    =/  info=stack-info  p.info.stack
     ?.  (~(has by stack-subs) [owner.info name.stack])
       %.  [%add-stack owner.info stack]
       %=  emit-primary
@@ -367,12 +367,12 @@
       ==
     ~(update-review stack-emit stak)
   ::
-  ++  update-learned-status
+  ++  update-learn
     |=  [=item =recall-grade]
     ^+  this
     =.  ..emit  (~(delete-review-item stack-emit stack) item)
-    =/  =learned-status  (generate-learned-status item recall-grade)
-    =/  review-date=@da  (add now.bol interval.learned-status)
+    =/  =learn  (generate-learn item recall-grade)
+    =/  review-date=@da  (add now.bol interval.learn)
     =/  =path
       :~  %review-schedule
         (scot %tas name.stak)
@@ -385,16 +385,16 @@
           [%arvo %b %wait review-date]
       ==
     =.  ..emit
-      %.  item(learn learned-status, last-review `now.bol)
+      %.  item(learn learn, last-review `now.bol)
       %~  edit-item  stack-emit  stak
     (emit schedule-card)
   ::
-  ++  clear-learned-status
+  ++  clear-learn
     ^+  this
     =-  %~  update-stack  stack-emit  stack(items -)
     %-  ~(run by items.stack)
     |=  =item
-    item(learn (learned-status [.2.5 0 0]))
+    item(learn (learn [.2.5 0 0]))
   ::
   ++  update-owner
     ^+  this
@@ -404,11 +404,11 @@
       =.  author.content.item  our.bol
       item
     %~  update-stack  stack-emit
-    ?>  ?=(%.y -.stack.stack)
-    =/  =stack-info  +.stack.stack
+    ?>  ?=(%.y -.info.stack)
+    =/  =stack-info  +.info.stack
     %=  stack
       items  updated-items
-      stack  [%.y stack-info(owner our.bol)]
+      info  [%.y stack-info(owner our.bol)]
     ==
 
   ::
@@ -512,9 +512,9 @@
     ::
     =/  conf=stack-info
       :*  our.bol
-          title.act
           name.act
-          edit.act
+          name.act
+          =edit-config
           now.bol
           now.bol
       ==
@@ -530,8 +530,8 @@
     ?~  pub
       ?~  sub
         this
-      ?>  ?=(%.y -.stack.u.sub)
-      =/  =stack-info  +.stack.u.sub
+      ?>  ?=(%.y -.info.u.sub)
+      =/  =stack-info  +.info.u.sub
       %~  add-stack  stack-emit
       %+  create-stack  stack-info(owner our.bol)
       (my [[name.act new-item] ~])
@@ -620,7 +620,7 @@
     ?.  ?=(%~ mov)
       (emit (need mov))
     %.  [item answer.act]
-    %~  update-learned-status  stack-emit  stk
+    %~  update-learn  stack-emit  stk
       %read
     [~ state]
       %update-review
@@ -764,14 +764,14 @@
         ~
        %.n
     ==
-  (item new-content (learned-status [.2.5 0 0]) ~ name.act)
+  (item new-content (learn [.2.5 0 0]) ~ name.act)
 ::
 ++  create-stack
   |=  [info=stack-info items=(map @tas item)]
   ^-  stack
   =|  sta=stack
   %=  sta
-    stack  [%.y info]
+    info  [%.y info]
     name  filename.info
     last-update  last-modified.info
     items  (~(uni by items) items.sta)
@@ -785,17 +785,17 @@
   %+  turn  ~(val by review-items.stack)
   |=  =item  [author.content.item name.stack name.item]
 ::
-++  generate-learned-status
+++  generate-learn
   |=  [=item =recall-grade]
-  ^-  learned-status
-  =/  item-status=learned-status  learn.item
+  ^-  learn
+  =/  item-status=learn  learn.item
   =/  ease=@rs  (next-ease recall-grade item-status)
   =/  box=@  (next-box recall-grade item-status)
   =/  interval=@dr  (next-interval [ease box item-status])
-  (learned-status [ease interval box])
+  (learn [ease interval box])
 ::
 ++  next-ease
-  |=  [=recall-grade =learned-status]
+  |=  [=recall-grade =learn]
   ^-  @rs
   =/  ease-changes=(map ^recall-grade @rs)
   %-  malt
@@ -807,10 +807,10 @@
   ==
   =/  ease-min=@rs  .1.3
   =/  ease-max=@rs  .5.0
-  ?:  (lth box.learned-status 2)
-    ease.learned-status
+  ?:  (lth box.learn 2)
+    ease.learn
   =/  chg  (~(got by ease-changes) recall-grade)
-  =/  a  (add:rs ease.learned-status chg)
+  =/  a  (add:rs ease.learn chg)
   ?:  (gte a ease-min)
     a
   ?:  (gte a ease-max)
@@ -818,24 +818,24 @@
   ease-min
 ::
 ++  next-box
-  |=  [=recall-grade =learned-status]
+  |=  [=recall-grade =learn]
   ^-  @
   ?:  ?&
         =(recall-grade %easy)
-        =(box.learned-status 0)
+        =(box.learn 0)
       ==
     2
   ?:  =(recall-grade %again)  0
-  (add box.learned-status 1)
+  (add box.learn 1)
 ::
 ++  next-interval
-  |=  [next-ease=@rs next-box=@ =learned-status]
+  |=  [next-ease=@rs next-box=@ =learn]
   ^-  @dr
   ::  ~15 min, 1 day, 6 days
   =/  fixed-intervals=(list @dr)  [~s5 ~m15 ~d1 ~d6 ~]
   ?:  (lth next-box (lent fixed-intervals))
     (snag next-box fixed-intervals)
-  (interval-fuzz interval.learned-status next-ease)
+  (interval-fuzz interval.learn next-ease)
 ::
 ++  interval-fuzz
   |=  [interval=@dr next-ease=@rs]
@@ -862,7 +862,9 @@
     !!
   =/  filtered  (murn (need items) |*(a=(unit *) a))
 
-  abet:(emit-action [%new-stack (string-to-symbol (trip name)) name (molt filtered) %none read=*rule:clay write=*rule:clay])
+  =<  abet
+  %-  emit-action
+  [%new-stack (string-to-symbol (trip name)) name (molt filtered)]
   |%
   ++  wain-to-tape  |=(a=wain (turn a |=(b=cord (trip b))))
   ++  parse

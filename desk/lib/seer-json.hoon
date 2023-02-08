@@ -7,6 +7,10 @@
   =,  enjs:format
   %+  frond  -.del
   ?-  -.del
+      %new-stack
+    %-  pairs
+    :~  term+s+term.del
+    ==
       %add-item
     %+  frond  (scot %p who.del)
     %+  frond  stack.del
@@ -89,8 +93,6 @@
     :~  name+so
         title+so
         items+item
-        edit+edit-config
-        perm+perm-config
     ==
   ::
   ++  new-item
@@ -299,7 +301,7 @@
   (tang-to-json +.bud)
 ::
 ++  status-to-json
-  |=  status=learned-status
+  |=  status=learn
   ^-  json
   %-  pairs:enjs:format
   :~  :-  %ease  [%s (scot %rs ease.status)]
@@ -322,7 +324,7 @@
   |=  stack=stack
   ^-  json
   %-  pairs:enjs:format
-  :~  info+(stack-build-to-json stack.stack)
+  :~  info+(stack-build-to-json info.stack)
   ::
     :+  %review-items
       %o
