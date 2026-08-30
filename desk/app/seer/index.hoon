@@ -209,7 +209,29 @@
                .ai-diff { display: grid; gap: .65rem; grid-template-columns: repeat(2, minmax(0, 1fr)); padding-top: .75rem; }
                .ai-version { border-left: 2px solid var(--line-strong); display: grid; gap: .4rem; padding-left: .7rem; }
                .ai-version p { font-size: .82rem; line-height: 1.5; margin: 0; white-space: pre-wrap; }
-               .ai-waiting { color: var(--muted); font-size: .82rem; }
+               .ai-waiting { align-items: center; color: var(--muted); display: flex; font-size: .82rem; gap: .65rem; line-height: 1.45; min-height: 1.25rem; }
+               .thinking-dots { align-items: center; display: inline-flex; flex: none; gap: 3px; height: .8rem; }
+               .thinking-dots span { animation: seer-thinking-dot 1.55s ease-in-out infinite; background: currentColor; border-radius: 50%; height: 4px; opacity: .22; width: 4px; }
+               .thinking-dots span:nth-child(2) { animation-delay: .16s; }
+               .thinking-dots span:nth-child(3) { animation-delay: .32s; }
+               .is-thinking { overflow: hidden; position: relative; }
+               .is-thinking::before { animation: seer-thinking-line 2.8s ease-in-out infinite; background: linear-gradient(90deg, transparent, var(--line-strong), transparent); content: ""; height: 1px; left: 0; opacity: .7; position: absolute; right: 0; top: 0; transform: translateX(-75%); width: 58%; z-index: 1; }
+               .thinking-pill { align-items: center; display: inline-flex; gap: .4rem; }
+               .thinking-pill::before { animation: seer-thinking-orb 1.8s ease-in-out infinite; background: currentColor; border-radius: 50%; content: ""; height: 5px; opacity: .35; width: 5px; }
+               @keyframes seer-thinking-dot {
+                 0%, 70%, 100% { opacity: .2; transform: translateY(0); }
+                 35% { opacity: .85; transform: translateY(-1px); }
+               }
+               @keyframes seer-thinking-line {
+                 0% { opacity: 0; transform: translateX(-100%); }
+                 18% { opacity: .55; }
+                 72% { opacity: .55; }
+                 100% { opacity: 0; transform: translateX(245%); }
+               }
+               @keyframes seer-thinking-orb {
+                 0%, 100% { opacity: .28; transform: scale(.85); }
+                 50% { opacity: .8; transform: scale(1); }
+               }
                .ai-form { background: transparent; display: grid; gap: .7rem; }
                .ai-form-row { align-items: end; display: grid; gap: .65rem; grid-template-columns: 7rem minmax(0, 1fr) minmax(15rem, 19rem) auto; }
                .ai-form textarea { min-height: 3rem; }
@@ -247,6 +269,11 @@
                .compose-body { display: grid; gap: 1rem; }
                .hidden { display: none; }
                .app-footer { border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 1rem; }
+               @media (prefers-reduced-motion: reduce) {
+                 .thinking-dots span, .thinking-pill::before, .is-thinking::before { animation: none; }
+                 .thinking-dots span { opacity: .55; transform: none; }
+                 .is-thinking::before { display: none; }
+               }
                @media (max-width: 850px) {
                  .app-shell { grid-template-columns: 12.5rem minmax(0, 1fr); }
                  .content { padding-left: 2rem; padding-right: 2rem; }
@@ -451,8 +478,6 @@
     =/  available-models=(list [@tas assistant-model])  ordered-assistant-models
     =/  waiting=?  (changes-waiting requests)
     ;section
-      =hx-get      "/apps/seer/inbox"
-      =hx-trigger  ?:(waiting "every 2s" "none")
       ;div.page-head
         ;div.page-copy
           ;div.kicker: command surface
@@ -502,18 +527,25 @@
           ==
         ==
       ==
-      ;+
-      ?~  requests
-        ;div.hidden;
-      ;section.change-list.section
-        ;div.form-head
-          ;div.kicker: review queue
-          ;h2: Change requests
+      ;section#change-requests.change-list.section
+        =hx-get      "/apps/seer/inbox"
+        =hx-trigger  ?:(waiting "every 2s" "none")
+        =hx-target   "#change-requests"
+        =hx-select   "#change-requests"
+        =hx-swap     "outerHTML"
+        ;+
+        ?~  requests
+          ;div.hidden;
+        ;div.change-list
+          ;div.form-head
+            ;div.kicker: review queue
+            ;h2: Change requests
+          ==
+          ;*
+          %+  turn  requests
+          |=  [change-id=@tas request=change-request]
+          (change-row change-id request)
         ==
-        ;*
-        %+  turn  requests
-        |=  [change-id=@tas request=change-request]
-        (change-row change-id request)
       ==
       ;section.capture-history
         ;div.form-head
@@ -556,7 +588,12 @@
   ++  change-row
     |=  [change-id=@tas request=change-request]
     ^-  manx
-    ;article.capture.change-request
+    =/  active=?
+      ?|  =(%pending status.request)
+          =(%working status.request)
+      ==
+    ;article
+      =class  ?:(active "capture change-request is-thinking" "capture change-request")
       ;div.capture-head
         ;div.capture-copy
           ;div.eyebrow: {(trip target.request)} · {(role-name role.profile.request)} · {(trip label.profile.request)}
@@ -566,15 +603,15 @@
             ;span: {<(lent operations.request)>} operations
           ==
         ==
-        ;span.pill: {(trip status.request)}
+        ;span(class ?:(active "pill thinking-pill" "pill")): {(trip status.request)}
       ==
       ;div.proposal-body.change-body
         ;+
         ?-  status.request
           %pending
-            ;div.ai-waiting: Waiting for the local assistant bridge to claim this request…
+            (thinking-indicator "Waiting for the local assistant bridge to claim this request…")
           %working
-            ;div.ai-waiting: {(trip label.profile.request)} is reading the current state and drafting a plan…
+            (thinking-indicator "{(trip label.profile.request)} is reading the current state and drafting a plan…")
           %ready
             ;div
               ;div.proposal-answer: {(trip summary.request)}
@@ -1317,20 +1354,25 @@
   ++  question-row
     |=  [question-id=@tas job=card-question return=@t]
     ^-  manx
-    ;article.ai-turn
+    =/  active=?
+      ?|  =(%pending status.job)
+          =(%working status.job)
+      ==
+    ;article
+      =class  ?:(active "ai-turn is-thinking" "ai-turn")
       ;div.ai-head
         ;div.meta: {(trip mode.job)} · {(role-name role.profile.job)} · {(trip label.profile.job)}
-        ;span.pill: {(trip status.job)}
+        ;span(class ?:(active "pill thinking-pill" "pill")): {(trip status.job)}
       ==
       ;div.ai-question: {(trip prompt.job)}
       ;+
       ?-  status.job
         %pending
-          ;div.ai-waiting: Waiting for the local assistant bridge…
+          (thinking-indicator "Waiting for the local assistant bridge…")
         %working
           ?:  =(%edit mode.job)
-            ;div.ai-waiting: {(trip label.profile.job)} is revising the card…
-          ;div.ai-waiting: {(trip label.profile.job)} is thinking…
+            (thinking-indicator "{(trip label.profile.job)} is revising the card…")
+          (thinking-indicator "{(trip label.profile.job)} is thinking…")
         %answered
           ?:  =(%ask mode.job)
             ;div.ai-answer: {(trip response.job)}
@@ -1381,6 +1423,18 @@
             ==
           ==
       ==
+    ==
+  ::
+  ++  thinking-indicator
+    |=  message=tape
+    ^-  manx
+    ;div.ai-waiting(role "status", aria-live "polite")
+      ;span.thinking-dots(aria-hidden "true")
+        ;span;
+        ;span;
+        ;span;
+      ==
+      ;span: {message}
     ==
   ::
   ++  ordered-assistant-models
