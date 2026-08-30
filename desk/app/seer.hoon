@@ -1,6 +1,7 @@
-/-  *seer
-/+  *server, *seer, *seer-json, default-agent, verb, dbug, agentio
+/-  mcp, *seer
+/+  *server, *seer, *seer-json, *seer-mcp, default-agent, verb, dbug, agentio
 /=  index  /app/seer/index
+/*  seer-tile  %png  /lib/web/seer-tile/png
 ::
 |%
 +$  versioned-state
@@ -8,6 +9,9 @@
       [%1 state-one]
       [%2 state-two]
       [%3 state-two]
+      [%4 state-three]
+      [%5 state-four]
+      [%6 state-five]
   ==
 ::
 +$  state-zero
@@ -24,16 +28,56 @@
   ==
 ::
 +$  state-two
-  $:  stacks=$+(stacks-map (map @tas stack))
+  $:  stacks=(map @tas stack)
       paths=(list path)
       stack-subs=(map [ship @tas] stack)
+  ==
+::
++$  state-three
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+  ==
++$  state-four
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question-five)
+  ==
++$  state-five
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+  ==
++$  card-question-five
+  $:  id=@tas
+      owner=@p
+      stack=@tas
+      card=@tas
+      title=@t
+      front=@t
+      back=@t
+      prompt=@t
+      provider=ai-provider
+      created-at=@da
+      status=question-status
+      worker=@t
+      response=@t
+      updated-at=@da
   ==
 ::
 +$  card  card:agent:gall
 ::
 --
 ::
-=|  [%3 state-two]
+=|  [%6 state-five]
 =*  state  -
 ^-  agent:gall
 =<
@@ -52,7 +96,6 @@
     :~
       [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]
       [%pass /bind/seer %arvo %e %connect [~ /apps/seer] dap.bol]
-      [%pass /eyre %arvo %e %connect [~ /apps/seer/static] %docket]
     ==
 
   ::
@@ -69,11 +112,11 @@
         (poke-seer-action:sc !<(action vase))
           %handle-http-request
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
-        ~&  >>  'in handle-http-req'
+        ?:  authenticated.inbound-request
+          (poke-handle-http-request:sc eyre-id inbound-request)
         :_  state
         %+  give-simple-payload:app  eyre-id
-        %+  require-authorization:app  inbound-request
-        poke-handle-http-request:sc
+        (login-redirect:gen request.inbound-request)
       ==
     [cards this]
   ::
@@ -153,7 +196,6 @@
       :~
         [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]
         [%pass /bind/seer %arvo %e %connect [~ /apps/seer] dap.bol]
-        [%pass /eyre %arvo %e %connect [~ /apps/seer/static] %docket]
       ==
     ?:  ?=(%| -.old-state)
       ~!  p.old-state
@@ -178,11 +220,40 @@
           |=  old-stack=stack-1
           ^-  stack
           (convert-stack-1-2 old-stack)
-        [%3 new-stacks ~ new-stack-subs]
+        [%6 new-stacks ~ new-stack-subs ~ ~ ~]
       ==
     %2
-      [~ this(state [%3 +.p.old-state])]
+      [~ this(state [%6 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~])]
     %3
+      [init-cards this(state [%6 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~])]
+    %4
+      [init-cards this(state [%6 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~])]
+    %5
+      =/  new-questions=(map @tas card-question)
+        %-  ~(run by questions.p.old-state)
+        |=  old=card-question-five
+        ^-  card-question
+        :*  id.old
+            owner.old
+            stack.old
+            card.old
+            title.old
+            front.old
+            back.old
+            %ask
+            prompt.old
+            provider.old
+            created-at.old
+            status.old
+            worker.old
+            response.old
+            ''
+            ''
+            ''
+            updated-at.old
+        ==
+      [init-cards this(state [%6 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions])]
+    %6
       [init-cards this(state p.old-state)]
     ==
     ++  convert-stack-1-2
@@ -206,8 +277,12 @@
     |=  =path
     ^-  (unit (unit cage))
     ?+  path  (on-peek:def path)
+        [%x %mcp %tools ~]    ``noun+!>(tools)
+        [%x %mcp %prompts ~]  ``noun+!>(prompts)
         [%x %review ~]        ``noun+!>(all-reviews)
         [%x %all ~]        ``noun+!>(stacks.state)
+        [%x %ai-state ~]
+      ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state])
         [%x %stack-subs ~]        ``noun+!>(stack-subs.state)
         [%x %stacks *]
       ?~  t.t.path
@@ -345,6 +420,10 @@
     %~  update-stack  stack-emit
     %=  stack
       items  (~(uni by items.stack) (my ~[[name.item item]]))
+      review-items
+        ?:  (~(has by review-items.stack) name.item)
+          (~(put by review-items.stack) name.item item)
+        review-items.stack
     ==
   ::
   ++  add-review-item
@@ -427,77 +506,348 @@
   [~ state]
 ::
 ++  poke-handle-http-request
-  |=  =inbound-request:eyre
-  ^-  simple-payload:http
-  =+  request-line=(parse-request-line url.request.inbound-request)
-
+  |=  [eyre-id=@ta =inbound-request:eyre]
+  ^-  (quip card _state)
+  =/  request-line  (parse-request-line url.request.inbound-request)
+  ?+  method.request.inbound-request
+    (respond-payload eyre-id [[405 ~] ~])
+  ::
+      %'GET'
+    (web-get eyre-id request-line)
+  ::
+      %'POST'
+    =/  fields=(map @t @t)
+      %-  malt
+      %-  fall  :_  ~
+      (rush q:(fall body.request.inbound-request *octs) yquy:de-purl:html)
+    (web-post eyre-id request-line fields)
+  ==
+::
+++  web-get
+  |=  [eyre-id=@ta =request-line]
+  ^-  (quip card _state)
   ?+  request-line
-    ~&  >>  request-line  not-found:gen
-  ::  send review state as json
+    (respond-payload eyre-id not-found:gen)
+  ::  Canonical browser routes.
+  ::
+      [[~ [%apps %seer ~]] ~]
+    (respond-page eyre-id [%review ~] ~)
+      [[~ [%apps %seer %review ~]] ~]
+    (respond-page eyre-id [%review ~] ~)
+      [[~ [%apps %seer %inbox ~]] ~]
+    (respond-page eyre-id [%inbox ~] ~)
+      [[[~ %png] [%apps %seer %tile ~]] ~]
+    %+  respond-payload  eyre-id
+    (png-response:gen (as-octs:mimes:html seer-tile))
+      [[~ [%apps %seer %stacks ~]] ~]
+    (respond-page eyre-id [%stacks ~] ~)
+      [[~ [%apps %seer %subscriptions ~]] ~]
+    (respond-page eyre-id [%subscriptions ~] ~)
+      [[~ [%apps %seer %stack @t @t ~]] ~]
+    =/  owner  (slav %p i.t.t.t.site.request-line)
+    =/  name   (slav %tas i.t.t.t.t.site.request-line)
+    (respond-page eyre-id [%stack owner name] ~)
+  ::  Preserve the old JSON endpoints for CLI and external integrations.
   ::
       [[[~ %json] [%seer %update-review ~]] ~]
+    %+  respond-payload  eyre-id
     %-  json-response:gen
-    :-  %a
-    (turn all-reviews review-to-json)
-  ::  learned status as json for given stack
-      [[[~ %json] [%seer %learn @ ~]] ~]
-    =/  stack-name  i.t.t.site.request-line
+    [%a (turn all-reviews review-to-json)]
+      [[[~ %json] [%seer %learn @t ~]] ~]
+    =/  stack-name  (slav %tas i.t.t.site.request-line)
+    %+  respond-payload  eyre-id
     %-  json-response:gen
-    %-  stack-status-to-json  (~(got by stacks) stack-name)
-  ::  learned status as json for given stack and item
-      [[[~ %json] [%seer %learn @ @ ~]] ~]
-    =/  stack-name  i.t.t.site.request-line
-    =/  item-name  i.t.t.t.site.request-line
-    =/  =stack  (~(got by stacks) stack-name)
-    =/  =item  (~(got by items.stack) item-name)
+    (stack-status-to-json (~(got by stacks) stack-name))
+      [[[~ %json] [%seer %learn @t @t ~]] ~]
+    =/  stack-name  (slav %tas i.t.t.site.request-line)
+    =/  item-name   (slav %tas i.t.t.t.site.request-line)
+    =/  =stack      (~(got by stacks) stack-name)
+    =/  =item       (~(got by items.stack) item-name)
+    %+  respond-payload  eyre-id
     %-  json-response:gen
-    %-  status-to-json  learn.item
+    (status-to-json learn.item)
       [[[~ %json] [%seer %stacks ~]] ~]
-    %-  json-response:gen  (state-to-json state)
-  ::  home page; redirect
+    (respond-payload eyre-id (json-response:gen (state-to-json state)))
+  ::  Legacy links now land on the repaired UI.
   ::
-  [[~ [%apps %seer @ ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (redirect:gen '/seer/review')
       [[~ [%seer ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (redirect:gen '/seer/review')
-  ::  review page
+    (respond-payload eyre-id (redirect:gen '/apps/seer/review'))
+      [[~ [%seer @ ~]] ~]
+    (respond-payload eyre-id (redirect:gen '/apps/seer/review'))
+  ==
+::
+++  web-post
+  |=  [eyre-id=@ta =request-line fields=(map @t @t)]
+  ^-  (quip card _state)
+  ?+  request-line
+    (respond-payload eyre-id not-found:gen)
   ::
-      [[~ [%seer %review ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (manx-response:gen hym)
-  ::  subscriptions
+      [[~ [%apps %seer %actions %new-stack ~]] ~]
+    =/  name   (slav %tas (form-got fields 'name'))
+    =/  title  (form-got fields 'title')
+    %:  apply-web-action
+      eyre-id
+      [%new-stack name title *items]
+      [%stacks ~]
+      `'Stack created.'
+    ==
   ::
-      [[~ [%seer %stack-subs ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (manx-response:gen hym)
-  ::  created
+      [[~ [%apps %seer %actions %new-item ~]] ~]
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    =/  item-name   (slav %tas (form-got fields 'name'))
+    =/  title       (form-got fields 'title')
+    =/  front       (form-got fields 'front')
+    =/  back        (form-got fields 'back')
+    =/  act=action
+      :*  %new-item
+          our.bol
+          our.bol
+          stack-name
+          item-name
+          title
+          [read=*rule:clay write=*rule:clay]
+          front
+          back
+      ==
+    (apply-web-action eyre-id act [%stack our.bol stack-name] `'Card added.')
   ::
-      [[~ [%seer %stacks ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (manx-response:gen hym)
-  ::  new item
+      [[~ [%apps %seer %actions %approve-proposal ~]] ~]
+    =/  capture-id   (slav %tas (form-got fields 'capture'))
+    =/  proposal-id  (slav %tas (form-got fields 'proposal'))
+    =/  maybe-session  (~(get by captures.state) capture-id)
+    ?~  maybe-session
+      (respond-page eyre-id [%inbox ~] `'That capture is no longer available.')
+    =/  maybe-draft  (~(get by proposals.u.maybe-session) proposal-id)
+    ?~  maybe-draft
+      (respond-page eyre-id [%inbox ~] `'That proposal is no longer available.')
+    =/  maybe-stack  (~(get by stacks.state) stack.u.maybe-draft)
+    ?~  maybe-stack
+      (respond-page eyre-id [%inbox ~] `'The target stack no longer exists. Reject or restage this proposal.')
+    ?:  (~(has by items.u.maybe-stack) card.u.maybe-draft)
+      (respond-page eyre-id [%inbox ~] `'That card ID is already in use. Reject or restage this proposal.')
+    %:  apply-web-action
+      eyre-id
+      [%approve-proposal capture-id proposal-id]
+      [%inbox ~]
+      `'Card approved and queued for review.'
+    ==
   ::
-      [[~ [%seer %new-item ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (manx-response:gen hym)
-  ::  new stack
+      [[~ [%apps %seer %actions %reject-proposal ~]] ~]
+    =/  capture-id   (slav %tas (form-got fields 'capture'))
+    =/  proposal-id  (slav %tas (form-got fields 'proposal'))
+    %:  apply-web-action
+      eyre-id
+      [%reject-proposal capture-id proposal-id]
+      [%inbox ~]
+      `'Proposal rejected.'
+    ==
   ::
-      [[~ [%seer %new-stack ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (manx-response:gen hym)
-  ::  stack
+      [[~ [%apps %seer %actions %discard-capture ~]] ~]
+    =/  capture-id  (slav %tas (form-got fields 'capture'))
+    %:  apply-web-action
+      eyre-id
+      [%discard-capture capture-id]
+      [%inbox ~]
+      `'Remaining proposals cleared.'
+    ==
   ::
-      [[~ [%seer @t @t ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (manx-response:gen hym)
-  ::  stack item
+      [[~ [%apps %seer %actions %delete-capture ~]] ~]
+    =/  capture-id  (slav %tas (form-got fields 'capture'))
+    %:  apply-web-action
+      eyre-id
+      [%delete-capture capture-id]
+      [%inbox ~]
+      `'Capture history removed.'
+    ==
   ::
-      [[~ [%seer @t @t @t ~]] ~]
-    =/  hym=manx  (index (state-to-json state))
-    (manx-response:gen hym)
+      [[~ [%apps %seer %actions %review-stack ~]] ~]
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    %:  apply-web-action
+      eyre-id
+      [%review-stack our.bol stack-name]
+      [%review ~]
+      `'Stack added to the review queue.'
+    ==
   ::
+      [[~ [%apps %seer %actions %answer ~]] ~]
+    =/  owner       (slav %p (form-got fields 'owner'))
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    =/  item-name   (slav %tas (form-got fields 'item'))
+    =/  answer      (grade (form-got fields 'answer'))
+    %:  apply-web-action
+      eyre-id
+      [%answered-item owner stack-name item-name answer]
+      [%review ~]
+      `'Review saved.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %ask-card ~]] ~]
+    =/  owner          (slav %p (form-got fields 'owner'))
+    =/  stack-name     (slav %tas (form-got fields 'stack'))
+    =/  item-name      (slav %tas (form-got fields 'item'))
+    =/  prompt         (form-got fields 'question')
+    =/  mode-name      (slav %tas (form-got fields 'mode'))
+    =/  mode=assistant-mode
+      ?:(=(%edit mode-name) %edit %ask)
+    =/  provider-name  (slav %tas (form-got fields 'provider'))
+    =/  provider=ai-provider
+      ?:(=(%claude provider-name) %claude %codex)
+    =/  id-suffix=tape
+      %+  skim
+        (trip (scot %uv (mug [now.bol owner stack-name item-name mode prompt])))
+      |=  char=@
+      !=(char '.')
+    =/  question-id=@tas
+      `@tas`(slav %tas (crip (weld "q-" id-suffix)))
+    =/  target-page=page:index
+      ?:  =('review' (form-got fields 'return'))
+        [%review ~]
+      [%stack owner stack-name]
+    %:  apply-web-action
+      eyre-id
+      [%ask-card question-id owner stack-name item-name mode provider prompt]
+      target-page
+      `'Assistant {(trip mode)} sent to {(trip provider)}.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %retry-card-question ~]] ~]
+    =/  question-id  (slav %tas (form-got fields 'question-id'))
+    =/  owner        (slav %p (form-got fields 'owner'))
+    =/  stack-name   (slav %tas (form-got fields 'stack'))
+    =/  target-page=page:index
+      ?:  =('review' (form-got fields 'return'))
+        [%review ~]
+      [%stack owner stack-name]
+    %:  apply-web-action
+      eyre-id
+      [%retry-card-question question-id]
+      target-page
+      `'Assistant request queued again.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %delete-card-question ~]] ~]
+    =/  question-id  (slav %tas (form-got fields 'question-id'))
+    =/  owner        (slav %p (form-got fields 'owner'))
+    =/  stack-name   (slav %tas (form-got fields 'stack'))
+    =/  target-page=page:index
+      ?:  =('review' (form-got fields 'return'))
+        [%review ~]
+      [%stack owner stack-name]
+    %:  apply-web-action
+      eyre-id
+      [%delete-card-question question-id]
+      target-page
+      `'Assistant request dismissed.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %raise-item ~]] ~]
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    =/  item-name   (slav %tas (form-got fields 'item'))
+    %:  apply-web-action
+      eyre-id
+      [%raise-item our.bol stack-name item-name]
+      [%stack our.bol stack-name]
+      `'Card added to the review queue.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %delete-item ~]] ~]
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    =/  item-name   (slav %tas (form-got fields 'item'))
+    %:  apply-web-action
+      eyre-id
+      [%delete-item stack-name item-name]
+      [%stack our.bol stack-name]
+      `'Card deleted.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %delete-stack ~]] ~]
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    %:  apply-web-action
+      eyre-id
+      [%delete-stack our.bol stack-name]
+      [%stacks ~]
+      `'Stack deleted.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %import ~]] ~]
+    =/  ship        (slav %p (form-got fields 'ship'))
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    %:  apply-web-action
+      eyre-id
+      [%import ship stack-name]
+      [%subscriptions ~]
+      `'Subscription requested.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %copy-stack ~]] ~]
+    =/  owner       (slav %p (form-got fields 'owner'))
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    %:  apply-web-action
+      eyre-id
+      [%copy-stack owner stack-name %.y]
+      [%stacks ~]
+      `'Stack copied.'
+    ==
+  ==
+::
+++  apply-web-action
+  |=  [eyre-id=@ta act=action page=page:index notice=(unit @t)]
+  ^-  (quip card _state)
+  =^  action-cards  state  (poke-seer-action act)
+  :_  state
+  (weld action-cards (give-simple-payload:app eyre-id (render-action-page page notice)))
+::
+++  render-action-page
+  |=  [page=page:index notice=(unit @t)]
+  ^-  simple-payload:http
+  =/  payload  (render-page page notice)
+  =.  headers.response-header.payload
+    [['HX-Push-Url' (page-url page)] headers.response-header.payload]
+  payload
+::
+++  page-url
+  |=  page=page:index
+  ^-  @t
+  ?-  -.page
+    %review         '/apps/seer/review'
+    %inbox          '/apps/seer/inbox'
+    %stacks         '/apps/seer/stacks'
+    %subscriptions  '/apps/seer/subscriptions'
+    %stack
+      %-  crip
+      "/apps/seer/stack/{(scow %p owner.page)}/{(trip name.page)}"
+  ==
+::
+++  respond-page
+  |=  [eyre-id=@ta page=page:index notice=(unit @t)]
+  ^-  (quip card _state)
+  [(give-simple-payload:app eyre-id (render-page page notice)) state]
+::
+++  respond-payload
+  |=  [eyre-id=@ta payload=simple-payload:http]
+  ^-  (quip card _state)
+  [(give-simple-payload:app eyre-id payload) state]
+::
+++  render-page
+  |=  [page=page:index notice=(unit @t)]
+  ^-  simple-payload:http
+  %-  manx-response:gen
+  (render:index our.bol stacks.state stack-subs.state captures.state questions.state all-reviews page notice)
+::
+++  form-got
+  |=  [fields=(map @t @t) key=@t]
+  ^-  @t
+  (fall (~(get by fields) key) '')
+::
+++  grade
+  |=  value=@t
+  ^-  recall-grade
+  =/  name  (slav %tas value)
+  ?+  name  %good
+      %again  %again
+      %hard   %hard
+      %good   %good
+      %easy   %easy
   ==
 ::
 ++  poke-seer-action
@@ -512,7 +862,7 @@
     ::
     =/  conf=stack-info
       :*  our.bol
-          name.act
+          title.act
           name.act
           =edit-config
           now.bol
@@ -548,12 +898,21 @@
     (~(delete-stack stack-emit stack-to-delete) who.act)
       %delete-item
     ~&  delete-item+act
+    =.  provenance.state
+      (~(del by provenance.state) [stak.act item.act])
     =<  abet
     %.  item.act
     ~(delete-item stack-emit (~(got by stacks) stak.act))
       %edit-stack
-    ~&  edit-stack+act
-    [~ state]
+    =/  =stack  (~(got by stacks) name.act)
+    ?>  ?=(%.y -.info.stack)
+    =/  =stack-info  p.info.stack
+    =<  abet
+    %~  update-stack  stack-emit
+    %=  stack
+      info         [%.y stack-info(title title.act, last-modified now.bol)]
+      last-update  now.bol
+    ==
     ::
       %review-stack
     ?>  =(our.bol who.act)
@@ -631,6 +990,266 @@
     [%pass wire %agent [who.act %seer] %watch /stack/[stack.act]]~
       %import-file
     (import-from-file path.act)
+      %begin-capture
+    ?:  (~(has by captures.state) id.act)
+      [~ state]
+    =/  session=capture
+      :*  id.act
+          title.act
+          goal.act
+          source.act
+          created-by.act
+          now.bol
+          %open
+          0
+          0
+          ~
+      ==
+    =.  captures.state  (~(put by captures.state) id.act session)
+    [~ state]
+      %stage-card
+    =/  maybe-session  (~(get by captures.state) capture.act)
+    ?~  maybe-session  [~ state]
+    =/  session  u.maybe-session
+    ?.  =(%open status.session)  [~ state]
+    =/  maybe-stack  (~(get by stacks.state) stack.act)
+    ?~  maybe-stack  [~ state]
+    ?:  (~(has by items.u.maybe-stack) card.act)  [~ state]
+    ?:  (~(has by proposals.session) proposal.act)  [~ state]
+    =/  draft=proposal
+      :*  proposal.act
+          stack.act
+          card.act
+          title.act
+          front.act
+          back.act
+          rationale.act
+          source.act
+          created-by.act
+          now.bol
+      ==
+    =.  proposals.session
+      (~(put by proposals.session) proposal.act draft)
+    =.  captures.state
+      (~(put by captures.state) capture.act session)
+    [~ state]
+      %approve-proposal
+    =/  maybe-session  (~(get by captures.state) capture.act)
+    ?~  maybe-session  [~ state]
+    =/  session  u.maybe-session
+    =/  maybe-draft  (~(get by proposals.session) proposal.act)
+    ?~  maybe-draft  [~ state]
+    =/  draft  u.maybe-draft
+    =/  maybe-stack  (~(get by stacks.state) stack.draft)
+    ?~  maybe-stack  [~ state]
+    ?:  (~(has by items.u.maybe-stack) card.draft)  [~ state]
+    =/  add-act=action
+      :*  %new-item
+          our.bol
+          our.bol
+          stack.draft
+          card.draft
+          title.draft
+          [read=*rule:clay write=*rule:clay]
+          front.draft
+          back.draft
+      ==
+    =^  add-cards  state  (poke-seer-action add-act)
+    =/  left=(map @tas proposal)
+      (~(del by proposals.session) proposal.act)
+    =.  proposals.session  left
+    =.  approved.session  +(approved.session)
+    =.  status.session  ?:(=(~ left) %complete %open)
+    =.  captures.state
+      (~(put by captures.state) capture.act session)
+    =/  origin
+      :*  capture.act
+          source.draft
+          rationale.draft
+          created-by.draft
+          created-at.draft
+          now.bol
+      ==
+    =.  provenance.state
+      (~(put by provenance.state) [stack.draft card.draft] origin)
+    [add-cards state]
+      %reject-proposal
+    =/  maybe-session  (~(get by captures.state) capture.act)
+    ?~  maybe-session  [~ state]
+    =/  session  u.maybe-session
+    ?:  !(~(has by proposals.session) proposal.act)  [~ state]
+    =/  left=(map @tas proposal)
+      (~(del by proposals.session) proposal.act)
+    =.  proposals.session  left
+    =.  rejected.session  +(rejected.session)
+    =.  status.session  ?:(=(~ left) %complete %open)
+    =.  captures.state
+      (~(put by captures.state) capture.act session)
+    [~ state]
+      %discard-capture
+    =/  maybe-session  (~(get by captures.state) capture.act)
+    ?~  maybe-session  [~ state]
+    =/  session  u.maybe-session
+    =.  rejected.session
+      (add rejected.session (lent ~(tap by proposals.session)))
+    =.  proposals.session  ~
+    =.  status.session  %complete
+    =.  captures.state
+      (~(put by captures.state) capture.act session)
+    [~ state]
+      %delete-capture
+    =/  maybe-session  (~(get by captures.state) capture.act)
+    ?~  maybe-session  [~ state]
+    ?.  =(%complete status.u.maybe-session)  [~ state]
+    =.  captures.state  (~(del by captures.state) capture.act)
+    [~ state]
+      %ask-card
+    ?:  ?|  =(0 (met 3 prompt.act))
+            (~(has by questions.state) id.act)
+            ?&  =(%edit mode.act)
+                !=(our.bol owner.act)
+            ==
+        ==
+      [~ state]
+    =/  maybe-stack=(unit stack)
+      ?:  =(our.bol owner.act)
+        (~(get by stacks.state) stak.act)
+      (~(get by stack-subs.state) [owner.act stak.act])
+    ?~  maybe-stack  [~ state]
+    =/  maybe-item=(unit item)
+      (~(get by items.u.maybe-stack) item.act)
+    ?~  maybe-item  [~ state]
+    =/  current=item  u.maybe-item
+    =/  question=card-question
+      :*  id.act
+          owner.act
+          stak.act
+          item.act
+          title.content.current
+          front.content.current
+          back.content.current
+          mode.act
+          prompt.act
+          provider.act
+          now.bol
+          %pending
+          ''
+          ''
+          ''
+          ''
+          ''
+          now.bol
+      ==
+    =.  questions.state  (~(put by questions.state) id.act question)
+    [~ state]
+      %claim-card-question
+    =/  maybe-question  (~(get by questions.state) id.act)
+    ?~  maybe-question  [~ state]
+    =/  question  u.maybe-question
+    ?.  =(%pending status.question)  [~ state]
+    =.  status.question  %working
+    =.  worker.question  worker.act
+    =.  updated-at.question  now.bol
+    =.  questions.state  (~(put by questions.state) id.act question)
+    [~ state]
+      %answer-card-question
+    =/  maybe-question  (~(get by questions.state) id.act)
+    ?~  maybe-question  [~ state]
+    =/  question  u.maybe-question
+    ?.  ?&  =(%working status.question)
+            =(%ask mode.question)
+            =(worker.act worker.question)
+        ==
+      [~ state]
+    =.  status.question  %answered
+    =.  response.question  response.act
+    =.  updated-at.question  now.bol
+    =.  questions.state  (~(put by questions.state) id.act question)
+    [~ state]
+      %apply-card-edit
+    =/  maybe-question  (~(get by questions.state) id.act)
+    ?~  maybe-question  [~ state]
+    =/  question  u.maybe-question
+    ?.  ?&  =(%working status.question)
+            =(%edit mode.question)
+            =(worker.act worker.question)
+            =(our.bol owner.question)
+            !=(0 (met 3 title.act))
+            !=(0 (met 3 front.act))
+            !=(0 (met 3 back.act))
+            !=(0 (met 3 response.act))
+        ==
+      [~ state]
+    =/  maybe-stack  (~(get by stacks.state) stack.question)
+    ?~  maybe-stack
+      =.  status.question      %failed
+      =.  response.question    'The stack was removed before this edit could be applied.'
+      =.  updated-at.question  now.bol
+      =.  questions.state  (~(put by questions.state) id.act question)
+      [~ state]
+    =/  maybe-item  (~(get by items.u.maybe-stack) card.question)
+    ?~  maybe-item
+      =.  status.question      %failed
+      =.  response.question    'The card was removed before this edit could be applied.'
+      =.  updated-at.question  now.bol
+      =.  questions.state  (~(put by questions.state) id.act question)
+      [~ state]
+    =/  current  u.maybe-item
+    ?.  ?&  =(title.content.current title.question)
+            =(front.content.current front.question)
+            =(back.content.current back.question)
+        ==
+      =.  status.question      %failed
+      =.  response.question    'The card changed while the assistant was working. Review the newer card, then retry if the edit is still useful.'
+      =.  updated-at.question  now.bol
+      =.  questions.state  (~(put by questions.state) id.act question)
+      [~ state]
+    =/  edit-act=action
+      :*  %edit-item
+          our.bol
+          stack.question
+          card.question
+          title.act
+          [read=*rule:clay write=*rule:clay]
+          front.act
+          back.act
+      ==
+    =^  edit-cards  state  (poke-seer-action edit-act)
+    =.  status.question        %answered
+    =.  response.question      response.act
+    =.  result-title.question  title.act
+    =.  result-front.question  front.act
+    =.  result-back.question   back.act
+    =.  updated-at.question    now.bol
+    =.  questions.state  (~(put by questions.state) id.act question)
+    [edit-cards state]
+      %fail-card-question
+    =/  maybe-question  (~(get by questions.state) id.act)
+    ?~  maybe-question  [~ state]
+    =/  question  u.maybe-question
+    ?.  ?&  =(%working status.question)
+            =(worker.act worker.question)
+        ==
+      [~ state]
+    =.  status.question  %failed
+    =.  response.question  response.act
+    =.  updated-at.question  now.bol
+    =.  questions.state  (~(put by questions.state) id.act question)
+    [~ state]
+      %retry-card-question
+    =/  maybe-question  (~(get by questions.state) id.act)
+    ?~  maybe-question  [~ state]
+    =/  question  u.maybe-question
+    ?.  =(%failed status.question)  [~ state]
+    =.  status.question  %pending
+    =.  worker.question  ''
+    =.  response.question  ''
+    =.  updated-at.question  now.bol
+    =.  questions.state  (~(put by questions.state) id.act question)
+    [~ state]
+      %delete-card-question
+    =.  questions.state  (~(del by questions.state) id.act)
+    [~ state]
   ==
 ::
 ++  peer-seertile
@@ -687,7 +1306,7 @@
       ~&  >  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *[%3 state-two]]
+      [~ *[%6 state-five]]
     ==
 ::
 ++  handle-import-stack
@@ -744,7 +1363,7 @@
   ^-  item
   =/  front-matter=(map knot cord)
     %-  my
-    :~  title+name.act
+    :~  title+title.act
          author+(scot %p src.bol)
          date-created+(scot %da now.bol)
          last-modified+(scot %da now.bol)

@@ -1,5 +1,4 @@
 /-  *seer
-/+  elem-to-react-json
 |%
 ::
 ++  form-snippet

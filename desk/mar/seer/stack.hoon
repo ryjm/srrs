@@ -7,7 +7,6 @@
 ++  grow
   |%
   ++  json
-    ^-  ^json
     (total-build-to-json stack)
    --
 ::
@@ -16,5 +15,5 @@
   ++  noun  ^stack
   --
 ::
-++  grad  %json
+++  grad  %noun
 --

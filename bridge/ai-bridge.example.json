@@ -1,0 +1,13 @@
+{
+  "mcpUrl": "http://127.0.0.1:8080/mcp",
+  "pollIntervalMs": 2000,
+  "timeoutMs": 180000,
+  "codex": {
+    "enabled": true,
+    "command": "/path/to/codex"
+  },
+  "claude": {
+    "enabled": true,
+    "command": "/path/to/claude"
+  }
+}

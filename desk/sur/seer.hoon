@@ -1,6 +1,6 @@
 |%
 ::
-+$  items   $+(items-map (map @tas item))
++$  items   (map @tas item)
 +$  action
   $%  $:  %new-stack
           name=@tas
@@ -13,7 +13,7 @@
           who=@p
           stak=@tas
           name=@tas
-          title=@tas
+          title=@t
           perm=perm-config
           front=@t
           back=@t
@@ -51,6 +51,130 @@
       [%import-file =path]
   ::
       [%copy-stack owner=@p stak=@tas keep-learned=?]
+  ::
+      $:  %begin-capture
+          id=@tas
+          title=@t
+          goal=@t
+          source=@t
+          created-by=@t
+      ==
+      $:  %stage-card
+          capture=@tas
+          proposal=@tas
+          stack=@tas
+          card=@tas
+          title=@t
+          front=@t
+          back=@t
+          rationale=@t
+          source=@t
+          created-by=@t
+      ==
+      [%approve-proposal capture=@tas proposal=@tas]
+      [%reject-proposal capture=@tas proposal=@tas]
+      [%discard-capture capture=@tas]
+      [%delete-capture capture=@tas]
+      $:  %ask-card
+          id=@tas
+          owner=@p
+          stak=@tas
+          item=@tas
+          mode=assistant-mode
+          provider=ai-provider
+          prompt=@t
+      ==
+      [%claim-card-question id=@tas worker=@t]
+      [%answer-card-question id=@tas worker=@t response=@t]
+      $:  %apply-card-edit
+          id=@tas
+          worker=@t
+          title=@t
+          front=@t
+          back=@t
+          response=@t
+      ==
+      [%fail-card-question id=@tas worker=@t response=@t]
+      [%retry-card-question id=@tas]
+      [%delete-card-question id=@tas]
+  ==
+::
+::  AI capture sessions live on the ship, not in any one model's context.
+::  Codex and Claude can therefore hand the same learning session back and
+::  forth.  Drafts remain proposals until a person approves them in Seer.
+::
++$  proposal
+  $:  id=@tas
+      stack=@tas
+      card=@tas
+      title=@t
+      front=@t
+      back=@t
+      rationale=@t
+      source=@t
+      created-by=@t
+      created-at=@da
+  ==
+::
++$  capture-status  $?(%open %complete)
+::
++$  capture
+  $:  id=@tas
+      title=@t
+      goal=@t
+      source=@t
+      created-by=@t
+      created-at=@da
+      status=capture-status
+      approved=@ud
+      rejected=@ud
+      proposals=(map @tas proposal)
+  ==
+::
++$  provenance
+  $:  capture=@tas
+      source=@t
+      rationale=@t
+      created-by=@t
+      proposed-at=@da
+      approved-at=@da
+  ==
+::
++$  ai-provider  $?(%codex %claude)
+::
++$  assistant-mode  $?(%ask %edit)
+::
++$  question-status  $?(%pending %working %answered %failed)
+::
+::  Durable question jobs snapshot the card so answers remain auditable even
+::  if the source stack changes while a local model provider is working.
+::
++$  card-question
+  $:  id=@tas
+      owner=@p
+      stack=@tas
+      card=@tas
+      title=@t
+      front=@t
+      back=@t
+      mode=assistant-mode
+      prompt=@t
+      provider=ai-provider
+      created-at=@da
+      status=question-status
+      worker=@t
+      response=@t
+      result-title=@t
+      result-front=@t
+      result-back=@t
+      updated-at=@da
+  ==
+::
++$  ai-state
+  $:  stacks=(map @tas stack)
+      captures=(map @tas capture)
+      provenance=(map [stack=@tas card=@tas] provenance)
+      questions=(map @tas card-question)
   ==
 ::  +stack-info: stack information
 ::

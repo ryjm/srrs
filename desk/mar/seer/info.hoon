@@ -24,8 +24,8 @@
 ++  grab
   |%
   ++  mime
-    |=  [mite:eyre p=octs:eyre]
-    (txt (to-wain:format q.p))
+    |=  [=mite len=@ tex=@]
+    (txt (to-wain:format tex))
   ++  txt
     |=  txs=(pole @t)
     ^-  stack-info:seer

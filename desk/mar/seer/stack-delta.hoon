@@ -10,4 +10,5 @@
   |%
   ++  noun  stack-delta
   --
+++  grad  %noun
 --

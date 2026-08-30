@@ -1,10 +1,10 @@
 :~
   title+'Seer'
-  info+'urbrain, urbit'
-  color+0xee.5432
-  version+[0 0 1]
-  website+'https://urbit.land'
+  info+'Server-rendered spaced repetition'
+  color+0xff.ffff
+  image+'/apps/seer/tile.png'
+  version+[0 2 0]
+  website+'https://github.com/ryjm/srrs'
   license+'MIT'
-  base+'seer'
-  glob-ames+[~distem-bottus-littel-wolfur 0v0]
+  site+/apps/seer
 ==

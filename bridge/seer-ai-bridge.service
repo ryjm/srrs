@@ -1,0 +1,12 @@
+[Unit]
+Description=Seer AI card-assistant bridge
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/env node /absolute/path/to/srrs/bridge/seer-ai-bridge.mjs
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

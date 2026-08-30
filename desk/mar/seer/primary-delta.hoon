@@ -10,10 +10,9 @@
 ++  grow
   |%
   ++  json
-    ^-  ^json
     (primary-delta-to-json del)
   ++  txt
-  ?+    -.del  [(crip (en-json json))]~
+  ?+    -.del  [(en:json:html json)]~
       %update-stack
     [(crip "<stack updated>: {(trip name.data.del)}")]~
       %update-review
@@ -23,7 +22,7 @@
       ^-  ^tank
       :+  %rose
       [[' ' ~] ['`' '<' '|' ~] ['|' '>' '`' ~]]
-      ?+    -.del  [leaf+(en-json json)]~
+      ?+    -.del  [leaf+(trip (en:json:html json))]~
           %add-item
         :~  leaf+"<stack>: {(trip stack.del)}"
             leaf+"<item added>: {(trip name.data.del)}"
