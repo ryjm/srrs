@@ -12,6 +12,7 @@
       [%4 state-three]
       [%5 state-four]
       [%6 state-five]
+      [%7 state-six]
   ==
 ::
 +$  state-zero
@@ -54,7 +55,16 @@
       stack-subs=(map [ship @tas] stack)
       captures=(map @tas capture)
       provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question-six)
+  ==
++$  state-six
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
       questions=(map @tas card-question)
+      models=(map @tas assistant-model)
   ==
 +$  card-question-five
   $:  id=@tas
@@ -72,12 +82,32 @@
       response=@t
       updated-at=@da
   ==
++$  card-question-six
+  $:  id=@tas
+      owner=@p
+      stack=@tas
+      card=@tas
+      title=@t
+      front=@t
+      back=@t
+      mode=assistant-mode
+      prompt=@t
+      provider=ai-provider
+      created-at=@da
+      status=question-status
+      worker=@t
+      response=@t
+      result-title=@t
+      result-front=@t
+      result-back=@t
+      updated-at=@da
+  ==
 ::
 +$  card  card:agent:gall
 ::
 --
 ::
-=|  [%6 state-five]
+=|  [%7 state-six]
 =*  state  -
 ^-  agent:gall
 =<
@@ -220,14 +250,14 @@
           |=  old-stack=stack-1
           ^-  stack
           (convert-stack-1-2 old-stack)
-        [%6 new-stacks ~ new-stack-subs ~ ~ ~]
+        [%7 new-stacks ~ new-stack-subs ~ ~ ~ ~]
       ==
     %2
-      [~ this(state [%6 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~])]
+      [~ this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~])]
     %3
-      [init-cards this(state [%6 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~])]
+      [init-cards this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~])]
     %4
-      [init-cards this(state [%6 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~])]
+      [init-cards this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~])]
     %5
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -242,7 +272,7 @@
             back.old
             %ask
             prompt.old
-            provider.old
+            (legacy-model provider.old)
             created-at.old
             status.old
             worker.old
@@ -252,10 +282,49 @@
             ''
             updated-at.old
         ==
-      [init-cards this(state [%6 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions])]
+      [init-cards this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~])]
     %6
+      =/  new-questions=(map @tas card-question)
+        %-  ~(run by questions.p.old-state)
+        |=  old=card-question-six
+        ^-  card-question
+        :*  id.old
+            owner.old
+            stack.old
+            card.old
+            title.old
+            front.old
+            back.old
+            mode.old
+            prompt.old
+            (legacy-model provider.old)
+            created-at.old
+            status.old
+            worker.old
+            response.old
+            result-title.old
+            result-front.old
+            result-back.old
+            updated-at.old
+        ==
+      [init-cards this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~])]
+    %7
       [init-cards this(state p.old-state)]
     ==
+    ++  legacy-model
+      |=  provider=ai-provider
+      ^-  assistant-model
+      =/  codex=?  =(%codex provider)
+      :*  ?:(codex %legacy-codex %legacy-claude)
+          provider
+          %default
+          ?:(codex 'openai-codex/default' 'anthropic/default')
+          'default'
+          ?:(codex 'Codex default (legacy)' 'Claude default (legacy)')
+          'Queued before Seer recorded an exact OMP model selector.'
+          'migration'
+          *@da
+      ==
     ++  convert-stack-1-2
       |=  prev=stack-1
       ^-  stack
@@ -282,7 +351,7 @@
         [%x %review ~]        ``noun+!>(all-reviews)
         [%x %all ~]        ``noun+!>(stacks.state)
         [%x %ai-state ~]
-      ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state])
+      ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state models.state])
         [%x %stack-subs ~]        ``noun+!>(stack-subs.state)
         [%x %stacks *]
       ?~  t.t.path
@@ -689,9 +758,15 @@
     =/  mode-name      (slav %tas (form-got fields 'mode'))
     =/  mode=assistant-mode
       ?:(=(%edit mode-name) %edit %ask)
-    =/  provider-name  (slav %tas (form-got fields 'provider'))
-    =/  provider=ai-provider
-      ?:(=(%claude provider-name) %claude %codex)
+    =/  target-page=page:index
+      ?:  =('review' (form-got fields 'return'))
+        [%review ~]
+      [%stack owner stack-name]
+    =/  model-id  (slav %tas (form-got fields 'model'))
+    =/  maybe-profile  (~(get by models.state) model-id)
+    ?~  maybe-profile
+      (respond-page eyre-id target-page `'That assistant model is no longer available. Choose another model and try again.')
+    =/  profile=assistant-model  u.maybe-profile
     =/  id-suffix=tape
       %+  skim
         (trip (scot %uv (mug [now.bol owner stack-name item-name mode prompt])))
@@ -699,15 +774,11 @@
       !=(char '.')
     =/  question-id=@tas
       `@tas`(slav %tas (crip (weld "q-" id-suffix)))
-    =/  target-page=page:index
-      ?:  =('review' (form-got fields 'return'))
-        [%review ~]
-      [%stack owner stack-name]
     %:  apply-web-action
       eyre-id
-      [%ask-card question-id owner stack-name item-name mode provider prompt]
+      [%ask-card question-id owner stack-name item-name mode profile prompt]
       target-page
-      `'Assistant {(trip mode)} sent to {(trip provider)}.'
+      `'Assistant {(trip mode)} sent to {(trip label.profile)}.'
     ==
   ::
       [[~ [%apps %seer %actions %retry-card-question ~]] ~]
@@ -832,7 +903,7 @@
   |=  [page=page:index notice=(unit @t)]
   ^-  simple-payload:http
   %-  manx-response:gen
-  (render:index our.bol stacks.state stack-subs.state captures.state questions.state all-reviews page notice)
+  (render:index our.bol stacks.state stack-subs.state captures.state questions.state models.state all-reviews page notice)
 ::
 ++  form-got
   |=  [fields=(map @t @t) key=@t]
@@ -1130,7 +1201,7 @@
           back.content.current
           mode.act
           prompt.act
-          provider.act
+          profile.act
           now.bol
           %pending
           ''
@@ -1141,6 +1212,29 @@
           now.bol
       ==
     =.  questions.state  (~(put by questions.state) id.act question)
+    [~ state]
+      %clear-assistant-models
+    =.  models.state  ~
+    [~ state]
+      %register-assistant-model
+    ?:  ?|  =(0 (met 3 selector.act))
+            =(0 (met 3 model.act))
+            =(0 (met 3 label.act))
+            =(0 (met 3 worker.act))
+        ==
+      [~ state]
+    =/  profile=assistant-model
+      :*  id.act
+          provider.act
+          role.act
+          selector.act
+          model.act
+          label.act
+          description.act
+          worker.act
+          now.bol
+      ==
+    =.  models.state  (~(put by models.state) id.act profile)
     [~ state]
       %claim-card-question
     =/  maybe-question  (~(get by questions.state) id.act)
@@ -1306,7 +1400,7 @@
       ~&  >  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *[%6 state-five]]
+      [~ *[%7 state-six]]
     ==
 ::
 ++  handle-import-stack

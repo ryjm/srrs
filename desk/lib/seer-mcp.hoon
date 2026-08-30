@@ -17,6 +17,9 @@
       begin-capture-tool
       stage-card-tool
       add-card-tool
+      list-assistant-models-tool
+      clear-assistant-models-tool
+      register-assistant-model-tool
       list-card-questions-tool
       claim-card-question-tool
       answer-card-question-tool
@@ -463,6 +466,136 @@
       [%result %structured (write-result 'created' our.bowl stack-id `card-id u.title %.y)]
   ==
 ::
+++  list-assistant-models-tool
+  ^-  tool:mcp
+  :*  'seer/list-assistant-models'
+      '''
+      List the exact OMP provider/model profiles currently backed by signed-in
+      local AI accounts. Profiles use the standard smol, default, and slow
+      roles. This tool is read-only.
+      '''
+      *parameters:tool:mcp
+      ~
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      ;<  snapshot=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (assistant-models-json models.snapshot)]
+  ==
+::
+++  clear-assistant-models-tool
+  ^-  tool:mcp
+  :*  'seer/clear-assistant-models'
+      '''
+      Clear Seer's local assistant-model catalog before a bridge publishes a
+      fresh credential-aware snapshot. This does not change existing jobs,
+      which retain their exact model profile.
+      '''
+      %-  my
+      :~  ['worker_id' [%string 'Stable identifier for the local bridge process.']]
+      ==
+      ~['worker_id']
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      =/  worker=(unit @t)  (string-arg args 'worker_id')
+      ?~  worker  (pure:m !>([%error 'missing worker_id' ~]))
+      =/  act=action  [%clear-assistant-models u.worker]
+      ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (catalog-write-result 'cleared' u.worker 0)]
+  ==
+::
+++  register-assistant-model-tool
+  ^-  tool:mcp
+  :*  'seer/register-assistant-model'
+      '''
+      Register one exact OMP provider/model profile discovered by the local
+      bridge. Only profiles for authenticated provider CLIs should be sent.
+      Re-registering the same model ID replaces its catalog metadata without
+      changing queued or completed jobs.
+      '''
+      %-  my
+      :~  ['model_id' [%string 'Stable lowercase slug for this Seer model profile.']]
+          ['provider' [%string 'Local execution adapter: codex or claude.']]
+          ['role' [%string 'OMP role: smol, default, or slow.']]
+          ['selector' [%string 'Exact OMP provider/model-id selector.']]
+          ['model' [%string 'Exact model ID passed to the provider CLI.']]
+          ['label' [%string 'Human-readable model name.']]
+          ['description' [%string 'Short capability and tradeoff description.']]
+          ['worker_id' [%string 'Stable identifier for the local bridge process.']]
+      ==
+      ~['model_id' 'provider' 'role' 'selector' 'model' 'label' 'description' 'worker_id']
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      =/  raw-id=(unit @t)       (string-arg args 'model_id')
+      =/  provider-name=(unit @t)  (string-arg args 'provider')
+      =/  role-name=(unit @t)    (string-arg args 'role')
+      =/  selector=(unit @t)     (string-arg args 'selector')
+      =/  model=(unit @t)        (string-arg args 'model')
+      =/  label=(unit @t)        (string-arg args 'label')
+      =/  description=(unit @t)  (string-arg args 'description')
+      =/  worker=(unit @t)       (string-arg args 'worker_id')
+      ?~  raw-id         (pure:m !>([%error 'missing model_id' ~]))
+      ?~  provider-name  (pure:m !>([%error 'missing provider' ~]))
+      ?~  role-name      (pure:m !>([%error 'missing role' ~]))
+      ?~  selector       (pure:m !>([%error 'missing selector' ~]))
+      ?~  model          (pure:m !>([%error 'missing model' ~]))
+      ?~  label          (pure:m !>([%error 'missing label' ~]))
+      ?~  description    (pure:m !>([%error 'missing description' ~]))
+      ?~  worker         (pure:m !>([%error 'missing worker_id' ~]))
+      ?.  (valid-slug u.raw-id)
+        (pure:m !>([%error 'invalid model_id' `(error-json 'invalid-model-id' u.raw-id)]))
+      ?.  ?|(=('codex' u.provider-name) =('claude' u.provider-name))
+        (pure:m !>([%error 'invalid provider' `(error-json 'invalid-provider' u.provider-name)]))
+      ?.  ?|(=('smol' u.role-name) =('default' u.role-name) =('slow' u.role-name))
+        (pure:m !>([%error 'invalid role' `(error-json 'invalid-omp-role' u.role-name)]))
+      =/  model-id=@tas  (@tas u.raw-id)
+      =/  provider=ai-provider  ?:(=('claude' u.provider-name) %claude %codex)
+      =/  role=omp-role
+        ?:  =('smol' u.role-name)  %smol
+        ?:  =('slow' u.role-name)  %slow
+        %default
+      ;<  =bowl:spider  bind:m  get-bowl:io
+      =/  act=action
+        :*  %register-assistant-model
+            model-id
+            provider
+            role
+            u.selector
+            u.model
+            u.label
+            u.description
+            u.worker
+        ==
+      ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
+      =/  profile=assistant-model
+        :*  model-id
+            provider
+            role
+            u.selector
+            u.model
+            u.label
+            u.description
+            u.worker
+            now.bowl
+        ==
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (model-write-result 'registered' profile)]
+  ==
+::
 ++  list-card-questions-tool
   ^-  tool:mcp
   :*  'seer/list-card-questions'
@@ -824,6 +957,32 @@
       ==
   ==
 ::
+++  assistant-models-json
+  |=  models=(map @tas assistant-model)
+  ^-  json
+  %-  pairs:enjs:format
+  :~  :-  'models'
+      :-  %a
+      %+  turn  ~(tap by models)
+      |=  [model-id=@tas profile=assistant-model]
+      (assistant-model-json profile)
+  ==
+::
+++  assistant-model-json
+  |=  profile=assistant-model
+  ^-  json
+  %-  pairs:enjs:format
+  :~  ['model_id' s+id.profile]
+      ['provider' s+provider.profile]
+      ['role' s+role.profile]
+      ['selector' s+selector.profile]
+      ['model' s+model.profile]
+      ['label' s+label.profile]
+      ['description' s+description.profile]
+      ['worker_id' s+worker.profile]
+      ['registered_at' s+(scot %da registered-at.profile)]
+  ==
+::
 ++  questions-to-json
   |=  questions=(map @tas card-question)
   ^-  json
@@ -848,7 +1007,12 @@
       ['back' s+(clean-body back.job)]
       ['mode' s+mode.job]
       ['question' s+prompt.job]
-      ['provider' s+provider.job]
+      ['provider' s+provider.profile.job]
+      ['model_id' s+id.profile.job]
+      ['model_role' s+role.profile.job]
+      ['model_selector' s+selector.profile.job]
+      ['model' s+model.profile.job]
+      ['model_label' s+label.profile.job]
       ['created_at' s+(scot %da created-at.job)]
       ['status' s+status.job]
       ['worker_id' s+worker.job]
@@ -985,6 +1149,23 @@
   :~  ['status' s+result-status]
       ['question' (question-json question-id job)]
       ['path' s+(crip "/apps/seer/stack/{(scow %p owner.job)}/{(trip stack.job)}")]
+  ==
+::
+++  catalog-write-result
+  |=  [status=@t worker=@t model-count=@ud]
+  ^-  json
+  %-  pairs:enjs:format
+  :~  ['status' s+status]
+      ['worker_id' s+worker]
+      ['model_count' (numb:enjs:format model-count)]
+  ==
+::
+++  model-write-result
+  |=  [status=@t profile=assistant-model]
+  ^-  json
+  %-  pairs:enjs:format
+  :~  ['status' s+status]
+      ['model' (assistant-model-json profile)]
   ==
 ::
 ++  write-result

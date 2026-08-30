@@ -81,8 +81,19 @@
           stak=@tas
           item=@tas
           mode=assistant-mode
-          provider=ai-provider
+          profile=assistant-model
           prompt=@t
+      ==
+      [%clear-assistant-models worker=@t]
+      $:  %register-assistant-model
+          id=@tas
+          provider=ai-provider
+          role=omp-role
+          selector=@t
+          model=@t
+          label=@t
+          description=@t
+          worker=@t
       ==
       [%claim-card-question id=@tas worker=@t]
       [%answer-card-question id=@tas worker=@t response=@t]
@@ -142,6 +153,24 @@
 ::
 +$  ai-provider  $?(%codex %claude)
 ::
++$  omp-role  $?(%smol %default %slow)
+::
+::  OMP-style profiles keep the human choice (role), exact provider/model
+::  selector, and local execution adapter together. The bridge only registers
+::  profiles backed by a credential it can actually use on this machine.
+::
++$  assistant-model
+  $:  id=@tas
+      provider=ai-provider
+      role=omp-role
+      selector=@t
+      model=@t
+      label=@t
+      description=@t
+      worker=@t
+      registered-at=@da
+  ==
+::
 +$  assistant-mode  $?(%ask %edit)
 ::
 +$  question-status  $?(%pending %working %answered %failed)
@@ -159,7 +188,7 @@
       back=@t
       mode=assistant-mode
       prompt=@t
-      provider=ai-provider
+      profile=assistant-model
       created-at=@da
       status=question-status
       worker=@t
@@ -175,6 +204,7 @@
       captures=(map @tas capture)
       provenance=(map [stack=@tas card=@tas] provenance)
       questions=(map @tas card-question)
+      models=(map @tas assistant-model)
   ==
 ::  +stack-info: stack information
 ::

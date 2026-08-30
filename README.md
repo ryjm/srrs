@@ -120,7 +120,7 @@ The AI-facing contract has no approval, delete, or overwrite capability. The
 human gate belongs to `%seer`, not to whichever model happened to draft the
 material.
 
-Seer currently publishes thirteen tools:
+Seer currently publishes sixteen tools:
 
 | Tool | Purpose |
 | --- | --- |
@@ -132,6 +132,9 @@ Seer currently publishes thirteen tools:
 | `seer/begin-capture` | Open a durable learning session that any MCP client can resume. |
 | `seer/stage-card` | Put a source-grounded proposal in the human inbox without queuing it. |
 | `seer/add-card` | Explicitly bypass the inbox and immediately queue a card when the user asks. |
+| `seer/list-assistant-models` | Read the credential-backed OMP model catalog currently available on this machine. |
+| `seer/clear-assistant-models` | Clear stale catalog entries before the local bridge publishes a fresh snapshot. |
+| `seer/register-assistant-model` | Publish one exact provider/model selector under an OMP role. |
 | `seer/list-card-questions` | Read durable in-card questions, provider state, and answer history. |
 | `seer/claim-card-question` | Atomically claim a pending question for one local bridge worker. |
 | `seer/answer-card-question` | Complete a claimed question without allowing another worker to overwrite it. |
@@ -194,9 +197,12 @@ pokes and read-only scries. The inbox is at `/apps/seer/inbox`.
 
 Every card in the library and review session has an **Assistant panel**. Choose
 **Ask** for a grounded explanation or **Edit** to have the agent revise an owned
-card, then choose **ChatGPT · Codex** or **Claude · Claude Code**. Requests and
-results live in `%seer` state, so they appear on every device viewing the planet
-and later requests can use the same card's discussion as context.
+card, then choose an exact model through the OMP roles **Fast** (`smol`),
+**Balanced** (`default`), or **Deep** (`slow`). Each option includes the concrete
+OMP selector, such as `openai-codex/gpt-5.6-terra`. Requests snapshot that
+profile, so retries continue using the same model even after the live catalog
+changes. Results live in `%seer` state, appear on every device viewing the
+planet, and can become context for later requests on the same card.
 
 Edits use the same durable claim/worker queue as questions. The provider must
 return a complete structured title, front, back, and edit summary. `%seer`
@@ -206,13 +212,19 @@ overwritten. The Assistant panel keeps a before/after record after the current
 card is updated. Remote subscribed cards remain ask-only until copied locally.
 
 Seer deliberately does not store an OpenAI or Anthropic credential. The local
-bridge in `bridge/seer-ai-bridge.mjs` polls the question queue through the same
-authenticated MCP endpoint, then invokes either:
+bridge in `bridge/seer-ai-bridge.mjs` verifies each CLI login, publishes only
+models backed by a usable local account, and refreshes that catalog periodically.
+It discovers the current Codex catalog from `codex debug models`; Claude's
+current pinned model family is published only while Claude Code reports a valid
+login. The bridge then polls the question queue through the same authenticated
+MCP endpoint and invokes either:
 
 - `codex exec`, using the existing `codex login` ChatGPT session; or
 - `claude -p`, using the existing Claude Code / Claude.ai login.
 
-The provider gets an isolated, one-turn tutor prompt with no write permission.
+The selected model and OMP role set both the CLI `--model` value and provider
+reasoning effort (`low`, `medium`, or `high`). The provider gets an isolated,
+one-turn tutor prompt with no write permission.
 The bridge removes `OPENAI_API_KEY` and `ANTHROPIC_API_KEY` from the child
 environment so a configured API key cannot silently replace the requested
 subscription login. Card content is treated as untrusted context rather than

@@ -19,6 +19,7 @@
           subscriptions=(map [@p @tas] stack)
           captures=(map @tas capture)
           questions=(map @tas card-question)
+          models=(map @tas assistant-model)
           reviews=(list review)
           =page
           notice=(unit @t)
@@ -197,8 +198,9 @@
                .ai-version p { font-size: .82rem; line-height: 1.5; margin: 0; white-space: pre-wrap; }
                .ai-waiting { color: var(--muted); font-size: .82rem; }
                .ai-form { background: transparent; display: grid; gap: .7rem; }
-               .ai-form-row { align-items: end; display: grid; gap: .65rem; grid-template-columns: 7rem minmax(0, 1fr) 11rem auto; }
+               .ai-form-row { align-items: end; display: grid; gap: .65rem; grid-template-columns: 7rem minmax(0, 1fr) minmax(15rem, 19rem) auto; }
                .ai-form textarea { min-height: 3rem; }
+               .ai-model-empty { border: 1px dashed var(--line-strong); color: var(--muted); font-size: .84rem; line-height: 1.5; padding: .8rem; }
                .inline { display: inline; }
                .inline button { width: auto; }
                .danger-zone { background: transparent; }
@@ -1016,13 +1018,15 @@
             rows=(list [@tas card-question])
         ==
     ^-  manx
+    =/  available-models=(list [@tas assistant-model])
+      ordered-assistant-models
     ;div
       ;div.ai-head
         ;div
           ;div.eyebrow: assistant panel
           ;h3: Ask or improve this card
         ==
-        ;span.pill: your AI account
+        ;span.pill: {<`@ud`(lent available-models)>} models · OMP
       ==
       ;+
       ?~  rows
@@ -1033,6 +1037,11 @@
         |=  [question-id=@tas job=card-question]
         (question-row question-id job return)
       ==
+      ;+
+      ?~  available-models
+        ;div.ai-model-empty.section
+          No signed-in model provider is available. Sign in with Codex or Claude Code on this machine; the local bridge will publish its models here automatically.
+        ==
       ;form.ai-form.section
         =method   "post"
         =action   "/apps/seer/actions/ask-card"
@@ -1058,9 +1067,11 @@
           ==
           ;label
             ;span: answer with
-            ;select(name "provider")
-              ;option(value "codex"): ChatGPT · Codex
-              ;option(value "claude"): Claude · Claude Code
+            ;select(name "model", required "")
+              ;*
+              %+  turn  available-models
+              |=  [model-id=@tas profile=assistant-model]
+              ;option(value (tas-tape model-id), title (trip description.profile)): {(model-option-label profile)}
             ==
           ==
           ;button(type "submit"): Send
@@ -1073,7 +1084,7 @@
     ^-  manx
     ;article.ai-turn
       ;div.ai-head
-        ;div.meta: {(trip mode.job)} · {(trip provider.job)} · {(tas-tape question-id)}
+        ;div.meta: {(trip mode.job)} · {(role-name role.profile.job)} · {(trip label.profile.job)}
         ;span.pill: {(trip status.job)}
       ==
       ;div.ai-question: {(trip prompt.job)}
@@ -1083,8 +1094,8 @@
           ;div.ai-waiting: Waiting for the local assistant bridge…
         %working
           ?:  =(%edit mode.job)
-            ;div.ai-waiting: {(trip provider.job)} is revising the card…
-          ;div.ai-waiting: {(trip provider.job)} is thinking…
+            ;div.ai-waiting: {(trip label.profile.job)} is revising the card…
+          ;div.ai-waiting: {(trip label.profile.job)} is thinking…
         %answered
           ?:  =(%ask mode.job)
             ;div.ai-answer: {(trip response.job)}
@@ -1136,6 +1147,44 @@
           ==
       ==
     ==
+  ::
+  ++  ordered-assistant-models
+    ^-  (list [@tas assistant-model])
+    %+  sort  ~(tap by models)
+    |=  [a=[@tas assistant-model] b=[@tas assistant-model]]
+    =/  a-rank=@ud  (role-rank role.+.a)
+    =/  b-rank=@ud  (role-rank role.+.b)
+    ?:  =(a-rank b-rank)
+      (lth -.a -.b)
+    (lth a-rank b-rank)
+  ::
+  ++  role-rank
+    |=  role=omp-role
+    ^-  @ud
+    ?-  role
+      %smol     0
+      %default  1
+      %slow     2
+    ==
+  ::
+  ++  role-name
+    |=  role=omp-role
+    ^-  tape
+    ?-  role
+      %smol     "Fast"
+      %default  "Balanced"
+      %slow     "Deep"
+    ==
+  ::
+  ++  model-option-label
+    |=  profile=assistant-model
+    ^-  tape
+    =/  provider-name=tape
+      ?-  provider.profile
+        %codex   "Codex"
+        %claude  "Claude Code"
+      ==
+    "{(role-name role.profile)} · {(trip label.profile)} · {provider-name}"
   ::
   ++  card-questions
     |=  [owner=@p stack-name=@tas item-name=@tas]

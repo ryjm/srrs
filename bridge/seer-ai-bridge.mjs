@@ -15,6 +15,88 @@ const configPath = configFlag >= 0 ? process.argv[configFlag + 1] : (process.env
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 let rpcId = 1_000;
 
+const OMP_ROLE_EFFORT = Object.freeze({ smol: "low", default: "medium", slow: "high" });
+
+export function reasoningEffort(role) {
+  return OMP_ROLE_EFFORT[role] || OMP_ROLE_EFFORT.default;
+}
+
+export function codexProfilesFromCatalog(payload) {
+  const models = Array.isArray(payload?.models) ? payload.models : [];
+  const families = new Map();
+  for (const entry of models) {
+    const match = String(entry?.slug || "").match(/^gpt-(\d+)\.(\d+)-(luna|terra|sol)$/);
+    if (!match || entry.visibility !== "list") continue;
+    const version = `${match[1]}.${match[2]}`;
+    if (!families.has(version)) families.set(version, new Map());
+    families.get(version).set(match[3], entry);
+  }
+  const latest = [...families.keys()]
+    .filter((version) => families.get(version).size === 3)
+    .sort((a, b) => {
+      const [aMajor, aMinor] = a.split(".").map(Number);
+      const [bMajor, bMinor] = b.split(".").map(Number);
+      return bMajor - aMajor || bMinor - aMinor;
+    })[0];
+  if (!latest) return [];
+
+  const roles = { luna: "smol", terra: "default", sol: "slow" };
+  return ["luna", "terra", "sol"].map((tier) => {
+    const entry = families.get(latest).get(tier);
+    const role = roles[tier];
+    return {
+      id: `${role}-codex-${entry.slug.replace(/[^a-z0-9]+/g, "-")}`,
+      provider: "codex",
+      role,
+      selector: `openai-codex/${entry.slug}`,
+      model: entry.slug,
+      label: entry.display_name || entry.slug,
+      description: entry.description || "Available through the signed-in Codex account.",
+    };
+  });
+}
+
+export function claudeProfiles() {
+  return [
+    {
+      id: "smol-claude-haiku-4-5",
+      provider: "claude",
+      role: "smol",
+      selector: "anthropic/claude-haiku-4-5",
+      model: "claude-haiku-4-5",
+      label: "Claude Haiku 4.5",
+      description: "Fast, efficient model for simple questions and lightweight card edits.",
+    },
+    {
+      id: "default-claude-sonnet-5",
+      provider: "claude",
+      role: "default",
+      selector: "anthropic/claude-sonnet-5",
+      model: "claude-sonnet-5",
+      label: "Claude Sonnet 5",
+      description: "Current everyday Claude model with a native one-million-token context window.",
+    },
+    {
+      id: "slow-claude-opus-5",
+      provider: "claude",
+      role: "slow",
+      selector: "anthropic/claude-opus-5",
+      model: "claude-opus-5",
+      label: "Claude Opus 5",
+      description: "Deep reasoning model for difficult explanations and substantial revisions.",
+    },
+    {
+      id: "slow-claude-fable-5",
+      provider: "claude",
+      role: "slow",
+      selector: "anthropic/claude-fable-5",
+      model: "claude-fable-5",
+      label: "Claude Fable 5",
+      description: "Anthropic's most capable long-horizon model; some plans may use usage credits.",
+    },
+  ];
+}
+
 export function extractMcpCookie(toml, wantedUrl, env = process.env) {
   const sections = toml.split(/^\s*\[(?=mcp_servers\.)/m).slice(1);
   for (const raw of sections) {
@@ -40,6 +122,8 @@ async function loadConfig() {
   }
   config.mcpUrl ||= "http://127.0.0.1:8080/mcp";
   config.pollIntervalMs ||= 2_000;
+  config.catalogRefreshMs ||= 300_000;
+  config.timeoutMs ||= 180_000;
   config.workerId ||= `${hostname()}-${process.pid}`;
   config.codex ||= {};
   config.claude ||= {};
@@ -86,16 +170,51 @@ async function runningCodexExecutable() {
 }
 
 async function resolveProviders(config) {
-  const codex = config.codex.enabled === false ? null : (
+  const codexCommand = config.codex.enabled === false ? null : (
     process.env.CODEX_BIN || config.codex.command || await commandFromPath("codex") || await runningCodexExecutable()
   );
-  const claude = config.claude.enabled === false ? null : (
+  const claudeCommand = config.claude.enabled === false ? null : (
     process.env.CLAUDE_BIN || config.claude.command || await commandFromPath("claude")
   );
+  const codex = await executable(codexCommand) && await codexLoggedIn(codexCommand, config)
+    ? codexCommand
+    : null;
+  const claude = await executable(claudeCommand) && await claudeLoggedIn(claudeCommand, config)
+    ? claudeCommand
+    : null;
   return {
-    codex: await executable(codex) ? codex : null,
-    claude: await executable(claude) ? claude : null,
+    codex,
+    claude,
   };
+}
+
+async function codexLoggedIn(command, config) {
+  const env = { ...process.env };
+  delete env.OPENAI_API_KEY;
+  try {
+    const { stdout, stderr } = await runProcess(command, ["login", "status"], {
+      env,
+      timeoutMs: Math.min(config.timeoutMs, 15_000),
+    });
+    const status = `${stdout}\n${stderr}`;
+    return /logged in using/i.test(status) && !/not logged in/i.test(status);
+  } catch {
+    return false;
+  }
+}
+
+async function claudeLoggedIn(command, config) {
+  const env = { ...process.env };
+  delete env.ANTHROPIC_API_KEY;
+  try {
+    const { stdout } = await runProcess(command, ["auth", "status"], {
+      env,
+      timeoutMs: Math.min(config.timeoutMs, 15_000),
+    });
+    return JSON.parse(stdout)?.loggedIn === true;
+  } catch {
+    return false;
+  }
 }
 
 async function resolveCookie(config) {
@@ -146,6 +265,39 @@ async function callTool(config, cookie, name, toolArgs = {}) {
   const text = await response.text();
   if (!response.ok) throw new Error(`MCP HTTP ${response.status}: ${text.slice(0, 300)}`);
   return parseMcpResponse(text);
+}
+
+async function discoverModelProfiles(providers, config) {
+  const profiles = [];
+  if (providers.codex) {
+    const env = { ...process.env };
+    delete env.OPENAI_API_KEY;
+    const { stdout } = await runProcess(providers.codex, ["debug", "models"], {
+      env,
+      timeoutMs: Math.min(config.timeoutMs, 45_000),
+    });
+    profiles.push(...codexProfilesFromCatalog(JSON.parse(stdout)));
+  }
+  if (providers.claude) profiles.push(...claudeProfiles());
+  return profiles;
+}
+
+async function publishModelProfiles(config, cookie, profiles) {
+  await callTool(config, cookie, "seer/clear-assistant-models", {
+    worker_id: config.workerId,
+  });
+  for (const profile of profiles) {
+    await callTool(config, cookie, "seer/register-assistant-model", {
+      model_id: profile.id,
+      provider: profile.provider,
+      role: profile.role,
+      selector: profile.selector,
+      model: profile.model,
+      label: profile.label,
+      description: profile.description,
+      worker_id: config.workerId,
+    });
+  }
 }
 
 export function buildTutorPrompt(job, history = []) {
@@ -263,14 +415,15 @@ function runProcess(command, childArgs, options = {}) {
   });
 }
 
-async function askCodex(command, prompt, config) {
+async function askCodex(command, prompt, config, job) {
   const dir = await mkdtemp(join(tmpdir(), "seer-codex-"));
   const output = join(dir, "answer.txt");
   const env = { ...process.env };
   delete env.OPENAI_API_KEY;
   try {
-    await runProcess(command, [
+    const childArgs = [
       "--ask-for-approval", "never",
+      "-c", `model_reasoning_effort="${reasoningEffort(job.model_role)}"`,
       "exec",
       "--ephemeral",
       "--skip-git-repo-check",
@@ -279,8 +432,10 @@ async function askCodex(command, prompt, config) {
       "--sandbox", "read-only",
       "-C", dir,
       "--output-last-message", output,
-      "-",
-    ], { cwd: dir, env, stdin: prompt, timeoutMs: config.timeoutMs });
+    ];
+    if (job.model && job.model !== "default") childArgs.push("--model", job.model);
+    childArgs.push("-");
+    await runProcess(command, childArgs, { cwd: dir, env, stdin: prompt, timeoutMs: config.timeoutMs });
     const answer = (await readFile(output, "utf8")).trim();
     if (!answer) throw new Error("Codex returned an empty answer");
     return answer;
@@ -289,17 +444,20 @@ async function askCodex(command, prompt, config) {
   }
 }
 
-async function askClaude(command, prompt, config) {
+async function askClaude(command, prompt, config, job) {
   const env = { ...process.env };
   // Claude Code documents that this variable overrides a Claude.ai login.
   delete env.ANTHROPIC_API_KEY;
-  const { stdout } = await runProcess(command, [
+  const childArgs = [
     "-p", prompt,
     "--output-format", "json",
     "--max-turns", "1",
     "--tools", "",
     "--permission-mode", "dontAsk",
-  ], { env, timeoutMs: config.timeoutMs });
+    "--effort", reasoningEffort(job.model_role),
+  ];
+  if (job.model && job.model !== "default") childArgs.push("--model", job.model);
+  const { stdout } = await runProcess(command, childArgs, { env, timeoutMs: config.timeoutMs });
   return parseClaudeResult(stdout);
 }
 
@@ -341,8 +499,8 @@ async function processQuestion(config, cookie, providers, job, allQuestions) {
   const prompt = mode === "edit" ? buildEditPrompt(job, history) : buildTutorPrompt(job, history);
   try {
     const result = provider === "claude"
-      ? await askClaude(command, prompt, config)
-      : await askCodex(command, prompt, config);
+      ? await askClaude(command, prompt, config, job)
+      : await askCodex(command, prompt, config, job);
     if (mode === "edit") {
       const edit = parseEditResult(result);
       await callTool(config, cookie, "seer/apply-card-edit", {
@@ -350,14 +508,14 @@ async function processQuestion(config, cookie, providers, job, allQuestions) {
         worker_id: config.workerId,
         ...edit,
       });
-      console.log(`[seer-ai] edited ${job.question_id} with ${provider}`);
+      console.log(`[seer-ai] edited ${job.question_id} with ${job.model_selector || provider}`);
     } else {
       await callTool(config, cookie, "seer/answer-card-question", {
         question_id: job.question_id,
         worker_id: config.workerId,
         answer: result,
       });
-      console.log(`[seer-ai] answered ${job.question_id} with ${provider}`);
+      console.log(`[seer-ai] answered ${job.question_id} with ${job.model_selector || provider}`);
     }
   } catch (error) {
     const message = safeError(error, provider);
@@ -381,17 +539,28 @@ async function poll(config, cookie, providers) {
 async function main() {
   const config = await loadConfig();
   const cookie = await resolveCookie(config);
-  const providers = await resolveProviders(config);
-  console.log(`[seer-ai] bridge ${config.workerId}; codex=${providers.codex ? "ready" : "unavailable"}; claude=${providers.claude ? "ready" : "unavailable"}`);
+  let providers = await resolveProviders(config);
+  let profiles = await discoverModelProfiles(providers, config);
+  await publishModelProfiles(config, cookie, profiles);
+  console.log(`[seer-ai] bridge ${config.workerId}; codex=${providers.codex ? "ready" : "unavailable"}; claude=${providers.claude ? "ready" : "unavailable"}; models=${profiles.length}`);
   if (once) {
     await poll(config, cookie, providers);
     return;
   }
+  let nextCatalogRefresh = Date.now() + config.catalogRefreshMs;
   while (true) {
     try {
+      if (Date.now() >= nextCatalogRefresh) {
+        providers = await resolveProviders(config);
+        profiles = await discoverModelProfiles(providers, config);
+        await publishModelProfiles(config, cookie, profiles);
+        nextCatalogRefresh = Date.now() + config.catalogRefreshMs;
+        console.log(`[seer-ai] refreshed OMP catalog; codex=${providers.codex ? "ready" : "unavailable"}; claude=${providers.claude ? "ready" : "unavailable"}; models=${profiles.length}`);
+      }
       await poll(config, cookie, providers);
     } catch (error) {
       console.error(`[seer-ai] poll failed: ${safeError(error, "codex")}`);
+      if (Date.now() >= nextCatalogRefresh) nextCatalogRefresh = Date.now() + 30_000;
     }
     await sleep(config.pollIntervalMs);
   }

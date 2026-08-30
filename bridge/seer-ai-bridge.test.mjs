@@ -4,9 +4,12 @@ import test from "node:test";
 import {
   buildEditPrompt,
   buildTutorPrompt,
+  claudeProfiles,
+  codexProfilesFromCatalog,
   extractMcpCookie,
   parseClaudeResult,
   parseEditResult,
+  reasoningEffort,
 } from "./seer-ai-bridge.mjs";
 
 test("extractMcpCookie selects the matching MCP server", () => {
@@ -93,4 +96,35 @@ test("Claude login failures are not stored as successful tutor answers", () => {
     parseClaudeResult(JSON.stringify({ is_error: false, result: "A useful answer" })),
     "A useful answer",
   );
+});
+
+test("Codex catalog becomes exact OMP smol/default/slow profiles", () => {
+  const profiles = codexProfilesFromCatalog({ models: [
+    { slug: "gpt-5.5", visibility: "list" },
+    { slug: "gpt-5.6-sol", display_name: "GPT-5.6-Sol", description: "frontier", visibility: "list" },
+    { slug: "gpt-5.6-terra", display_name: "GPT-5.6-Terra", description: "balanced", visibility: "list" },
+    { slug: "gpt-5.6-luna", display_name: "GPT-5.6-Luna", description: "fast", visibility: "list" },
+  ] });
+  assert.deepEqual(profiles.map(({ role, selector, model }) => ({ role, selector, model })), [
+    { role: "smol", selector: "openai-codex/gpt-5.6-luna", model: "gpt-5.6-luna" },
+    { role: "default", selector: "openai-codex/gpt-5.6-terra", model: "gpt-5.6-terra" },
+    { role: "slow", selector: "openai-codex/gpt-5.6-sol", model: "gpt-5.6-sol" },
+  ]);
+});
+
+test("Claude profiles pin every current model and preserve OMP roles", () => {
+  const profiles = claudeProfiles();
+  assert.deepEqual(profiles.map(({ role, model }) => [role, model]), [
+    ["smol", "claude-haiku-4-5"],
+    ["default", "claude-sonnet-5"],
+    ["slow", "claude-opus-5"],
+    ["slow", "claude-fable-5"],
+  ]);
+  assert.ok(profiles.every(({ selector }) => selector.startsWith("anthropic/")));
+});
+
+test("OMP roles select progressively deeper provider effort", () => {
+  assert.equal(reasoningEffort("smol"), "low");
+  assert.equal(reasoningEffort("default"), "medium");
+  assert.equal(reasoningEffort("slow"), "high");
 });
