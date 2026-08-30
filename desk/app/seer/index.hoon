@@ -451,8 +451,8 @@
     =/  available-models=(list [@tas assistant-model])  ordered-assistant-models
     =/  waiting=?  (changes-waiting requests)
     ;section
-      =hx-get      ?:(waiting "/apps/seer/inbox" "")
-      =hx-trigger  ?:(waiting "every 2s" "")
+      =hx-get      "/apps/seer/inbox"
+      =hx-trigger  ?:(waiting "every 2s" "none")
       ;div.page-head
         ;div.page-copy
           ;div.kicker: command surface
