@@ -108,6 +108,20 @@
       [%fail-card-question id=@tas worker=@t response=@t]
       [%retry-card-question id=@tas]
       [%delete-card-question id=@tas]
+      $:  %request-change
+          id=@tas
+          target=change-target
+          profile=assistant-model
+          prompt=@t
+      ==
+      [%claim-change id=@tas worker=@t]
+      [%stage-change-operation id=@tas worker=@t operation=state-operation]
+      [%finish-change id=@tas worker=@t summary=@t artifact=@t]
+      [%fail-change id=@tas worker=@t response=@t]
+      [%apply-change id=@tas]
+      [%reject-change id=@tas]
+      [%retry-change id=@tas]
+      [%delete-change id=@tas]
   ==
 ::
 ::  AI capture sessions live on the ship, not in any one model's context.
@@ -199,12 +213,51 @@
       updated-at=@da
   ==
 ::
++$  change-target  $?(%library %desk)
+::
++$  change-status  $?(%pending %working %ready %applied %rejected %failed)
+::
+::  A reviewed capability language for prompt-driven changes.  Original
+::  values are snapshots used to reject stale plans before they can overwrite
+::  a newer human edit.
+::
++$  state-operation-kind
+  $?(%create-stack %rename-stack %delete-stack %create-card %edit-card %delete-card %queue-card)
+::
++$  state-operation
+  $:  kind=state-operation-kind
+      stack=@tas
+      card=@tas
+      title=@t
+      front=@t
+      back=@t
+      original-title=@t
+      original-front=@t
+      original-back=@t
+  ==
+::
++$  change-request
+  $:  id=@tas
+      target=change-target
+      prompt=@t
+      profile=assistant-model
+      created-at=@da
+      status=change-status
+      worker=@t
+      summary=@t
+      operations=(list state-operation)
+      artifact=@t
+      response=@t
+      updated-at=@da
+  ==
+::
 +$  ai-state
   $:  stacks=(map @tas stack)
       captures=(map @tas capture)
       provenance=(map [stack=@tas card=@tas] provenance)
       questions=(map @tas card-question)
       models=(map @tas assistant-model)
+      changes=(map @tas change-request)
   ==
 ::  +stack-info: stack information
 ::

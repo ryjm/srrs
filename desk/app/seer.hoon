@@ -13,6 +13,7 @@
       [%5 state-four]
       [%6 state-five]
       [%7 state-six]
+      [%8 state-seven]
   ==
 ::
 +$  state-zero
@@ -66,6 +67,16 @@
       questions=(map @tas card-question)
       models=(map @tas assistant-model)
   ==
++$  state-seven
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+  ==
 +$  card-question-five
   $:  id=@tas
       owner=@p
@@ -107,7 +118,7 @@
 ::
 --
 ::
-=|  [%7 state-six]
+=|  [%8 state-seven]
 =*  state  -
 ^-  agent:gall
 =<
@@ -250,14 +261,14 @@
           |=  old-stack=stack-1
           ^-  stack
           (convert-stack-1-2 old-stack)
-        [%7 new-stacks ~ new-stack-subs ~ ~ ~ ~]
+        [%8 new-stacks ~ new-stack-subs ~ ~ ~ ~ ~]
       ==
     %2
-      [~ this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~])]
+      [~ this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~])]
     %3
-      [init-cards this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~])]
+      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~])]
     %4
-      [init-cards this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~])]
+      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~ ~])]
     %5
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -282,7 +293,7 @@
             ''
             updated-at.old
         ==
-      [init-cards this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~])]
+      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~])]
     %6
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -307,8 +318,10 @@
             result-back.old
             updated-at.old
         ==
-      [init-cards this(state [%7 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~])]
+      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~])]
     %7
+      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state ~])]
+    %8
       [init-cards this(state p.old-state)]
     ==
     ++  legacy-model
@@ -351,7 +364,7 @@
         [%x %review ~]        ``noun+!>(all-reviews)
         [%x %all ~]        ``noun+!>(stacks.state)
         [%x %ai-state ~]
-      ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state models.state])
+      ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state models.state changes.state])
         [%x %stack-subs ~]        ``noun+!>(stack-subs.state)
         [%x %stacks *]
       ?~  t.t.path
@@ -750,6 +763,64 @@
       `'Review saved.'
     ==
   ::
+      [[~ [%apps %seer %actions %request-change ~]] ~]
+    =/  prompt  (form-got fields 'prompt')
+    =/  target-name  (slav %tas (form-got fields 'target'))
+    =/  target=change-target  ?:(=(%desk target-name) %desk %library)
+    =/  model-id  (slav %tas (form-got fields 'model'))
+    =/  maybe-profile  (~(get by models.state) model-id)
+    ?~  maybe-profile
+      (respond-page eyre-id [%inbox ~] `'That assistant model is no longer available. Choose another model and try again.')
+    =/  id-suffix=tape
+      %+  skim
+        (trip (scot %uv (mug [now.bol target prompt model-id])))
+      |=  char=@
+      !=(char '.')
+    =/  change-id=@tas
+      `@tas`(slav %tas (crip (weld "change-" id-suffix)))
+    %:  apply-web-action
+      eyre-id
+      [%request-change change-id target u.maybe-profile prompt]
+      [%inbox ~]
+      `'Change request queued for {(trip label.u.maybe-profile)}.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %apply-change ~]] ~]
+    =/  change-id  (slav %tas (form-got fields 'change-id'))
+    %:  apply-web-action
+      eyre-id
+      [%apply-change change-id]
+      [%inbox ~]
+      `'Change plan approved.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %reject-change ~]] ~]
+    =/  change-id  (slav %tas (form-got fields 'change-id'))
+    %:  apply-web-action
+      eyre-id
+      [%reject-change change-id]
+      [%inbox ~]
+      `'Change request rejected.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %retry-change ~]] ~]
+    =/  change-id  (slav %tas (form-got fields 'change-id'))
+    %:  apply-web-action
+      eyre-id
+      [%retry-change change-id]
+      [%inbox ~]
+      `'Change request queued again against fresh state.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %delete-change ~]] ~]
+    =/  change-id  (slav %tas (form-got fields 'change-id'))
+    %:  apply-web-action
+      eyre-id
+      [%delete-change change-id]
+      [%inbox ~]
+      `'Change history removed.'
+    ==
+  ::
       [[~ [%apps %seer %actions %ask-card ~]] ~]
     =/  owner          (slav %p (form-got fields 'owner'))
     =/  stack-name     (slav %tas (form-got fields 'stack'))
@@ -903,12 +974,181 @@
   |=  [page=page:index notice=(unit @t)]
   ^-  simple-payload:http
   %-  manx-response:gen
-  (render:index our.bol stacks.state stack-subs.state captures.state questions.state models.state all-reviews page notice)
+  (render:index our.bol stacks.state stack-subs.state captures.state questions.state models.state changes.state all-reviews page notice)
 ::
 ++  form-got
   |=  [fields=(map @t @t) key=@t]
   ^-  @t
   (fall (~(get by fields) key) '')
+::
+++  clean-body
+  |=  raw=@t
+  ^-  @t
+  =/  marker  (find ";>" (trip raw))
+  ?~  marker  raw
+  =/  start  (add 3 u.marker)
+  (cut 3 [start (met 3 raw)] raw)
+::
+++  local-stack-title
+  |=  =stack
+  ^-  @t
+  ?.  ?=(%.y -.info.stack)
+    name.stack
+  title.p.info.stack
+::
+++  operation-shape-valid
+  |=  op=state-operation
+  ^-  ?
+  ?-  kind.op
+    %create-stack  ?&(=(0 (met 3 card.op)) !=(0 (met 3 title.op)))
+    %rename-stack  ?&(=(0 (met 3 card.op)) !=(0 (met 3 title.op)) !=(0 (met 3 original-title.op)))
+    %delete-stack  ?&(=(0 (met 3 card.op)) !=(0 (met 3 original-title.op)))
+    %create-card   ?&(!=(0 (met 3 card.op)) !=(0 (met 3 title.op)) !=(0 (met 3 front.op)) !=(0 (met 3 back.op)))
+    %edit-card     ?&(!=(0 (met 3 card.op)) !=(0 (met 3 title.op)) !=(0 (met 3 front.op)) !=(0 (met 3 back.op)) !=(0 (met 3 original-title.op)))
+    %delete-card   ?&(!=(0 (met 3 card.op)) !=(0 (met 3 original-title.op)))
+    %queue-card    ?&(!=(0 (met 3 card.op)) !=(0 (met 3 original-title.op)))
+  ==
+::
+++  operation-valid
+  |=  op=state-operation
+  ^-  ?
+  =/  maybe-stack  (~(get by stacks.state) stack.op)
+  ?-  kind.op
+    %create-stack
+      ?&  !(~(has by stacks.state) stack.op)
+          (operation-shape-valid op)
+      ==
+    %rename-stack
+      ?^  maybe-stack
+        ?&  (operation-shape-valid op)
+            =(original-title.op (local-stack-title u.maybe-stack))
+        ==
+      %.n
+    %delete-stack
+      ?^  maybe-stack
+        ?&  (operation-shape-valid op)
+            =(original-title.op (local-stack-title u.maybe-stack))
+        ==
+      %.n
+    %create-card
+      ?^  maybe-stack
+        ?&  (operation-shape-valid op)
+            !(~(has by items.u.maybe-stack) card.op)
+        ==
+      %.n
+    %edit-card
+      ?~  maybe-stack  %.n
+      =/  maybe-item  (~(get by items.u.maybe-stack) card.op)
+      ?~  maybe-item  %.n
+      ?&  (operation-shape-valid op)
+          =(original-title.op title.content.u.maybe-item)
+          =(original-front.op (clean-body front.content.u.maybe-item))
+          =(original-back.op (clean-body back.content.u.maybe-item))
+      ==
+    %delete-card
+      ?~  maybe-stack  %.n
+      =/  maybe-item  (~(get by items.u.maybe-stack) card.op)
+      ?~  maybe-item  %.n
+      ?&  (operation-shape-valid op)
+          =(original-title.op title.content.u.maybe-item)
+          =(original-front.op (clean-body front.content.u.maybe-item))
+          =(original-back.op (clean-body back.content.u.maybe-item))
+      ==
+    %queue-card
+      ?~  maybe-stack  %.n
+      =/  maybe-item  (~(get by items.u.maybe-stack) card.op)
+      ?~  maybe-item  %.n
+      ?&  (operation-shape-valid op)
+          =(original-title.op title.content.u.maybe-item)
+          =(original-front.op (clean-body front.content.u.maybe-item))
+          =(original-back.op (clean-body back.content.u.maybe-item))
+      ==
+  ==
+::
+++  change-valid
+  |=  ops=(list state-operation)
+  ^-  ?
+  ?&  (operations-coherent ops)
+      (operations-valid ops)
+  ==
+::
+++  operations-valid
+  |=  ops=(list state-operation)
+  ^-  ?
+  ?~  ops  %.y
+  ?&  (operation-valid i.ops)
+      $(ops t.ops)
+  ==
+::
+++  operations-coherent
+  |=  ops=(list state-operation)
+  ^-  ?
+  ?~  ops  %.y
+  ?:  (operation-conflicts i.ops t.ops)  %.n
+  $(ops t.ops)
+::
+++  operation-conflicts
+  |=  [op=state-operation rest=(list state-operation)]
+  ^-  ?
+  ?~  rest  %.n
+  =/  other  i.rest
+  =/  same-stack=?  =(stack.op stack.other)
+  =/  same-target=?
+    ?&  same-stack
+        ?:  =(0 card.op)
+          =(0 card.other)
+        =(card.op card.other)
+    ==
+  =/  structural=?
+    ?&  same-stack
+        ?|  =(%create-stack kind.op)
+            =(%delete-stack kind.op)
+            =(%create-stack kind.other)
+            =(%delete-stack kind.other)
+        ==
+    ==
+  ?|  same-target
+      structural
+      $(rest t.rest)
+  ==
+::
+++  apply-operations
+  |=  ops=(list state-operation)
+  ^-  (quip card _state)
+  ?~  ops  [~ state]
+  =/  op  i.ops
+  =/  act=action
+    ?-  kind.op
+      %create-stack  [%new-stack stack.op title.op *items]
+      %rename-stack  [%edit-stack stack.op title.op]
+      %delete-stack  [%delete-stack our.bol stack.op]
+      %create-card
+        :*  %new-item
+            our.bol
+            our.bol
+            stack.op
+            card.op
+            title.op
+            [read=*rule:clay write=*rule:clay]
+            front.op
+            back.op
+        ==
+      %edit-card
+        :*  %edit-item
+            our.bol
+            stack.op
+            card.op
+            title.op
+            [read=*rule:clay write=*rule:clay]
+            front.op
+            back.op
+        ==
+      %delete-card  [%delete-item stack.op card.op]
+      %queue-card   [%raise-item our.bol stack.op card.op]
+    ==
+  =^  first-cards  state  (poke-seer-action act)
+  =^  rest-cards  state  $(ops t.ops)
+  [(weld first-cards rest-cards) state]
 ::
 ++  grade
   |=  value=@t
@@ -1344,6 +1584,141 @@
       %delete-card-question
     =.  questions.state  (~(del by questions.state) id.act)
     [~ state]
+      %request-change
+    ?:  ?|  =(0 (met 3 prompt.act))
+            (~(has by changes.state) id.act)
+        ==
+      [~ state]
+    =/  request=change-request
+      :*  id.act
+          target.act
+          prompt.act
+          profile.act
+          now.bol
+          %pending
+          ''
+          ''
+          ~
+          ''
+          ''
+          now.bol
+      ==
+    =.  changes.state  (~(put by changes.state) id.act request)
+    [~ state]
+      %claim-change
+    =/  maybe-request  (~(get by changes.state) id.act)
+    ?~  maybe-request  [~ state]
+    =/  request  u.maybe-request
+    ?.  =(%pending status.request)  [~ state]
+    =.  status.request      %working
+    =.  worker.request      worker.act
+    =.  updated-at.request  now.bol
+    =.  changes.state  (~(put by changes.state) id.act request)
+    [~ state]
+      %stage-change-operation
+    =/  maybe-request  (~(get by changes.state) id.act)
+    ?~  maybe-request  [~ state]
+    =/  request  u.maybe-request
+    ?.  ?&  =(%working status.request)
+            =(%library target.request)
+            =(worker.act worker.request)
+            (operation-shape-valid operation.act)
+            (lth (lent operations.request) 64)
+        ==
+      [~ state]
+    =.  operations.request  [operation.act operations.request]
+    =.  updated-at.request  now.bol
+    =.  changes.state  (~(put by changes.state) id.act request)
+    [~ state]
+      %finish-change
+    =/  maybe-request  (~(get by changes.state) id.act)
+    ?~  maybe-request  [~ state]
+    =/  request  u.maybe-request
+    ?.  ?&  =(%working status.request)
+            =(worker.act worker.request)
+            !=(0 (met 3 summary.act))
+            ?:  =(%library target.request)
+              !=(~ operations.request)
+            !=(0 (met 3 artifact.act))
+        ==
+      [~ state]
+    =.  status.request      %ready
+    =.  summary.request     summary.act
+    =.  operations.request  (flop operations.request)
+    =.  artifact.request    artifact.act
+    =.  updated-at.request  now.bol
+    =.  changes.state  (~(put by changes.state) id.act request)
+    [~ state]
+      %fail-change
+    =/  maybe-request  (~(get by changes.state) id.act)
+    ?~  maybe-request  [~ state]
+    =/  request  u.maybe-request
+    ?.  ?&  =(%working status.request)
+            =(worker.act worker.request)
+        ==
+      [~ state]
+    =.  status.request      %failed
+    =.  response.request    response.act
+    =.  updated-at.request  now.bol
+    =.  changes.state  (~(put by changes.state) id.act request)
+    [~ state]
+      %apply-change
+    =/  maybe-request  (~(get by changes.state) id.act)
+    ?~  maybe-request  [~ state]
+    =/  request  u.maybe-request
+    ?.  ?&  =(%ready status.request)
+            =(%library target.request)
+        ==
+      [~ state]
+    ?.  (change-valid operations.request)
+      =.  status.request      %failed
+      =.  response.request    'The library changed after this plan was prepared. Nothing was applied; retry to build a fresh plan.'
+      =.  updated-at.request  now.bol
+      =.  changes.state  (~(put by changes.state) id.act request)
+      [~ state]
+    =^  operation-cards  state  (apply-operations operations.request)
+    =.  status.request      %applied
+    =.  response.request    'Applied after human approval.'
+    =.  updated-at.request  now.bol
+    =.  changes.state  (~(put by changes.state) id.act request)
+    [operation-cards state]
+      %reject-change
+    =/  maybe-request  (~(get by changes.state) id.act)
+    ?~  maybe-request  [~ state]
+    =/  request  u.maybe-request
+    ?.  ?|  =(%ready status.request)
+            =(%failed status.request)
+        ==
+      [~ state]
+    =.  status.request      %rejected
+    =.  response.request    'Rejected by the user.'
+    =.  updated-at.request  now.bol
+    =.  changes.state  (~(put by changes.state) id.act request)
+    [~ state]
+      %retry-change
+    =/  maybe-request  (~(get by changes.state) id.act)
+    ?~  maybe-request  [~ state]
+    =/  request  u.maybe-request
+    ?.  =(%failed status.request)  [~ state]
+    =.  status.request      %pending
+    =.  worker.request      ''
+    =.  summary.request     ''
+    =.  operations.request  ~
+    =.  artifact.request    ''
+    =.  response.request    ''
+    =.  updated-at.request  now.bol
+    =.  changes.state  (~(put by changes.state) id.act request)
+    [~ state]
+      %delete-change
+    =/  maybe-request  (~(get by changes.state) id.act)
+    ?~  maybe-request  [~ state]
+    ?.  ?|  =(%applied status.u.maybe-request)
+            =(%rejected status.u.maybe-request)
+            =(%failed status.u.maybe-request)
+        ==
+      [~ state]
+    =.  changes.state  (~(del by changes.state) id.act)
+    [~ state]
   ==
 ::
 ++  peer-seertile
@@ -1400,7 +1775,7 @@
       ~&  >  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *[%7 state-six]]
+      [~ *[%8 state-seven]]
     ==
 ::
 ++  handle-import-stack

@@ -20,6 +20,7 @@
           captures=(map @tas capture)
           questions=(map @tas card-question)
           models=(map @tas assistant-model)
+          changes=(map @tas change-request)
           reviews=(list review)
           =page
           notice=(unit @t)
@@ -37,6 +38,18 @@
     |-
     ?~  rows  0
     (add ?:(=(%complete status.+.i.rows) 1 0) $(rows t.rows))
+  =/  open-change-count=@ud
+    =/  rows=(list [@tas change-request])  ~(tap by changes)
+    |-
+    ?~  rows  0
+    =/  open=?
+      ?|  =(%pending status.+.i.rows)
+          =(%working status.+.i.rows)
+          =(%ready status.+.i.rows)
+          =(%failed status.+.i.rows)
+      ==
+    (add ?:(open 1 0) $(rows t.rows))
+  =/  inbox-count=@ud  (add pending-count open-change-count)
   =/  library-active=?
     ?|  ?=(%stacks -.page)
         ?=(%stack -.page)
@@ -220,6 +233,15 @@
                .decision-row { align-items: center; display: flex; flex-wrap: wrap; gap: .55rem; justify-content: flex-end; }
                .decision-row form { display: block; }
                .proposal-conflict { color: var(--danger); font-size: .82rem; line-height: 1.45; }
+               .command-panel { display: grid; gap: 1rem; }
+               .command-form { border-top: 1px solid var(--line); padding-top: 1rem; }
+               .command-controls { align-items: end; display: grid; gap: .7rem; grid-template-columns: minmax(9rem, .6fr) minmax(16rem, 1.4fr) auto; }
+               .change-list { display: grid; gap: .75rem; }
+               .change-body { padding: 1rem 1.15rem 1.15rem; }
+               .operation-list { display: grid; gap: .55rem; }
+               .operation { border: 1px solid var(--line); border-radius: 3px; display: grid; gap: .65rem; padding: .8rem; }
+               .operation-head { align-items: center; display: flex; gap: .6rem; justify-content: space-between; }
+               .operation p { line-height: 1.5; }
                .mobile-only { display: none; }
                .compose-trigger { cursor: pointer; }
                .compose-body { display: grid; gap: 1rem; }
@@ -345,6 +367,8 @@
                  .proposal-head { display: grid; gap: .6rem; }
                  .decision-row { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
                  .decision-row form, .decision-row button { width: 100%; }
+                 .command-controls { grid-template-columns: 1fr; }
+                 .command-controls button { width: 100%; }
                  .app-footer { display: none; }
                }
                '''
@@ -374,7 +398,7 @@
                 =aria-current  ?:(?=(%inbox -.page) "page" "false")
                 =href          "/apps/seer/inbox"
                 ;span: Inbox
-                ;span.nav-count: {<pending-count>}
+                ;span.nav-count: {<inbox-count>}
               ==
               ;a
                 =class         ?:(library-active "nav-link active" "nav-link")
@@ -423,30 +447,93 @@
   ++  inbox-page
     ^-  manx
     =/  sessions=(list [@tas capture])  ~(tap by captures)
+    =/  requests=(list [@tas change-request])  ~(tap by changes)
+    =/  available-models=(list [@tas assistant-model])  ordered-assistant-models
+    =/  waiting=?  (changes-waiting requests)
     ;section
+      =hx-get      ?:(waiting "/apps/seer/inbox" "")
+      =hx-trigger  ?:(waiting "every 2s" "")
       ;div.page-head
         ;div.page-copy
-          ;div.kicker: human gate
-          ;h1: Capture inbox
-          ;p.muted: Codex and Claude draft here. Nothing enters review until you approve it.
+          ;div.kicker: command surface
+          ;h1: Change Seer
+          ;p.muted: Describe an outcome. The assistant drafts a reviewable plan; your ship changes only after approval.
         ==
         ;div.stat
-          ;div.count: {<pending-count>}
-          ;div.meta: proposals
+          ;div.count: {<open-change-count>}
+          ;div.meta: open plans
+        ==
+      ==
+      ;section.panel.command-panel
+        ;div.form-head
+          ;div.kicker: prompt → plan → approval
+          ;h2: What should change?
+          ;p.muted: Library plans use typed operations with stale-state checks. Functionality requests become implementation briefs for Codex or Claude and never rewrite the desk silently.
+        ==
+        ;+
+        ?~  available-models
+          ;div.ai-model-empty: No signed-in model provider is available. Sign in with Codex or Claude Code on this machine; the bridge will publish its models here automatically.
+        ;form.command-form
+          =method   "post"
+          =action   "/apps/seer/actions/request-change"
+          =hx-post  "/apps/seer/actions/request-change"
+          ;label
+            ;span: instruction
+            ;textarea(name "prompt", required "", placeholder "Rename the MCP stack to “Seer AI integration”, then tighten the card about approval boundaries.");
+          ==
+          ;div.command-controls
+            ;label
+              ;span: target
+              ;select(name "target")
+                ;option(value "library"): My library
+                ;option(value "desk"): Seer itself · proposal only
+              ==
+            ==
+            ;label
+              ;span: plan with
+              ;select(name "model", required "")
+                ;*
+                %+  turn  available-models
+                |=  [model-id=@tas profile=assistant-model]
+                ;option(value (tas-tape model-id), title (trip description.profile)): {(model-option-label profile)}
+              ==
+            ==
+            ;button(type "submit"): Draft plan
+          ==
         ==
       ==
       ;+
-      ?:  =(0 pending-count)
-        ;div.empty
-          ;h2: Your inbox is clear
-          ;p: Ask an AI to “learn this with Seer” and its source-grounded drafts will appear here.
-          ;a.button.secondary(href "/apps/seer/stacks"): Open library
+      ?~  requests
+        ;div.hidden;
+      ;section.change-list.section
+        ;div.form-head
+          ;div.kicker: review queue
+          ;h2: Change requests
         ==
-      ;div.capture-list
         ;*
-        %+  turn  sessions
-        |=  [capture-id=@tas session=capture]
-        (capture-section capture-id session)
+        %+  turn  requests
+        |=  [change-id=@tas request=change-request]
+        (change-row change-id request)
+      ==
+      ;section.capture-history
+        ;div.form-head
+          ;div.kicker: card captures
+          ;h2: Capture inbox
+          ;p.muted: Codex and Claude draft cards here. Nothing enters review until you approve it.
+        ==
+        ;+
+        ?:  =(0 pending-count)
+          ;div.empty
+            ;h2: Your inbox is clear
+            ;p: Ask an AI to “learn this with Seer” and its source-grounded drafts will appear here.
+            ;a.button.secondary(href "/apps/seer/stacks"): Open library
+          ==
+        ;div.capture-list
+          ;*
+          %+  turn  sessions
+          |=  [capture-id=@tas session=capture]
+          (capture-section capture-id session)
+        ==
       ==
       ;+
       ?:  =(0 completed-count)
@@ -462,6 +549,154 @@
           %+  turn  sessions
           |=  [capture-id=@tas session=capture]
           (capture-history-row capture-id session)
+        ==
+      ==
+    ==
+  ::
+  ++  change-row
+    |=  [change-id=@tas request=change-request]
+    ^-  manx
+    ;article.capture.change-request
+      ;div.capture-head
+        ;div.capture-copy
+          ;div.eyebrow: {(trip target.request)} · {(role-name role.profile.request)} · {(trip label.profile.request)}
+          ;h3: {(trip prompt.request)}
+          ;div.capture-meta
+            ;span: {(tas-tape change-id)}
+            ;span: {<(lent operations.request)>} operations
+          ==
+        ==
+        ;span.pill: {(trip status.request)}
+      ==
+      ;div.proposal-body.change-body
+        ;+
+        ?-  status.request
+          %pending
+            ;div.ai-waiting: Waiting for the local assistant bridge to claim this request…
+          %working
+            ;div.ai-waiting: {(trip label.profile.request)} is reading the current state and drafting a plan…
+          %ready
+            ;div
+              ;div.proposal-answer: {(trip summary.request)}
+              ;+
+              ?:  =(%desk target.request)
+                ;div.provenance
+                  ;p: This is an implementation brief, not an executable desk patch. It is durable and available to AI clients through MCP.
+                  ;details.reveal
+                    ;summary: Inspect implementation brief
+                    ;div.proposal-answer: {(trip artifact.request)}
+                  ==
+                ==
+              ;div.operation-list
+                ;*
+                %+  turn  operations.request
+                |=  op=state-operation
+                (operation-row op)
+              ==
+              ;div.decision-row
+                ;form.inline
+                  =method   "post"
+                  =action   "/apps/seer/actions/reject-change"
+                  =hx-post  "/apps/seer/actions/reject-change"
+                  ;input(type "hidden", name "change-id", value (tas-tape change-id));
+                  ;button.danger(type "submit"): Reject
+                ==
+                ;+
+                ?:  =(%library target.request)
+                  ;form.inline(hx-confirm "Apply every operation in this plan to your Seer library?")
+                    =method   "post"
+                    =action   "/apps/seer/actions/apply-change"
+                    =hx-post  "/apps/seer/actions/apply-change"
+                    ;input(type "hidden", name "change-id", value (tas-tape change-id));
+                    ;button(type "submit"): Approve and apply
+                  ==
+                ;span.pill: proposal only
+              ==
+            ==
+          %failed
+            ;div
+              ;div.proposal-conflict: {(trip response.request)}
+              ;div.decision-row
+                ;form.inline
+                  =method   "post"
+                  =action   "/apps/seer/actions/retry-change"
+                  =hx-post  "/apps/seer/actions/retry-change"
+                  ;input(type "hidden", name "change-id", value (tas-tape change-id));
+                  ;button.secondary(type "submit"): Rebuild plan
+                ==
+                ;form.inline
+                  =method   "post"
+                  =action   "/apps/seer/actions/reject-change"
+                  =hx-post  "/apps/seer/actions/reject-change"
+                  ;input(type "hidden", name "change-id", value (tas-tape change-id));
+                  ;button.danger(type "submit"): Reject
+                ==
+              ==
+            ==
+          %applied
+            (change-result change-id request "Applied")
+          %rejected
+            (change-result change-id request "Rejected")
+        ==
+      ==
+    ==
+  ::
+  ++  operation-row
+    |=  op=state-operation
+    ^-  manx
+    ;article.operation
+      ;div.operation-head
+        ;span.pill: {(trip kind.op)}
+        ;span.meta: /{(tas-tape stack.op)}{?:(!=(card.op 0) "/{(tas-tape card.op)}" "")}
+      ==
+      ;+
+      ?-  kind.op
+        %create-stack  ;p: Create stack “{(trip title.op)}”.
+        %rename-stack  ;p: Rename “{(trip original-title.op)}” to “{(trip title.op)}”.
+        %delete-stack  ;p: Delete stack “{(trip original-title.op)}” and all of its cards.
+        %create-card   (card-operation-detail op %.n)
+        %edit-card     (card-operation-detail op %.y)
+        %delete-card   ;p: Delete “{(trip original-title.op)}”.
+        %queue-card    ;p: Queue “{(trip original-title.op)}” for review.
+      ==
+    ==
+  ::
+  ++  card-operation-detail
+    |=  [op=state-operation editing=?]
+    ^-  manx
+    ;details.reveal
+      ;summary: {?:(editing "Inspect before and after" "Inspect new card")}
+      ;div.ai-diff
+        ;+
+        ?:  editing
+          ;div.ai-version
+            ;div.eyebrow: before
+            ;p: {(trip original-title.op)}
+            ;p: {(trip original-front.op)}
+            ;p: {(trip original-back.op)}
+          ==
+        ;div.hidden;
+        ;div.ai-version
+          ;div.eyebrow: after
+          ;p: {(trip title.op)}
+          ;p: {(trip front.op)}
+          ;p: {(trip back.op)}
+        ==
+      ==
+    ==
+  ::
+  ++  change-result
+    |=  [change-id=@tas request=change-request label=tape]
+    ^-  manx
+    ;div
+      ;div.ai-answer: {label} · {(trip summary.request)}
+      ;div.decision-row
+        ;form.inline
+          =method   "post"
+          =action   "/apps/seer/actions/delete-change"
+          =hx-post  "/apps/seer/actions/delete-change"
+          ;input(type "hidden", name "change-id", value (tas-tape change-id));
+          ;button.danger(type "submit"): Forget
         ==
       ==
     ==
@@ -1198,6 +1433,15 @@
   ::
   ++  questions-waiting
     |=  rows=(list [@tas card-question])
+    ^-  ?
+    ?~  rows  %.n
+    ?|  =(%pending status.+.i.rows)
+        =(%working status.+.i.rows)
+        $(rows t.rows)
+    ==
+  ::
+  ++  changes-waiting
+    |=  rows=(list [@tas change-request])
     ^-  ?
     ?~  rows  %.n
     ?|  =(%pending status.+.i.rows)

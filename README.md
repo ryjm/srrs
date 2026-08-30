@@ -116,11 +116,11 @@ or continued in Claude without copying a transcript between them:
    timestamps. Future agents receive that provenance alongside the scheduling
    state, so they can extend weak areas instead of generating generic repeats.
 
-The AI-facing contract has no approval, delete, or overwrite capability. The
-human gate belongs to `%seer`, not to whichever model happened to draft the
-material.
+The AI-facing planning contract has no apply capability. A model may describe
+an edit or deletion, but the human gate belongs to `%seer`, not to whichever
+model happened to draft the material.
 
-Seer currently publishes sixteen tools:
+Seer currently publishes twenty-two tools:
 
 | Tool | Purpose |
 | --- | --- |
@@ -140,6 +140,12 @@ Seer currently publishes sixteen tools:
 | `seer/answer-card-question` | Complete a claimed question without allowing another worker to overwrite it. |
 | `seer/apply-card-edit` | Atomically revise an owned card from a claimed edit job while preserving its original snapshot. |
 | `seer/fail-card-question` | Surface a provider or login failure safely in the card UI. |
+| `seer/state-context` | Read one clean, immutable planning snapshot of every local stack and card. |
+| `seer/list-change-requests` | Read durable library plans and Seer functionality briefs across clients. |
+| `seer/claim-change` | Atomically claim one pending prompt-driven planning job. |
+| `seer/stage-change-operation` | Stage one typed library operation without mutating the library. |
+| `seer/finish-change` | Publish a complete plan or implementation brief into the human review queue. |
+| `seer/fail-change` | Preserve a safe planning failure for retry or rejection. |
 
 Writes are additive and retry-safe. Repeating an identical request returns
 `already-exists` without changing state; reusing an ID with different content
@@ -192,6 +198,31 @@ mcp/import-mcp-prompts {"desk":"seer"}
 The implementation lives in `desk/lib/seer-mcp.hoon`. The agent only exposes
 the manifests; imported tool threads interact with `%seer` through typed Gall
 pokes and read-only scries. The inbox is at `/apps/seer/inbox`.
+
+## Change Seer
+
+The Inbox includes a global prompt surface for changing either **My library**
+or **Seer itself**. Library prompts compile into a deliberately small
+capability language: create, rename, or delete a stack; create, edit, or delete
+a card; and queue a card for review.
+
+The local bridge reads a clean state snapshot, asks the selected exact OMP
+model for structured operations, validates the response, and stages it in
+`%seer`. Every edit and deletion includes the title/front/back values the model
+observed. Approval rechecks every snapshot and the coherence of the whole plan
+before applying any operation; stale, duplicate, or structurally conflicting
+plans fail without changing the library. Planning and application are separate
+durable state transitions, so another browser or AI client can inspect the
+same request.
+
+The **Seer itself** target uses the same queue but intentionally produces an
+implementation brief rather than an executable patch. The brief records the
+desired UX, schema and action changes, MCP contract, migration, safety model,
+tests, and acceptance criteria. This creates a durable runway toward reviewed
+self-evolution while keeping arbitrary noun/code generation outside the
+trusted mutation path. A future patch executor can consume that artifact under
+an exact Clay base revision, isolated build checks, rollback metadata, and a
+second explicit human apply gate.
 
 ## Card assistant
 
