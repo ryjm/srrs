@@ -120,7 +120,7 @@ The AI-facing planning contract has no apply capability. A model may describe
 an edit or deletion, but the human gate belongs to `%seer`, not to whichever
 model happened to draft the material.
 
-Seer currently publishes twenty-two tools:
+Seer currently publishes twenty-three tools:
 
 | Tool | Purpose |
 | --- | --- |
@@ -142,6 +142,7 @@ Seer currently publishes twenty-two tools:
 | `seer/fail-card-question` | Surface a provider or login failure safely in the card UI. |
 | `seer/state-context` | Read one clean, immutable planning snapshot of every local stack and card. |
 | `seer/list-change-requests` | Read durable library plans and Seer functionality briefs across clients. |
+| `seer/request-change` | Let Codex or Claude enqueue the same generic approval-gated prompt workflow as the browser. |
 | `seer/claim-change` | Atomically claim one pending prompt-driven planning job. |
 | `seer/stage-change-operation` | Stage one typed library operation without mutating the library. |
 | `seer/finish-change` | Publish a complete plan or implementation brief into the human review queue. |

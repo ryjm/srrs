@@ -27,6 +27,7 @@
       fail-card-question-tool
       state-context-tool
       list-change-requests-tool
+      request-change-tool
       claim-change-tool
       stage-change-operation-tool
       finish-change-tool
@@ -912,6 +913,88 @@
       %-  pure:m
       !>  ^-  response:tool:mcp
       [%result %structured (changes-to-json changes.snapshot)]
+  ==
+::
+++  request-change-tool
+  ^-  tool:mcp
+  :*  'seer/request-change'
+      '''
+      Queue a generic prompt-driven change for the local Seer planning bridge.
+      Use seer/list-assistant-models first and pass one exact model_id. Target
+      "library" produces typed state operations; target "desk" produces a
+      durable implementation brief. Neither path can approve or apply itself.
+      Choose a stable lowercase change_id so identical retries are safe.
+      '''
+      %-  my
+      :~  ['change_id' [%string 'Stable lowercase ID using letters, numbers, and hyphens.']]
+          ['target' [%string 'Either library or desk.']]
+          ['model_id' [%string 'Exact credential-backed model ID from seer/list-assistant-models.']]
+          ['prompt' [%string 'Outcome-focused instruction for the planning model.']]
+      ==
+      ~['change_id' 'target' 'model_id' 'prompt']
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      =/  raw-id=(unit @t)      (string-arg args 'change_id')
+      =/  raw-target=(unit @t)  (string-arg args 'target')
+      =/  raw-model=(unit @t)   (string-arg args 'model_id')
+      =/  prompt=(unit @t)      (string-arg args 'prompt')
+      ?~  raw-id      (pure:m !>([%error 'missing change_id' ~]))
+      ?~  raw-target  (pure:m !>([%error 'missing target' ~]))
+      ?~  raw-model   (pure:m !>([%error 'missing model_id' ~]))
+      ?~  prompt      (pure:m !>([%error 'missing prompt' ~]))
+      ?.  ?&  (valid-slug u.raw-id)
+              (valid-slug u.raw-model)
+              !=(0 (met 3 u.prompt))
+          ==
+        (pure:m !>([%error 'invalid or empty change request field' ~]))
+      =/  target-name=@tas  (slav %tas u.raw-target)
+      =/  maybe-target=(unit change-target)
+        ?+  target-name  ~
+          %library  `%library
+          %desk     `%desk
+        ==
+      ?~  maybe-target
+        (pure:m !>([%error 'target must be library or desk' ~]))
+      =/  change-id=@tas  (@tas u.raw-id)
+      =/  model-id=@tas   (@tas u.raw-model)
+      ;<  snapshot=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  maybe-model=(unit assistant-model)
+        (~(get by models.snapshot) model-id)
+      ?~  maybe-model
+        (pure:m !>([%error 'assistant model not found' `(error-json 'model-not-found' u.raw-model)]))
+      =/  existing=(unit change-request)
+        (~(get by changes.snapshot) change-id)
+      ?^  existing
+        ?:  ?&  =(u.maybe-target target.u.existing)
+                =(u.prompt prompt.u.existing)
+                =(model-id id.profile.u.existing)
+            ==
+          (pure:m !>([%result %structured (change-write-result 'already-exists' change-id u.existing)]))
+        (pure:m !>([%error 'change_id already exists with different content' `(error-json 'change-conflict' u.raw-id)]))
+      =/  act=action
+        [%request-change change-id u.maybe-target u.maybe-model u.prompt]
+      ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
+      =/  queued=change-request
+        :*  change-id
+            u.maybe-target
+            u.prompt
+            u.maybe-model
+            *@da
+            %pending
+            ''
+            ''
+            ~
+            ''
+            ''
+            *@da
+        ==
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (change-write-result 'queued' change-id queued)]
   ==
 ::
 ++  claim-change-tool
