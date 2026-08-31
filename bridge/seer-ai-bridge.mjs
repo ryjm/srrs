@@ -42,22 +42,38 @@ export function codexProfilesFromCatalog(payload) {
       const [bMajor, bMinor] = b.split(".").map(Number);
       return bMajor - aMajor || bMinor - aMinor;
     })[0];
-  if (!latest) return [];
-
-  const roles = { luna: "smol", terra: "default", sol: "slow" };
-  return ["luna", "terra", "sol"].map((tier) => {
-    const entry = families.get(latest).get(tier);
-    const role = roles[tier];
-    return {
-      id: `${role}-codex-${entry.slug.replace(/[^a-z0-9]+/g, "-")}`,
-      provider: "codex",
-      role,
-      selector: `openai-codex/${entry.slug}`,
-      model: entry.slug,
-      label: entry.display_name || entry.slug,
-      description: entry.description || "Uses the signed-in Codex account.",
-    };
+  const makeProfile = (entry, role) => ({
+    id: `${role}-codex-${entry.slug.replace(/[^a-z0-9]+/g, "-")}`,
+    provider: "codex",
+    role,
+    selector: `openai-codex/${entry.slug}`,
+    model: entry.slug,
+    label: `${role === "smol" ? "Fast" : role === "slow" ? "Deep" : "Balanced"} · ${entry.display_name || entry.slug}`,
+    description: entry.description || "Uses the signed-in Codex account.",
   });
+  if (latest) {
+    const roles = { luna: "smol", terra: "default", sol: "slow" };
+    return ["luna", "terra", "sol"].map((tier) => makeProfile(families.get(latest).get(tier), roles[tier]));
+  }
+
+  const visible = models.filter((entry) => entry?.visibility === "list" && entry?.slug);
+  const version = (slug) => {
+    const match = String(slug).match(/^gpt-(\d+)\.(\d+)/);
+    return match ? [Number(match[1]), Number(match[2])] : [0, 0];
+  };
+  const newest = (entries) => [...entries].sort((a, b) => {
+    const av = version(a.slug);
+    const bv = version(b.slug);
+    return bv[0] - av[0] || bv[1] - av[1];
+  })[0];
+  const balanced = newest(visible.filter((entry) => /^gpt-\d+\.\d+$/.test(entry.slug)));
+  if (!balanced) return [];
+  const fast = newest(visible.filter((entry) => /(?:mini|spark)$/.test(entry.slug))) || balanced;
+  return [
+    makeProfile(fast, "smol"),
+    makeProfile(balanced, "default"),
+    makeProfile(balanced, "slow"),
+  ];
 }
 
 export function claudeProfiles() {
