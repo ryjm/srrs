@@ -538,18 +538,14 @@ test("Codex catalog becomes exact OMP smol/default/slow profiles", () => {
   ]);
 });
 
-test("Codex current catalog maps mini/full models onto OMP roles", () => {
+test("Codex catalog rejects old models without a complete OMP tier family", () => {
   const profiles = codexProfilesFromCatalog({ models: [
     { slug: "gpt-5.5", display_name: "GPT-5.5", visibility: "list" },
     { slug: "gpt-5.4", display_name: "GPT-5.4", visibility: "list" },
     { slug: "gpt-5.4-mini", display_name: "GPT-5.4-Mini", visibility: "list" },
     { slug: "gpt-5.3-codex-spark", display_name: "GPT-5.3-Codex-Spark", visibility: "list" },
   ] });
-  assert.deepEqual(profiles.map(({ role, model }) => [role, model]), [
-    ["smol", "gpt-5.4-mini"],
-    ["default", "gpt-5.5"],
-    ["slow", "gpt-5.5"],
-  ]);
+  assert.deepEqual(profiles, []);
 });
 
 test("Claude profiles pin every current model and preserve OMP roles", () => {

@@ -51,29 +51,11 @@ export function codexProfilesFromCatalog(payload) {
     label: `${role === "smol" ? "Fast" : role === "slow" ? "Deep" : "Balanced"} · ${entry.display_name || entry.slug}`,
     description: entry.description || "Uses the signed-in Codex account.",
   });
-  if (latest) {
-    const roles = { luna: "smol", terra: "default", sol: "slow" };
-    return ["luna", "terra", "sol"].map((tier) => makeProfile(families.get(latest).get(tier), roles[tier]));
-  }
-
-  const visible = models.filter((entry) => entry?.visibility === "list" && entry?.slug);
-  const version = (slug) => {
-    const match = String(slug).match(/^gpt-(\d+)\.(\d+)/);
-    return match ? [Number(match[1]), Number(match[2])] : [0, 0];
-  };
-  const newest = (entries) => [...entries].sort((a, b) => {
-    const av = version(a.slug);
-    const bv = version(b.slug);
-    return bv[0] - av[0] || bv[1] - av[1];
-  })[0];
-  const balanced = newest(visible.filter((entry) => /^gpt-\d+\.\d+$/.test(entry.slug)));
-  if (!balanced) return [];
-  const fast = newest(visible.filter((entry) => /(?:mini|spark)$/.test(entry.slug))) || balanced;
-  return [
-    makeProfile(fast, "smol"),
-    makeProfile(balanced, "default"),
-    makeProfile(balanced, "slow"),
-  ];
+  if (!latest) return [];
+  const roles = { luna: "smol", terra: "default", sol: "slow" };
+  return ["luna", "terra", "sol"].map((tier) => (
+    makeProfile(families.get(latest).get(tier), roles[tier])
+  ));
 }
 
 export function claudeProfiles() {
@@ -303,7 +285,11 @@ async function discoverModelProfiles(providers, config) {
       env,
       timeoutMs: Math.min(config.timeoutMs, 45_000),
     });
-    profiles.push(...codexProfilesFromCatalog(JSON.parse(stdout)));
+    const codexProfiles = codexProfilesFromCatalog(JSON.parse(stdout));
+    if (codexProfiles.length !== 3) {
+      throw new Error("Codex model catalog has no complete luna/terra/sol tier family; update the Codex CLI");
+    }
+    profiles.push(...codexProfiles);
   }
   if (providers.claude) profiles.push(...claudeProfiles());
   return profiles;
