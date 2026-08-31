@@ -48,7 +48,7 @@ export function codexProfilesFromCatalog(payload) {
     role,
     selector: `openai-codex/${entry.slug}`,
     model: entry.slug,
-    label: `${role === "smol" ? "Fast" : role === "slow" ? "Deep" : "Balanced"} · ${entry.display_name || entry.slug}`,
+    label: entry.display_name || entry.slug,
     description: entry.description || "Uses the signed-in Codex account.",
   });
   if (!latest) return [];

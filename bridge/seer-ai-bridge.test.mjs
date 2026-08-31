@@ -536,6 +536,11 @@ test("Codex catalog becomes exact OMP smol/default/slow profiles", () => {
     { role: "default", selector: "openai-codex/gpt-5.6-terra", model: "gpt-5.6-terra" },
     { role: "slow", selector: "openai-codex/gpt-5.6-sol", model: "gpt-5.6-sol" },
   ]);
+  assert.deepEqual(profiles.map(({ label }) => label), [
+    "GPT-5.6-Luna",
+    "GPT-5.6-Terra",
+    "GPT-5.6-Sol",
+  ]);
 });
 
 test("Codex catalog rejects old models without a complete OMP tier family", () => {
