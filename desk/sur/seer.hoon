@@ -122,6 +122,16 @@
       [%reject-change id=@tas]
       [%retry-change id=@tas]
       [%delete-change id=@tas]
+      [%request-login id=@tas provider=ai-provider]
+      [%issue-bridge-nonce nonce=@t]
+      [%claim-login id=@tas worker=@t nonce=@t proof=@]
+      [%post-login-challenge id=@tas worker=@t auth-url=@t user-code=@t nonce=@t proof=@]
+      [%submit-login-code id=@tas code=@t]
+      [%finish-login id=@tas worker=@t nonce=@t proof=@]
+      [%fail-login id=@tas worker=@t message=@t nonce=@t proof=@]
+      [%retry-login id=@tas]
+      [%cancel-login id=@tas]
+      [%consume-login-code id=@tas worker=@t nonce=@t proof=@]
   ==
 ::
 ::  AI capture sessions live on the ship, not in any one model's context.
@@ -248,6 +258,28 @@
       operations=(list state-operation)
       artifact=@t
       response=@t
+      updated-at=@da
+  ==
+::
+::  Provider sign-in runs on the bridge host, never on the ship.  A
+::  login-request only carries the public half of the handshake: the
+::  verification URL and user code the person must visit, and (for
+::  paste-back flows) the one-time authorization code they hand back.
+::  Codes are cleared from current state the moment a request settles;
+::  Seer never stores provider credentials.
+::
++$  login-status  $?(%pending %working %challenge %done %failed)
+::
++$  login-request
+  $:  id=@tas
+      provider=ai-provider
+      status=login-status
+      auth-url=@t
+      user-code=@t
+      pasted-code=@t
+      message=@t
+      worker=@t
+      created-at=@da
       updated-at=@da
   ==
 ::

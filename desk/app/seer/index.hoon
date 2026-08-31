@@ -21,6 +21,7 @@
           questions=(map @tas card-question)
           models=(map @tas assistant-model)
           changes=(map @tas change-request)
+          logins=(map @tas login-request)
           reviews=(list review)
           =page
           notice=(unit @t)
@@ -72,6 +73,162 @@
         ;link(rel "icon", type "image/png", href "/apps/seer/tile.png");
         ;title: Seer
         ;script(src "https://unpkg.com/htmx.org@2.0.2");
+        ;script:'''
+                (function () {
+                  "use strict";
+                  var done = 0;
+                  var open = {};
+                  var pend = "";
+                  var mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+                  function move() { return mq.matches ? "auto" : "smooth"; }
+                  function q(s) { return document.querySelector(s); }
+                  function root() { return q("[data-review]"); }
+                  function flip() { return q("[data-review] details.flip"); }
+                  function actionable(t) {
+                    return t && t.closest ? t.closest("button, a, summary") : null;
+                  }
+                  function grade(n) {
+                    var f = flip();
+                    if (!f || !f.open) { return; }
+                    var b = document.querySelectorAll("[data-review] .grade-row button");
+                    if (b[n] && !b[n].disabled) { b[n].click(); }
+                  }
+                  function sync() {
+                    var r = root();
+                    if (!r) { done = 0; return; }
+                    document.documentElement.classList.add("kb");
+                    var left = parseInt(r.getAttribute("data-remaining") || "0", 10);
+                    var total = done + left;
+                    var bar = q("[data-progress]");
+                    var fill = q("[data-progress-fill]");
+                    if (bar && fill && total > 0) {
+                      bar.hidden = false;
+                      fill.style.width = String(Math.round(100 * done / total)) + "%";
+                    }
+                    var tally = q("[data-done]");
+                    if (tally && done > 0) {
+                      tally.hidden = false;
+                      tally.textContent = String(done) + " down · ";
+                    }
+                    var fresh = q("[data-fresh]");
+                    var full = q("[data-complete]");
+                    if (fresh && full && left === 0 && done > 0) {
+                      fresh.hidden = true;
+                      full.hidden = false;
+                      var line = q("[data-complete-line]");
+                      if (line) {
+                        var noun = done === 1 ? " card" : " cards";
+                        line.textContent = String(done) + noun + " reviewed. Missed cards return here in moments.";
+                      }
+                    }
+                    var kept = r.querySelectorAll("details[data-persist]");
+                    for (var i = 0; i < kept.length; i++) {
+                      var k = kept[i].getAttribute("data-persist");
+                      if (open[k] !== undefined) { kept[i].open = open[k]; }
+                    }
+                  }
+                  document.addEventListener("toggle", function (e) {
+                    var t = e.target;
+                    if (t && t.matches && t.matches("details[data-persist]")) {
+                      open[t.getAttribute("data-persist")] = t.open;
+                    }
+                  }, true);
+                  document.addEventListener("click", function (e) {
+                    var b = e.target && e.target.closest ? e.target.closest("[data-help-open]") : null;
+                    if (b) {
+                      var d = q("[data-key-help]");
+                      if (d) { d.showModal(); }
+                    }
+                  });
+                  document.addEventListener("htmx:beforeRequest", function (e) {
+                    var el = e.detail ? e.detail.elt : null;
+                    if (el && el.hasAttribute && el.hasAttribute("data-grade")) { done = done + 1; }
+                  });
+                  document.addEventListener("htmx:responseError", function (e) {
+                    var el = e.detail ? e.detail.elt : null;
+                    if (el && el.hasAttribute && el.hasAttribute("data-grade") && done > 0) { done = done - 1; }
+                  });
+                  document.addEventListener("htmx:afterSwap", function () {
+                    sync();
+                    var c = q("[data-review-card]");
+                    var ae = document.activeElement;
+                    if (c && (ae === null || ae === document.body)) { c.focus({ preventScroll: true }); }
+                  });
+                  document.addEventListener("keydown", function (e) {
+                    if (!root()) { return; }
+                    if (e.ctrlKey || e.metaKey || e.altKey) { return; }
+                    var t = e.target;
+                    var tag = t && t.tagName ? t.tagName : "";
+                    if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t && t.isContentEditable)) {
+                      if (e.key === "Escape") { t.blur(); }
+                      return;
+                    }
+                    var dlg = q("[data-key-help]");
+                    if (dlg && dlg.open) {
+                      if (e.key === "?") { e.preventDefault(); dlg.close(); }
+                      return;
+                    }
+                    var f = flip();
+                    var k = e.key;
+                    var was = pend;
+                    pend = "";
+                    if (e.repeat && k !== "j" && k !== "k" && k !== "d" && k !== "u" && k !== "g" && k !== "G") {
+                      if (k === " ") { e.preventDefault(); }
+                      return;
+                    }
+                    if (was === "g" && k === "g") {
+                      e.preventDefault();
+                      window.scrollTo({ top: 0, behavior: move() });
+                      return;
+                    }
+                    if (k === "?") { e.preventDefault(); if (dlg) { dlg.showModal(); } return; }
+                    if (k === " ") {
+                      if (!f || actionable(e.target)) { return; }
+                      e.preventDefault();
+                      if (f.open) { grade(2); } else { f.open = true; }
+                      return;
+                    }
+                    if (k === "l") {
+                      if (f && !f.open) { e.preventDefault(); f.open = true; }
+                      return;
+                    }
+                    if (k === "h" || k === "Escape") {
+                      if (f && f.open) { e.preventDefault(); f.open = false; }
+                      return;
+                    }
+                    if (k === "1" || k === "2" || k === "3" || k === "4") {
+                      e.preventDefault();
+                      grade(parseInt(k, 10) - 1);
+                      return;
+                    }
+                    if (k === "j") { e.preventDefault(); window.scrollBy({ top: 140, behavior: move() }); return; }
+                    if (k === "k") { e.preventDefault(); window.scrollBy({ top: -140, behavior: move() }); return; }
+                    if (k === "d") { e.preventDefault(); window.scrollBy({ top: window.innerHeight / 2, behavior: move() }); return; }
+                    if (k === "u") { e.preventDefault(); window.scrollBy({ top: 0 - (window.innerHeight / 2), behavior: move() }); return; }
+                    if (k === "g") { pend = "g"; return; }
+                    if (k === "G") {
+                      e.preventDefault();
+                      window.scrollTo({ top: document.body.scrollHeight, behavior: move() });
+                      return;
+                    }
+                    if (k === "i") {
+                      var a = q("[data-review] details.assistant");
+                      if (a) {
+                        e.preventDefault();
+                        a.open = true;
+                        var ta = a.querySelector("textarea");
+                        if (ta) { ta.focus(); }
+                      }
+                      return;
+                    }
+                  });
+                  if (document.readyState === "loading") {
+                    document.addEventListener("DOMContentLoaded", sync);
+                  } else {
+                    sync();
+                  }
+                })();
+                '''
         ;style:'''
                :root {
                  color-scheme: light dark;
@@ -85,6 +242,8 @@
                  --soft: #9a9a93;
                  --focus: #334dde;
                  --danger: #b42318;
+                 --ok: #1a7f37;
+                 --warn: #8a5800;
                  --success-bg: #e8f4e9;
                  --success-line: #9fc5a3;
                  --chrome: rgba(247, 247, 246, .92);
@@ -102,6 +261,8 @@
                    --soft: #777770;
                    --focus: #8899ff;
                    --danger: #ff8a80;
+                   --ok: #7ec488;
+                   --warn: #d9a94e;
                    --success-bg: #18271a;
                    --success-line: #46694a;
                    --chrome: rgba(17, 17, 16, .92);
@@ -109,6 +270,8 @@
                  }
                }
                * { box-sizing: border-box; }
+               ::selection { background: var(--ink); color: var(--bg); }
+               [hidden] { display: none !important; }
                html { background: var(--bg); color: var(--ink); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; }
                body { margin: 0; min-height: 100vh; -webkit-font-smoothing: antialiased; }
                a { color: inherit; }
@@ -127,7 +290,7 @@
                button.danger { background: transparent; border-color: var(--line); color: var(--danger); }
                input, textarea, select {
                  background: var(--surface); border: 1px solid var(--line); border-radius: 3px;
-                 color: var(--ink); padding: .72rem .78rem; width: 100%;
+                 caret-color: var(--focus); color: var(--ink); padding: .72rem .78rem; width: 100%;
                }
                input:hover, textarea:hover, select:hover { border-color: var(--line-strong); }
                textarea { line-height: 1.5; min-height: 7.5rem; resize: vertical; }
@@ -171,18 +334,86 @@
                .row-end { align-items: end; color: var(--muted); display: grid; flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .7rem; gap: .25rem; text-align: right; }
                .flash { background: var(--success-bg); border: 1px solid var(--success-line); border-radius: 3px; margin-bottom: 1rem; padding: .8rem 1rem; }
                .empty { background: var(--surface); border: 1px dashed var(--line-strong); color: var(--muted); display: grid; gap: .55rem; padding: 2.2rem 1.4rem; text-align: center; }
-               .review-card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; margin: 0 auto; max-width: 760px; }
-               .review-head { align-items: start; border-bottom: 1px solid var(--line); display: flex; gap: 1rem; justify-content: space-between; padding: 1rem 1.2rem; }
                .pill { border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .68rem; padding: .25rem .5rem; white-space: nowrap; }
-               .prompt { font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.35rem, 3vw, 1.85rem); line-height: 1.45; padding: 2.2rem 1.5rem; white-space: pre-wrap; }
+               .prompt { white-space: pre-wrap; }
                details.reveal { border-top: 1px solid var(--line); }
                details.reveal > summary { cursor: pointer; font-size: .86rem; font-weight: 650; list-style-position: inside; padding: 1rem 1.2rem; }
-               .answer { border-top: 1px solid var(--line); font-family: Georgia, "Times New Roman", serif; line-height: 1.6; padding: 1.5rem; white-space: pre-wrap; }
-               .grades { border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); }
-               .grades form { display: block; }
-               .grades form + form { border-left: 1px solid var(--line); }
-               .grades button { background: var(--surface); border: 0; border-radius: 0; color: var(--ink); min-height: 3rem; text-transform: capitalize; width: 100%; }
-               .grades form:nth-child(3) button { background: var(--ink); color: var(--bg); }
+               .answer { white-space: pre-wrap; }
+               .review-session { margin: 0 auto; max-width: 720px; }
+               .session-bar { align-items: baseline; display: flex; gap: 1rem; justify-content: space-between; }
+               .session-title { font-size: 1.02rem; font-weight: 650; letter-spacing: -.01em; line-height: 1.2; }
+               .session-tally { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .72rem; font-variant-numeric: tabular-nums; }
+               .tally-done { color: var(--ink); }
+               .session-progress { background: var(--line); border-radius: 999px; height: 3px; margin-top: .7rem; overflow: hidden; }
+               .session-progress-fill { background: var(--ink); border-radius: 999px; height: 100%; transition: width .45s cubic-bezier(.22, .9, .3, 1); width: 0; }
+               .review-card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow); margin-top: 1.1rem; outline: none; overflow: hidden; }
+               .review-top { align-items: center; border-bottom: 1px solid var(--line); display: flex; gap: 1rem; justify-content: space-between; padding: .85rem 1.15rem; }
+               .review-origin { display: grid; gap: .3rem; min-width: 0; }
+               .review-title { font-size: .92rem; font-weight: 650; letter-spacing: -.01em; line-height: 1.3; overflow-wrap: anywhere; }
+               .review-stack { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .68rem; overflow-wrap: anywhere; }
+               .review-prompt { display: flex; flex-direction: column; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.3rem, 2.2vw, 1.6rem); justify-content: center; line-height: 1.5; min-height: clamp(12rem, 30vh, 18rem); overflow-wrap: anywhere; padding: 2.2rem max(2rem, calc((100% - 40rem) / 2)); text-align: center; white-space: pre-wrap; }
+               details.flip > .flip-bar { align-items: center; background: var(--ink); color: var(--bg); cursor: pointer; display: flex; font-size: .92rem; font-weight: 650; gap: .6rem; justify-content: center; list-style: none; min-height: 3.3rem; padding: .8rem 1.2rem; text-align: center; }
+               details.flip > .flip-bar::-webkit-details-marker { display: none; }
+               details.flip > .flip-bar:hover { filter: invert(12%); }
+               details.flip > .flip-bar .key-hint { border-color: var(--line-strong); color: var(--bg); opacity: .8; }
+               details.flip .flip-hide { display: none; }
+               details.flip[open] > .flip-bar { background: transparent; border-bottom: 1px solid var(--line); color: var(--muted); font-size: .78rem; font-weight: 550; min-height: 2.5rem; padding: .45rem 1.2rem; }
+               details.flip[open] > .flip-bar:hover { color: var(--ink); filter: none; }
+               details.flip[open] > .flip-bar .flip-show { display: none; }
+               details.flip[open] > .flip-bar .flip-hide { display: inline; }
+               details.flip[open] > .flip-bar .key-hint { display: none; }
+               .review-answer { font-family: Georgia, "Times New Roman", serif; font-size: 1.06rem; line-height: 1.65; max-height: 46vh; overflow: auto; overflow-wrap: anywhere; padding: 1.7rem max(2rem, calc((100% - 40rem) / 2)); scrollbar-color: var(--line-strong) transparent; scrollbar-width: thin; text-align: center; white-space: pre-wrap; }
+               .review-answer::-webkit-scrollbar { width: 8px; }
+               .review-answer::-webkit-scrollbar-thumb { background: var(--line-strong); border-radius: 4px; }
+               .grade-row { background: var(--line); border-top: 1px solid var(--line); display: grid; gap: 1px; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+               .grade-row form { display: block; margin: 0; min-width: 0; }
+               details.flip > .flip-bar:focus-visible, .grade-btn:focus-visible { outline-offset: -3px; }
+               .grade-btn { background: var(--surface); border: 0; border-radius: 0; color: var(--ink); display: grid; gap: .1rem; min-height: 3.4rem; padding: .55rem .3rem; place-items: center; position: relative; width: 100%; }
+               .grade-btn:hover { background: var(--surface-2); filter: none; }
+               .grade-btn:disabled { cursor: default; opacity: .55; }
+               .grade-btn:active { transform: translateY(1px); }
+               .grade-name { font-size: .84rem; font-weight: 650; }
+               .grade-again:hover .grade-name { color: var(--danger); }
+               .grade-hard:hover .grade-name { color: var(--warn); }
+               .grade-easy:hover .grade-name { color: var(--ok); }
+               .grade-good { background: var(--ink); color: var(--bg); }
+               .grade-good:hover { background: var(--ink); filter: invert(12%); }
+               .grade-btn .key-hint { position: absolute; right: .5rem; top: .45rem; }
+               .grade-good .key-hint { border-color: var(--line-strong); color: var(--bg); opacity: .75; }
+               details.flip[open] > .review-answer { animation: seer-reveal .34s cubic-bezier(.19, .85, .3, 1) both; }
+               details.flip[open] > .grade-row { animation: seer-reveal .34s cubic-bezier(.19, .85, .3, 1) .04s both; }
+               @keyframes seer-reveal {
+                 from { filter: blur(3px); opacity: 0; transform: translateY(5px); }
+               }
+               details.assistant { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; margin-top: 1rem; overflow: hidden; }
+               .assistant-bar { align-items: center; cursor: pointer; display: flex; gap: .8rem; justify-content: space-between; list-style: none; min-height: 3.1rem; padding: .7rem 1.15rem; }
+               .assistant-bar::-webkit-details-marker { display: none; }
+               .assistant-bar:hover { background: var(--surface-2); }
+               .assistant-label { font-size: .88rem; font-weight: 650; }
+               .assistant-body { border-top: 1px solid var(--line); padding: 1.15rem; }
+               .assistant-body .ai-card { border-top: 0; margin-top: 0; padding-top: 0; }
+               .key-hint { border: 1px solid var(--line); border-radius: 3px; color: var(--muted); display: none; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .6rem; line-height: 1; padding: .18rem .32rem; }
+               .key-line { color: var(--muted); display: none; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .68rem; gap: .45ch; justify-content: center; margin-top: 1rem; }
+               .linkish { background: none; border: 0; color: var(--muted); cursor: pointer; font: inherit; min-height: 0; padding: 0; text-decoration: underline; text-underline-offset: 3px; }
+               .linkish:hover { color: var(--ink); filter: none; }
+               @media (hover: hover) and (pointer: fine) {
+                 html.kb .key-hint { display: inline-block; }
+                 html.kb .key-line { display: flex; }
+               }
+               dialog.key-help { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); color: var(--ink); padding: 1.5rem; width: min(22rem, calc(100vw - 2rem)); }
+               dialog.key-help::backdrop { backdrop-filter: blur(2px); background: rgba(17, 17, 16, .35); }
+               .key-title { font-size: 1rem; }
+               .key-list { display: grid; gap: .6rem; margin: 1.1rem 0 1.3rem; }
+               .key-row { align-items: baseline; display: flex; flex-direction: row-reverse; gap: 1rem; justify-content: space-between; }
+               .key-row dt { display: flex; flex: none; gap: .3rem; }
+               .key-row dd { color: var(--muted); font-size: .84rem; line-height: 1.4; margin: 0; }
+               kbd.key { background: var(--surface-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .68rem; font-weight: 600; line-height: 1; padding: .28rem .42rem; }
+               .key-close button { width: 100%; }
+               .review-done { padding: 4rem 1rem 2rem; text-align: center; }
+               .done-block { display: grid; gap: .8rem; justify-items: center; }
+               .done-title { font-family: Georgia, "Times New Roman", serif; font-size: 1.5rem; font-weight: 400; letter-spacing: -.01em; }
+               .done-copy { color: var(--muted); line-height: 1.55; max-width: 26rem; }
+               .done-block .button { margin-top: .6rem; }
                .stack-head { align-items: start; display: flex; gap: 1rem; justify-content: space-between; }
                .breadcrumb { color: var(--muted); display: inline-block; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .72rem; margin-bottom: 1rem; text-decoration: none; }
                .breadcrumb:hover { color: var(--ink); }
@@ -190,13 +421,42 @@
                .stack-layout { align-items: start; display: grid; gap: 1rem; grid-template-columns: minmax(0, 1.25fr) minmax(19rem, .75fr); margin-top: 1.5rem; }
                .editor-column { display: grid; gap: 1rem; }
                .editor-column .section { margin-top: 0; }
-               .item-list { padding: 0; }
-               .item { padding: 1.1rem; }
-               .item + .item { border-top: 1px solid var(--line); }
-               .item details { margin-top: .7rem; }
-               .item details > summary { color: var(--muted); cursor: pointer; font-size: .8rem; }
-               .item .prompt { font-family: inherit; font-size: 1rem; padding: 1rem 0; }
-               .item .answer { font-family: inherit; font-size: .9rem; padding: 1rem 0 0; }
+               .item-list { display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); }
+               .item {
+                 background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
+                 min-width: 0; overflow: hidden;
+               }
+               .item:hover, .item[open] { border-color: var(--line-strong); }
+               .item[open] { grid-column: 1 / -1; }
+               .item-summary {
+                 align-items: start; cursor: pointer; display: flex; gap: 1rem;
+                 justify-content: space-between; list-style: none; min-height: 7.25rem; padding: 1rem;
+               }
+               .item-summary::-webkit-details-marker { display: none; }
+               .item-summary:hover { background: var(--surface-2); }
+               .item[open] .item-summary { min-height: 0; }
+               .item-copy { display: grid; gap: .55rem; min-width: 0; }
+               .item-id {
+                 color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                 font-size: .66rem; overflow-wrap: anywhere;
+               }
+               .item-title { font-size: .98rem; font-weight: 650; letter-spacing: -.01em; line-height: 1.35; overflow-wrap: anywhere; }
+               .item-toggle {
+                 align-items: center; border: 1px solid var(--line); border-radius: 50%; color: var(--muted);
+                 display: inline-flex; flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+                 height: 1.55rem; justify-content: center; line-height: 1; width: 1.55rem;
+               }
+               .item-toggle::before { content: "+"; }
+               .item[open] .item-toggle::before { content: "−"; }
+               .item-detail { border-top: 1px solid var(--line); padding: 1.1rem; }
+               .card-content {
+                 border: 1px solid var(--line); border-radius: 3px; display: grid;
+                 grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: hidden;
+               }
+               .card-face { align-content: start; display: grid; gap: .65rem; min-width: 0; padding: 1rem; }
+               .card-face + .card-face { border-left: 1px solid var(--line); }
+               .item .prompt { display: block; font-family: inherit; font-size: 1rem; line-height: 1.55; min-height: 0; padding: 0; }
+               .item .answer { border: 0; font-family: inherit; font-size: .9rem; line-height: 1.55; padding: 0; }
                .item-actions { align-items: center; display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .9rem; }
                .ai-card { border-top: 1px solid var(--line); display: grid; gap: .85rem; margin-top: 1rem; padding-top: 1rem; }
                .ai-head { align-items: center; display: flex; gap: 1rem; justify-content: space-between; }
@@ -273,6 +533,8 @@
                  .thinking-dots span, .thinking-pill::before, .is-thinking::before { animation: none; }
                  .thinking-dots span { opacity: .55; transform: none; }
                  .is-thinking::before { display: none; }
+                 details.flip[open] > .review-answer, details.flip[open] > .grade-row { animation: none; }
+                 .session-progress-fill { transition: none; }
                }
                @media (max-width: 850px) {
                  .app-shell { grid-template-columns: 12.5rem minmax(0, 1fr); }
@@ -361,24 +623,32 @@
                    border-radius: 7px; font-size: .86rem; margin-bottom: 1rem;
                    padding: .75rem .85rem;
                  }
-                 .review-card { margin: 0; max-width: none; }
-                 .review-head { padding: .9rem 1rem; }
-                 .prompt {
-                   align-items: center; display: flex; font-size: 1.45rem;
-                   min-height: 12rem; padding: 1.5rem 1.1rem;
-                 }
+                 .review-session { max-width: none; }
+                 .session-title { font-size: 1rem; }
+                 .review-card { border-radius: 9px; margin-top: .9rem; }
+                 .review-top { padding: .8rem 1rem; }
+                 .review-prompt { font-size: 1.28rem; min-height: clamp(9rem, 24vh, 13rem); padding: 1.6rem 1.1rem; }
+                 details.flip > .flip-bar { font-size: .95rem; min-height: 3.6rem; }
+                 details.flip[open] > .flip-bar { min-height: 2.6rem; }
+                 .review-answer { font-size: 1.02rem; max-height: 38vh; padding: 1.35rem 1.1rem; }
+                 .grade-btn { min-height: 3.9rem; }
+                 .grade-name { font-size: .8rem; }
+                 details.assistant { border-radius: 9px; }
+                 .assistant-bar { min-height: 3.5rem; }
+                 .review-done { padding: 3.2rem .5rem 1rem; }
                  details.reveal > summary { min-height: 3.4rem; padding: 1rem; touch-action: manipulation; }
-                 .answer { padding: 1.2rem 1.1rem; }
-                 .grades { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-                 .grades form + form { border-left: 1px solid var(--line); border-top: 0; }
-                 .grades button { font-size: .72rem; min-height: 3.25rem; padding: .5rem .15rem; }
                  .stack-head { display: grid; gap: 1rem; }
                  .breadcrumb { display: block; margin-bottom: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
                  .action-row { width: 100%; }
                  .action-row form, .action-row button { width: 100%; }
                  .stack-layout { gap: 1rem; grid-template-columns: 1fr; margin-top: 1rem; }
-                 .item { padding: 1rem; }
-                 .item details > summary { align-items: center; display: flex; min-height: 2.75rem; touch-action: manipulation; }
+                 .item-list { gap: .6rem; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+                 .item { border-radius: 9px; box-shadow: var(--shadow); }
+                 .item-summary { min-height: 8rem; padding: .85rem; }
+                 .item-detail { padding: .85rem; }
+                 .card-content { grid-template-columns: 1fr; }
+                 .card-face { padding: .85rem; }
+                 .card-face + .card-face { border-left: 0; border-top: 1px solid var(--line); }
                  .item-actions { display: grid; grid-template-columns: 1fr auto; }
                  .ai-form-row { grid-template-columns: 1fr; }
                  .ai-form-row button { width: 100%; }
@@ -453,7 +723,7 @@
               ;div.flash(role "status"): {(trip u.notice)}
               ;+  page-body
               ;footer.app-footer.meta
-                ;p: Local-first · served by %seer
+                ;p: Server-rendered by %seer
               ==
             ==
           ==
@@ -480,9 +750,9 @@
     ;section
       ;div.page-head
         ;div.page-copy
-          ;div.kicker: command surface
+          ;div.kicker: change request
           ;h1: Change Seer
-          ;p.muted: Describe an outcome. The assistant drafts a reviewable plan; your ship changes only after approval.
+          ;p.muted: Describe the required result. Seer submits a plan or brief for review.
         ==
         ;div.stat
           ;div.count: {<open-change-count>}
@@ -491,27 +761,28 @@
       ==
       ;section.panel.command-panel
         ;div.form-head
-          ;div.kicker: prompt → plan → approval
+          ;div.kicker: request → review
           ;h2: What should change?
-          ;p.muted: Library plans use typed operations with stale-state checks. Functionality requests become implementation briefs for Codex or Claude and never rewrite the desk silently.
+          ;p.muted: Library requests produce typed operations. Desk requests produce implementation briefs and cannot change code.
         ==
+        ;+  (login-panel 'inbox')
         ;+
         ?~  available-models
-          ;div.ai-model-empty: No signed-in model provider is available. Sign in with Codex or Claude Code on this machine; the bridge will publish its models here automatically.
+          ;div.hidden;
         ;form.command-form
           =method   "post"
           =action   "/apps/seer/actions/request-change"
           =hx-post  "/apps/seer/actions/request-change"
           ;label
             ;span: instruction
-            ;textarea(name "prompt", required "", placeholder "Rename the MCP stack to “Seer AI integration”, then tighten the card about approval boundaries.");
+            ;textarea(name "prompt", required "", placeholder "Rename my MCP stack. Update the approval-boundary card.");
           ==
           ;div.command-controls
             ;label
               ;span: target
               ;select(name "target")
                 ;option(value "library"): My library
-                ;option(value "desk"): Seer itself · proposal only
+                ;option(value "desk"): Seer itself · brief only
               ==
             ==
             ;label
@@ -551,13 +822,13 @@
         ;div.form-head
           ;div.kicker: card captures
           ;h2: Capture inbox
-          ;p.muted: Codex and Claude draft cards here. Nothing enters review until you approve it.
+          ;p.muted: AI clients add card proposals here. Approval creates a card and adds it to the review queue.
         ==
         ;+
         ?:  =(0 pending-count)
           ;div.empty
             ;h2: Your inbox is clear
-            ;p: Ask an AI to “learn this with Seer” and its source-grounded drafts will appear here.
+            ;p: Use an MCP client to create a capture and stage card proposals.
             ;a.button.secondary(href "/apps/seer/stacks"): Open library
           ==
         ;div.capture-list
@@ -572,9 +843,9 @@
         ;div.hidden;
       ;section.capture-history
         ;div.form-head
-          ;div.kicker: memory trail
+          ;div.kicker: capture history
           ;h2: Recent captures
-          ;p.muted: Completed AI sessions stay visible across clients. Approved cards keep their source trail.
+          ;p.muted: Completed captures remain available to MCP clients. Approved cards retain their source records.
         ==
         ;div.stack-list.section
           ;*
@@ -609,18 +880,18 @@
         ;+
         ?-  status.request
           %pending
-            (thinking-indicator "Waiting for the local assistant bridge to claim this request…")
+            (thinking-indicator "Wait for the local bridge to claim this request.")
           %working
-            (thinking-indicator "{(trip label.profile.request)} is reading the current state and drafting a plan…")
+            (thinking-indicator "Wait while {(trip label.profile.request)} creates a plan.")
           %ready
             ;div
               ;div.proposal-answer: {(trip summary.request)}
               ;+
               ?:  =(%desk target.request)
                 ;div.provenance
-                  ;p: This is an implementation brief, not an executable desk patch. It is durable and available to AI clients through MCP.
+                  ;p: This implementation brief cannot change the desk. MCP clients can read it.
                   ;details.reveal
-                    ;summary: Inspect implementation brief
+                    ;summary: Open implementation brief
                     ;div.proposal-answer: {(trip artifact.request)}
                   ==
                 ==
@@ -795,12 +1066,12 @@
           ;div.proposal-answer: {(trip back.draft)}
         ==
         ;div.provenance
-          ;p: Why this matters · {(trip rationale.draft)}
+          ;p: Reason · {(trip rationale.draft)}
           ;p: Source · {(trip source.draft)}
         ==
         ;+
         ?:  conflict
-          ;div.proposal-conflict: This target stack is missing or the card ID is already in use. Reject this draft or ask the AI to stage a corrected ID.
+          ;div.proposal-conflict: The target stack is missing, or the card ID is in use. Reject the proposal.
         ;div.hidden;
         ;div.decision-row
           ;form.inline
@@ -853,26 +1124,54 @@
   ++  review-page
     ^-  manx
     =/  total  (lent reviews)
-    ;section
-      ;div.page-head
-        ;div.page-copy
-          ;div.kicker: session
-          ;h1: Review
-          ;p.muted: Work through the cards due now.
-        ==
-        ;div.stat
-          ;div.count: {<total>}
-          ;div.meta: cards ready
+    ?~  reviews
+      review-empty
+    ;section.review-session
+      =data-review     ""
+      =data-remaining  "{<total>}"
+      ;header.session-bar
+        ;h1.session-title: Review
+        ;p.session-tally
+          ;span.tally-done(data-done "", hidden "");
+          ;span.tally-left: {<total>} to go
         ==
       ==
-      ;+
-      ?~  reviews
-        ;div.empty
-          ;h2: Nothing due
-          ;p: Your review queue is clear.
+      ;div.session-progress(data-progress "", hidden "", aria-hidden "true")
+        ;div.session-progress-fill(data-progress-fill "");
+      ==
+      ;+  (review-card i.reviews)
+      ;p.key-line
+        ;span: space to flip · 1–4 to grade ·
+        ;button.linkish(type "button", data-help-open ""): ? shortcuts
+      ==
+      ;+  key-help
+    ==
+  ::
+  ++  review-empty
+    ^-  manx
+    ;section.review-session
+      =data-review     ""
+      =data-remaining  "0"
+      =hx-get          "/apps/seer/review"
+      =hx-trigger      "every 5s"
+      =hx-target       "#seer-app"
+      =hx-select       "#seer-app"
+      =hx-swap         "outerHTML"
+      ;header.session-bar
+        ;h1.session-title: Review
+      ==
+      ;div.review-done
+        ;div.done-block(data-fresh "")
+          ;h2.done-title: Nothing to review
+          ;p.done-copy: Every card is scheduled. Cards you miss return here on their own.
           ;a.button.secondary(href "/apps/seer/stacks"): Open library
         ==
-      (review-card i.reviews)
+        ;div.done-block(data-complete "", hidden "")
+          ;h2.done-title: Session complete
+          ;p.done-copy(data-complete-line "");
+          ;a.button.secondary(href "/apps/seer/stacks"): Open library
+        ==
+      ==
     ==
   ::
   ++  review-card
@@ -885,43 +1184,349 @@
     ?~  maybe-item
       ;div.empty: This review points to a card that is no longer available.
     =/  current  u.maybe-item
-    ;article.review-card
-      ;div.review-head
-        ;div
-          ;div.eyebrow: {(scow %p who.rev)} / {(tas-tape stack.rev)}
-          ;h2: {(trip title.content.current)}
+    =/  origin=tape
+      ?:  =(who.rev our)
+        (stack-title u.maybe-stack)
+      "{(stack-title u.maybe-stack)} · {(scow %p who.rev)}"
+    ;div
+      ;article.review-card
+        =data-review-card  ""
+        =tabindex          "-1"
+        =aria-label        (trip title.content.current)
+        ;header.review-top
+          ;div.review-origin
+            ;strong.review-title: {(trip title.content.current)}
+            ;span.review-stack: {origin}
+          ==
+          ;span.pill: box {<box.learn.current>}
         ==
-        ;span.pill: box {<box.learn.current>}
-      ==
-      ;div.prompt: {(trip (body-text front.content.current))}
-      ;details.reveal
-        ;summary: Reveal answer
-        ;div.answer: {(trip (body-text back.content.current))}
-        ;div.grades
-          ;+  (grade-form rev %again "again")
-          ;+  (grade-form rev %hard "hard")
-          ;+  (grade-form rev %good "good")
-          ;+  (grade-form rev %easy "easy")
+        ;div.review-prompt: {(trip (body-text front.content.current))}
+        ;details.flip
+          =data-persist  "reveal|{(scow %p who.rev)}|{(tas-tape stack.rev)}|{(tas-tape item.rev)}"
+          ;summary.flip-bar
+            ;span.flip-show: Show answer
+            ;span.flip-hide: Hide answer
+            ;kbd.key-hint: space
+          ==
+          ;div.review-answer: {(trip (body-text back.content.current))}
+          ;div.grade-row
+            ;+  (grade-form rev "again" "Again" "1")
+            ;+  (grade-form rev "hard" "Hard" "2")
+            ;+  (grade-form rev "good" "Good" "3")
+            ;+  (grade-form rev "easy" "Easy" "4")
+          ==
         ==
       ==
-      ;+  (question-panel who.rev stack.rev item.rev "/apps/seer/review" 'review')
+      ;+  (review-assistant rev)
+    ==
+  ::
+  ++  review-assistant
+    |=  rev=review
+    ^-  manx
+    =/  rows=(list [@tas card-question])
+      (card-questions who.rev stack.rev item.rev)
+    =/  waiting=?  (questions-waiting rows)
+    =/  attrs=mart
+      :*  [%class "assistant"]
+          [%data-persist "assist|{(scow %p who.rev)}|{(tas-tape stack.rev)}|{(tas-tape item.rev)}"]
+          ?:(?=(^ rows) [[%open ""] ~] ~)
+      ==
+    :-  [%details attrs]
+    :~
+      ;summary.assistant-bar
+        ;span.assistant-label: Assistant
+        ;+  ?:  waiting
+              ;span.pill.thinking-pill: thinking
+            ?:  ?=(^ rows)
+              ;span.pill: {<(lent rows)>} asked
+            ;kbd.key-hint: i
+      ==
+      ;div.assistant-body
+        ;+  (question-panel who.rev stack.rev item.rev "/apps/seer/review" 'review' %.n)
+      ==
+    ==
+  ::
+  ++  key-help
+    ^-  manx
+    ;dialog.key-help
+      =data-key-help  ""
+      =aria-label     "Keyboard shortcuts"
+      ;h2.key-title: Keyboard
+      ;dl.key-list
+        ;div.key-row
+          ;dt
+            ;kbd.key: space
+          ==
+          ;dd: Show the answer, then grade Good
+        ==
+        ;div.key-row
+          ;dt
+            ;kbd.key: 1
+            ;kbd.key: 2
+            ;kbd.key: 3
+            ;kbd.key: 4
+          ==
+          ;dd: Again · Hard · Good · Easy
+        ==
+        ;div.key-row
+          ;dt
+            ;kbd.key: l
+            ;kbd.key: h
+          ==
+          ;dd: Show · hide the answer
+        ==
+        ;div.key-row
+          ;dt
+            ;kbd.key: j
+            ;kbd.key: k
+          ==
+          ;dd: Scroll down · up
+        ==
+        ;div.key-row
+          ;dt
+            ;kbd.key: d
+            ;kbd.key: u
+          ==
+          ;dd: Half page down · up
+        ==
+        ;div.key-row
+          ;dt
+            ;kbd.key: gg
+            ;kbd.key: G
+          ==
+          ;dd: Jump to top · bottom
+        ==
+        ;div.key-row
+          ;dt
+            ;kbd.key: i
+          ==
+          ;dd: Ask the assistant
+        ==
+        ;div.key-row
+          ;dt
+            ;kbd.key: esc
+          ==
+          ;dd: Hide answer · leave a field
+        ==
+        ;div.key-row
+          ;dt
+            ;kbd.key: ?
+          ==
+          ;dd: Open · close this help
+        ==
+      ==
+      ;form.key-close(method "dialog")
+        ;button.secondary(type "submit"): Close
+      ==
+    ==
+  ::
+  ++  login-panel
+    |=  return=@t
+    ^-  manx
+    =/  codex-request=(unit login-request)
+      (choose-login-request (~(get by logins) %login-codex) (~(get by logins) %logout-codex))
+    =/  claude-request=(unit login-request)
+      (choose-login-request (~(get by logins) %login-claude) (~(get by logins) %logout-claude))
+    =/  polling=?  ?|  (login-request-active codex-request)
+                         (login-request-active claude-request)
+                     ==
+    =/  poll-url=tape  ?:(=('inbox' return) "/apps/seer/inbox" "/apps/seer/review")
+    ;section.panel.form-panel.login-panel
+      =hx-get      poll-url
+      =hx-trigger  ?:(polling "every 2s" "none")
+      =hx-target   "#seer-app"
+      =hx-select   "#seer-app"
+      =hx-swap     "outerHTML"
+      ;div.form-head
+        ;h3: Connect an assistant
+        ;p.muted: Provider credentials stay on the local bridge machine.
+      ==
+      ;div.two
+        ;+  (login-provider %codex "Codex" %login-codex codex-request return)
+        ;+  (login-provider %claude "Claude Code" %login-claude claude-request return)
+      ==
+    ==
+  ::
+  ++  login-provider
+    |=  [provider=ai-provider label=tape login-id=@tas request=(unit login-request) return=@t]
+    ^-  manx
+    =/  connected=?  (provider-connected provider)
+    ?~  request
+      ?:  connected
+        (login-connected-card provider label)
+      (login-start-card provider label return)
+    =/  req=login-request  u.request
+    ?+  status.req
+      ?:  connected
+        (login-connected-card provider label)
+      ?:  =(%failed status.req)
+        (login-status-card label req return (trip message.req))
+      (login-start-card provider label return)
+        %pending
+      (login-status-card label req return "Waiting for the local bridge to claim this sign-in.")
+        %working
+      (login-status-card label req return "The bridge is starting provider authorization.")
+        %challenge
+      (login-challenge-card label req return)
+    ==
+  ::
+  ++  login-start-card
+    |=  [provider=ai-provider label=tape return=@t]
+    ^-  manx
+    ;form
+      =method   "post"
+      =action   "/apps/seer/actions/request-login"
+      =hx-post  "/apps/seer/actions/request-login"
+      =hx-swap  "outerHTML"
+      ;input(type "hidden", name "provider", value (trip provider));
+      ;input(type "hidden", name "return", value (trip return));
+      ;button(type "submit"): Sign in to {label}
+    ==
+  ++  login-request-active
+    |=  request=(unit login-request)
+    ^-  ?
+    ?~  request  %.n
+    ?|  =(%pending status.u.request)
+        =(%working status.u.request)
+        =(%challenge status.u.request)
+    ==
+  ::
+  ++  choose-login-request
+    |=  [login=(unit login-request) logout=(unit login-request)]
+    ^-  (unit login-request)
+    ?:  (login-request-active login)  login
+    ?:  (login-request-active logout)  logout
+    ?:  ?=(^ logout)  logout
+    login
+  ::
+  ++  provider-connected
+    |=  wanted=ai-provider
+    ^-  ?
+    %+  lien  ~(val by models)
+    |=  profile=assistant-model
+    =(wanted provider.profile)
+  ::
+  ++  login-connected-card
+    |=  [provider=ai-provider label=tape]
+    ^-  manx
+    ;article.panel
+      ;h3: {label}
+      ;p.muted: Connected through the local bridge.
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/request-logout"
+        =hx-post  "/apps/seer/actions/request-logout"
+        =hx-swap  "outerHTML"
+        ;input(type "hidden", name "provider", value (trip provider));
+        ;button.secondary(type "submit"): Sign out
+      ==
+    ==
+  ::
+  ::
+  ++  login-status-card
+    |=  [label=tape req=login-request return=@t message=tape]
+    ^-  manx
+    ;article.panel
+      ;h3: {label}
+      ;p.muted: {message}
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/cancel-login"
+        =hx-post  "/apps/seer/actions/cancel-login"
+        =hx-swap  "outerHTML"
+        ;input(type "hidden", name "login-id", value (trip id.req));
+        ;input(type "hidden", name "return", value (trip return));
+        ;button.secondary(type "submit"): Cancel
+      ==
+    ==
+  ::
+  ++  login-challenge-card
+    |=  [label=tape req=login-request return=@t]
+    ^-  manx
+    ?:  =(%claude provider.req)
+      (claude-login-challenge label req return)
+    (codex-login-challenge label req return)
+  ::
+  ++  codex-login-challenge
+    |=  [label=tape req=login-request return=@t]
+    ^-  manx
+    ;article.panel
+      ;h3: {label}
+      ;p.muted: Open the provider page, then enter this one-time code.
+      ;a.button.secondary
+        =href    (trip auth-url.req)
+        =target  "_blank"
+        =rel     "noopener noreferrer"
+        Open secure sign-in
+      ==
+      ;div.meta: {(trip user-code.req)}
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/cancel-login"
+        =hx-post  "/apps/seer/actions/cancel-login"
+        =hx-swap  "outerHTML"
+        ;input(type "hidden", name "login-id", value (trip id.req));
+        ;input(type "hidden", name "return", value (trip return));
+        ;button.secondary(type "submit"): Cancel
+      ==
+    ==
+  ::
+  ++  claude-login-challenge
+    |=  [label=tape req=login-request return=@t]
+    ^-  manx
+    ;article.panel
+      ;h3: {label}
+      ;p.muted: Open Anthropic sign-in, authorize the account, then paste the one-time code.
+      ;a.button.secondary
+        =href    (trip auth-url.req)
+        =target  "_blank"
+        =rel     "noopener noreferrer"
+        Open secure sign-in
+      ==
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/submit-login-code"
+        =hx-post  "/apps/seer/actions/submit-login-code"
+        =hx-swap  "outerHTML"
+        ;input(type "hidden", name "login-id", value (trip id.req));
+        ;input(type "hidden", name "return", value (trip return));
+        ;label
+          ;span: authorization code
+          ;input(name "code", id (weld "login-code-" (trip id.req)), hx-preserve "true", required "", autocomplete "off", spellcheck "false", placeholder "Paste the one-time code");
+        ==
+        ;button(type "submit"): Send code to bridge
+      ==
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/cancel-login"
+        =hx-post  "/apps/seer/actions/cancel-login"
+        =hx-swap  "outerHTML"
+        ;input(type "hidden", name "login-id", value (trip id.req));
+        ;input(type "hidden", name "return", value (trip return));
+        ;button.secondary(type "submit"): Cancel
+      ==
     ==
   ::
   ++  grade-form
-    |=  [rev=review grade=recall-grade label=tape]
+    |=  [rev=review value=tape label=tape key=tape]
     ^-  manx
-    ;form
-      =method     "post"
-      =action     "/apps/seer/actions/answer"
-      =hx-post    "/apps/seer/actions/answer"
-      =hx-target  "#seer-app"
-      =hx-select  "#seer-app"
-      =hx-swap    "outerHTML"
+    ;form.grade
+      =method           "post"
+      =action           "/apps/seer/actions/answer"
+      =hx-post          "/apps/seer/actions/answer"
+      =hx-target        "#seer-app"
+      =hx-select        "#seer-app"
+      =hx-swap          "outerHTML show:top"
+      =hx-disabled-elt  ".grade-row button"
+      =data-grade       value
       ;input(type "hidden", name "owner", value (scow %p who.rev));
       ;input(type "hidden", name "stack", value (tas-tape stack.rev));
       ;input(type "hidden", name "item", value (tas-tape item.rev));
-      ;input(type "hidden", name "answer", value label);
-      ;button(type "submit"): {label}
+      ;input(type "hidden", name "answer", value value);
+      ;button(type "submit", class (weld "grade-btn grade-" value))
+        ;span.grade-name: {label}
+        ;kbd.key-hint: {key}
+      ==
     ==
   ::
   ++  stacks-page
@@ -943,8 +1548,8 @@
         ;+
         ?~  stack-list
           ;div.empty
-            ;h2: No stacks yet
-            ;p: Create one below to start collecting cards.
+            ;h2: No stacks
+            ;p: Create a stack below to add cards.
           ==
         ;div
           ;*
@@ -957,7 +1562,7 @@
         ;div.form-head
           ;div.kicker: create
           ;h2: New stack
-          ;p.muted: Give it a stable ID and a display name.
+          ;p.muted: Enter a stable stack ID and display name.
         ==
         ;+  new-stack-form
       ==
@@ -969,7 +1574,7 @@
           ==
         ==
         ;div.compose-body
-          ;p.muted: Give it a stable ID and a name you will recognize.
+          ;p.muted: Enter a stable stack ID and display name.
           ;+  new-stack-form
         ==
       ==
@@ -1098,14 +1703,16 @@
     |=  [owner=@p name=@tas =stack]
     ^-  manx
     =/  rows=(list [@tas item])
-      ~(tap by `(map @tas item)`items.stack)
+      %+  sort  ~(tap by `(map @tas item)`items.stack)
+      |=  [a=[@tas item] b=[@tas item]]
+      (aor -.a -.b)
     ?~  rows
-      ;div.empty: This stack has no cards yet.
-    ;div.card.item-list
+      ;div.empty: This stack has no cards.
+    ;div.item-list
       ;*
       %+  turn  rows
       |=  [item-name=@tas =item]
-      (item-row owner name item-name item =(owner our))
+      (item-row owner name item-name item)
     ==
   ::
   ++  stack-editor
@@ -1155,7 +1762,7 @@
           ==
         ==
         ;div.compose-body
-          ;p.muted: Start with one prompt and the answer you want to remember.
+          ;p.muted: Enter one prompt and the answer to remember.
           ;+  (add-card-form name)
         ==
       ==
@@ -1250,21 +1857,34 @@
     ==
   ::
   ++  item-row
-    |=  [owner=@p stack-name=@tas item-name=@tas =item owned=?]
+    |=  [owner=@p stack-name=@tas item-name=@tas =item]
     ^-  manx
-    ;article.item
-      ;h3: {(trip title.content.item)}
-      ;details
-        ;summary: show card
-        ;div.prompt.section: {(trip (body-text front.content.item))}
-        ;div.answer: {(trip (body-text back.content.item))}
+    ;details.item
+      ;summary.item-summary
+        ;span.item-copy
+          ;span.item-id: /{(tas-tape item-name)}
+          ;span.item-title: {(trip title.content.item)}
+        ==
+        ;span.item-toggle(aria-hidden "true");
       ==
-      ;+  (question-panel owner stack-name item-name (stack-url owner stack-name) 'stack')
-      ;+  (item-actions owner stack-name item-name)
+      ;div.item-detail
+        ;div.card-content
+          ;section.card-face
+            ;div.eyebrow: front
+            ;div.prompt: {(trip (body-text front.content.item))}
+          ==
+          ;section.card-face
+            ;div.eyebrow: back
+            ;div.answer: {(trip (body-text back.content.item))}
+          ==
+        ==
+        ;+  (question-panel owner stack-name item-name (stack-url owner stack-name) 'stack' %.y)
+        ;+  (item-actions owner stack-name item-name)
+      ==
     ==
   ::
   ++  question-panel
-    |=  [owner=@p stack-name=@tas item-name=@tas poll-url=tape return=@t]
+    |=  [owner=@p stack-name=@tas item-name=@tas poll-url=tape return=@t chrome=?]
     ^-  manx
     =/  rows=(list [@tas card-question])
       (card-questions owner stack-name item-name)
@@ -1276,10 +1896,10 @@
         =hx-target   "#seer-app"
         =hx-select   "#seer-app"
         =hx-swap     "outerHTML"
-        ;+  (question-panel-body owner stack-name item-name return rows)
+        ;+  (question-panel-body owner stack-name item-name return rows chrome)
       ==
     ;section.ai-card
-      ;+  (question-panel-body owner stack-name item-name return rows)
+      ;+  (question-panel-body owner stack-name item-name return rows chrome)
     ==
   ::
   ++  question-panel-body
@@ -1288,15 +1908,19 @@
             item-name=@tas
             return=@t
             rows=(list [@tas card-question])
+            chrome=?
         ==
     ^-  manx
     =/  available-models=(list [@tas assistant-model])
       ordered-assistant-models
     ;div
+      ;+
+      ?.  chrome
+        ;div.hidden;
       ;div.ai-head
         ;div
-          ;div.eyebrow: assistant panel
-          ;h3: Ask or improve this card
+          ;div.eyebrow: assistant
+          ;h3: Card assistant
         ==
         ;span.pill: {<`@ud`(lent available-models)>} models · OMP
       ==
@@ -1311,13 +1935,16 @@
       ==
       ;+
       ?~  available-models
-        ;div.ai-model-empty.section
-          No signed-in model provider is available. Sign in with Codex or Claude Code on this machine; the local bridge will publish its models here automatically.
-        ==
+        ?:  =('review' return)
+          ;div
+            ;+  (login-panel 'review')
+          ==
+        ;div.ai-model-empty.section: No assistant model is available. Open Review to connect a provider.
       ;form.ai-form.section
         =method   "post"
         =action   "/apps/seer/actions/ask-card"
         =hx-post  "/apps/seer/actions/ask-card"
+        =hx-swap  "outerHTML"
         ;input(type "hidden", name "owner", value (scow %p owner));
         ;input(type "hidden", name "stack", value (tas-tape stack-name));
         ;input(type "hidden", name "item", value (tas-tape item-name));
@@ -1330,12 +1957,12 @@
               ;+
               ?:  =(owner our)
                 ;option(value "edit"): Edit
-              ;option(value "edit", disabled ""): Edit · owned only
+              ;option(value "edit", disabled ""): Edit · local cards only
             ==
           ==
           ;label
             ;span: request
-            ;textarea(name "question", required "", placeholder "Ask a question or describe what should change.");
+            ;textarea(name "question", required "", placeholder "Enter a question or edit instruction.", id (weld "ask-" (tas-tape item-name)), hx-preserve "true");
           ==
           ;label
             ;span: answer with
@@ -1368,11 +1995,11 @@
       ;+
       ?-  status.job
         %pending
-          (thinking-indicator "Waiting for the local assistant bridge…")
+          (thinking-indicator "Wait for the local bridge.")
         %working
           ?:  =(%edit mode.job)
-            (thinking-indicator "{(trip label.profile.job)} is revising the card…")
-          (thinking-indicator "{(trip label.profile.job)} is thinking…")
+            (thinking-indicator "Wait while {(trip label.profile.job)} revises this card.")
+          (thinking-indicator "Wait while {(trip label.profile.job)} prepares an answer.")
         %answered
           ?:  =(%ask mode.job)
             ;div.ai-answer: {(trip response.job)}
@@ -1404,6 +2031,7 @@
                 =method   "post"
                 =action   "/apps/seer/actions/retry-card-question"
                 =hx-post  "/apps/seer/actions/retry-card-question"
+                =hx-swap  "outerHTML"
                 ;input(type "hidden", name "question-id", value (tas-tape question-id));
                 ;input(type "hidden", name "owner", value (scow %p owner.job));
                 ;input(type "hidden", name "stack", value (tas-tape stack.job));
@@ -1414,6 +2042,7 @@
                 =method   "post"
                 =action   "/apps/seer/actions/delete-card-question"
                 =hx-post  "/apps/seer/actions/delete-card-question"
+                =hx-swap  "outerHTML"
                 ;input(type "hidden", name "question-id", value (tas-tape question-id));
                 ;input(type "hidden", name "owner", value (scow %p owner.job));
                 ;input(type "hidden", name "stack", value (tas-tape stack.job));

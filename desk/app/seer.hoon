@@ -14,6 +14,9 @@
       [%6 state-five]
       [%7 state-six]
       [%8 state-seven]
+      [%9 state-eight]
+      [%10 state-nine]
+      [%11 state-ten]
   ==
 ::
 +$  state-zero
@@ -77,6 +80,45 @@
       models=(map @tas assistant-model)
       changes=(map @tas change-request)
   ==
+::
++$  state-eight
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+  ==
+::
++$  state-nine
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+      bridge-capability=@
+  ==
+::
++$  state-ten
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+      bridge-secret=@t
+      bridge-nonces=(map @t @da)
+  ==
 +$  card-question-five
   $:  id=@tas
       owner=@p
@@ -118,7 +160,7 @@
 ::
 --
 ::
-=|  [%8 state-seven]
+=|  [%11 state-ten]
 =*  state  -
 ^-  agent:gall
 =<
@@ -167,8 +209,8 @@
     =^  cards  state
       ?+  path  (on-watch:def path)
         [%seertile *]       (peer-seertile:sc t.path)
-        [%seer-primary *]   ~&  >>  "in on-watch: primary {<path>})"  [~ state]
-        [%http-response *]  ~&  >>  "in http-resonse: {<path>}"  [~ state]
+        [%seer-primary *]   ~&  >>  "on-watch primary: {<path>}"  [~ state]
+        [%http-response *]  ~&  >>  "on-watch HTTP response: {<path>}"  [~ state]
         [%stack @ ~]  (peer-stack:sc i.t.path)
       ==
     [cards this]
@@ -178,7 +220,7 @@
     |^  ^-  (quip card _this)
     ?+    -.sign  (on-agent:def wire sign)
         %kick
-      ~&  >>  "in kick"
+      ~&  >>  "on-agent kick"
       :_  this
       ?+  wire  ~
         [%primary @ ~]  ~[[%pass /seer-primary %agent [our.bol %seer] %watch /seer-primary]]
@@ -261,14 +303,14 @@
           |=  old-stack=stack-1
           ^-  stack
           (convert-stack-1-2 old-stack)
-        [%8 new-stacks ~ new-stack-subs ~ ~ ~ ~ ~]
+        [%11 new-stacks ~ new-stack-subs ~ ~ ~ ~ ~ ~ '' ~]
       ==
     %2
-      [~ this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~])]
+      [~ this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~])]
     %3
-      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~])]
+      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~])]
     %4
-      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~ ~])]
+      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~ ~ ~ '' ~])]
     %5
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -293,7 +335,7 @@
             ''
             updated-at.old
         ==
-      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~])]
+      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~])]
     %6
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -318,10 +360,16 @@
             result-back.old
             updated-at.old
         ==
-      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~])]
+      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~])]
     %7
-      [init-cards this(state [%8 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state ~])]
+      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state ~ ~ '' ~])]
     %8
+      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state ~ '' ~])]
+    %9
+      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~])]
+    %10
+      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~])]
+    %11
       [init-cards this(state p.old-state)]
     ==
     ++  legacy-model
@@ -365,6 +413,7 @@
         [%x %all ~]        ``noun+!>(stacks.state)
         [%x %ai-state ~]
       ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state models.state changes.state])
+        [%x %logins ~]  ``noun+!>(logins.state)
         [%x %stack-subs ~]        ``noun+!>(stack-subs.state)
         [%x %stacks *]
       ?~  t.t.path
@@ -416,7 +465,7 @@
 ::  +stack-emit: handles state updates for the given stack
 ::
 ++  stack-emit
-  :: todo: maybe doesn't need to be a door
+  :: The door shares one stack across its action arms.
   ::
   |_  =stack
   ::
@@ -704,9 +753,9 @@
       (respond-page eyre-id [%inbox ~] `'That proposal is no longer available.')
     =/  maybe-stack  (~(get by stacks.state) stack.u.maybe-draft)
     ?~  maybe-stack
-      (respond-page eyre-id [%inbox ~] `'The target stack no longer exists. Reject or restage this proposal.')
+      (respond-page eyre-id [%inbox ~] `'The target stack does not exist. Reject the proposal, or stage a new one.')
     ?:  (~(has by items.u.maybe-stack) card.u.maybe-draft)
-      (respond-page eyre-id [%inbox ~] `'That card ID is already in use. Reject or restage this proposal.')
+      (respond-page eyre-id [%inbox ~] `'That card ID is in use. Reject the proposal, or stage a new one.')
     %:  apply-web-action
       eyre-id
       [%approve-proposal capture-id proposal-id]
@@ -760,7 +809,7 @@
       eyre-id
       [%answered-item owner stack-name item-name answer]
       [%review ~]
-      `'Review saved.'
+      ~
     ==
   ::
       [[~ [%apps %seer %actions %request-change ~]] ~]
@@ -770,7 +819,7 @@
     =/  model-id  (slav %tas (form-got fields 'model'))
     =/  maybe-profile  (~(get by models.state) model-id)
     ?~  maybe-profile
-      (respond-page eyre-id [%inbox ~] `'That assistant model is no longer available. Choose another model and try again.')
+      (respond-page eyre-id [%inbox ~] `'That assistant model is unavailable. Select another model before you send the request again.')
     =/  id-suffix=tape
       %+  skim
         (trip (scot %uv (mug [now.bol target prompt model-id])))
@@ -809,7 +858,7 @@
       eyre-id
       [%retry-change change-id]
       [%inbox ~]
-      `'Change request queued again against fresh state.'
+      `'Change request queued with current library state.'
     ==
   ::
       [[~ [%apps %seer %actions %delete-change ~]] ~]
@@ -836,7 +885,7 @@
     =/  model-id  (slav %tas (form-got fields 'model'))
     =/  maybe-profile  (~(get by models.state) model-id)
     ?~  maybe-profile
-      (respond-page eyre-id target-page `'That assistant model is no longer available. Choose another model and try again.')
+      (respond-page eyre-id target-page `'That assistant model is unavailable. Select another model before you send the request again.')
     =/  profile=assistant-model  u.maybe-profile
     =/  id-suffix=tape
       %+  skim
@@ -849,7 +898,77 @@
       eyre-id
       [%ask-card question-id owner stack-name item-name mode profile prompt]
       target-page
-      `'Assistant {(trip mode)} sent to {(trip label.profile)}.'
+      `'Request sent to {(trip label.profile)}.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %request-login ~]] ~]
+    =/  provider-raw  (form-got fields 'provider')
+    =/  provider=ai-provider
+      ?:(=('claude' provider-raw) %claude %codex)
+    =/  login-id=@tas
+      ?:(=(%claude provider) %login-claude %login-codex)
+    =/  target-page=page:index
+      ?:  =('inbox' (form-got fields 'return'))
+        [%inbox ~]
+      [%review ~]
+    %:  apply-web-action
+      eyre-id
+      [%request-login login-id provider]
+      target-page
+      ~
+    ==
+  ::
+      [[~ [%apps %seer %actions %request-logout ~]] ~]
+    =/  provider-raw  (form-got fields 'provider')
+    =/  provider=ai-provider
+      ?:(=('claude' provider-raw) %claude %codex)
+    =/  request-id=@tas
+      ?:(=(%claude provider) %logout-claude %logout-codex)
+    %:  apply-web-action
+      eyre-id
+      [%request-login request-id provider]
+      [%inbox ~]
+      ~
+    ==
+  ::
+      [[~ [%apps %seer %actions %submit-login-code ~]] ~]
+    =/  login-id  (slav %tas (form-got fields 'login-id'))
+    =/  code      (form-got fields 'code')
+    =/  target-page=page:index
+      ?:  =('inbox' (form-got fields 'return'))
+        [%inbox ~]
+      [%review ~]
+    %:  apply-web-action
+      eyre-id
+      [%submit-login-code login-id code]
+      target-page
+      ~
+    ==
+  ::
+      [[~ [%apps %seer %actions %cancel-login ~]] ~]
+    =/  login-id  (slav %tas (form-got fields 'login-id'))
+    =/  target-page=page:index
+      ?:  =('inbox' (form-got fields 'return'))
+        [%inbox ~]
+      [%review ~]
+    %:  apply-web-action
+      eyre-id
+      [%cancel-login login-id]
+      target-page
+      ~
+    ==
+  ::
+      [[~ [%apps %seer %actions %retry-login ~]] ~]
+    =/  login-id  (slav %tas (form-got fields 'login-id'))
+    =/  target-page=page:index
+      ?:  =('inbox' (form-got fields 'return'))
+        [%inbox ~]
+      [%review ~]
+    %:  apply-web-action
+      eyre-id
+      [%retry-login login-id]
+      target-page
+      ~
     ==
   ::
       [[~ [%apps %seer %actions %retry-card-question ~]] ~]
@@ -974,7 +1093,7 @@
   |=  [page=page:index notice=(unit @t)]
   ^-  simple-payload:http
   %-  manx-response:gen
-  (render:index our.bol stacks.state stack-subs.state captures.state questions.state models.state changes.state all-reviews page notice)
+  (render:index our.bol stacks.state stack-subs.state captures.state questions.state models.state changes.state logins.state all-reviews page notice)
 ::
 ++  form-got
   |=  [fields=(map @t @t) key=@t]
@@ -1534,7 +1653,7 @@
             =(back.content.current back.question)
         ==
       =.  status.question      %failed
-      =.  response.question    'The card changed while the assistant was working. Review the newer card, then retry if the edit is still useful.'
+      =.  response.question    'The card changed after you sent this request. Review the current card. Retry the request if needed.'
       =.  updated-at.question  now.bol
       =.  questions.state  (~(put by questions.state) id.act question)
       [~ state]
@@ -1672,13 +1791,13 @@
       [~ state]
     ?.  (change-valid operations.request)
       =.  status.request      %failed
-      =.  response.request    'The library changed after this plan was prepared. Nothing was applied; retry to build a fresh plan.'
+      =.  response.request    'The library changed after the plan was created. Seer did not apply the plan. Build a new plan.'
       =.  updated-at.request  now.bol
       =.  changes.state  (~(put by changes.state) id.act request)
       [~ state]
     =^  operation-cards  state  (apply-operations operations.request)
     =.  status.request      %applied
-    =.  response.request    'Applied after human approval.'
+    =.  response.request    'Plan applied after approval.'
     =.  updated-at.request  now.bol
     =.  changes.state  (~(put by changes.state) id.act request)
     [operation-cards state]
@@ -1691,7 +1810,7 @@
         ==
       [~ state]
     =.  status.request      %rejected
-    =.  response.request    'Rejected by the user.'
+    =.  response.request    'Request rejected.'
     =.  updated-at.request  now.bol
     =.  changes.state  (~(put by changes.state) id.act request)
     [~ state]
@@ -1719,7 +1838,169 @@
       [~ state]
     =.  changes.state  (~(del by changes.state) id.act)
     [~ state]
+      %request-login
+    ::  the ship never runs a provider login itself; it only queues the
+    ::  request for the local bridge.  one live request per provider.
+    =/  existing=(list [@tas login-request])
+      %+  skim  ~(tap by logins.state)
+      |=  [id=@tas req=login-request]
+      =(provider.act provider.req)
+    =/  active=?
+      %+  lien  existing
+      |=  [id=@tas req=login-request]
+      ?=(?(%pending %working %challenge) status.req)
+    ?:  active  [~ state]
+    ::  settled requests for this provider make way for the new one
+    =.  logins.state
+      %-  malt
+      %+  skip  ~(tap by logins.state)
+      |=  [id=@tas req=login-request]
+      =(provider.act provider.req)
+    =/  req=login-request
+      [id.act provider.act %pending '' '' '' '' '' now.bol now.bol]
+    =.  logins.state  (~(put by logins.state) id.act req)
+    [~ state]
+      %issue-bridge-nonce
+    =.  bridge-nonces.state
+      %-  malt
+      %+  skim  ~(tap by bridge-nonces.state)
+      |=  [old-nonce=@t issued=@da]
+      (lte (sub now.bol issued) ~m5)
+    =.  bridge-nonces.state  (~(put by bridge-nonces.state) nonce.act now.bol)
+    [~ state]
+      %claim-login
+    =/  maybe-login  (~(get by logins.state) id.act)
+    ?~  maybe-login  [~ state]
+    =/  req  u.maybe-login
+    ?.  =(%pending status.req)  [~ state]
+    ?.  (bridge-proof-valid %claim-login id.act worker.act ~ nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    =/  next=login-request
+      :*  id.req  provider.req  %working
+          auth-url.req  user-code.req  pasted-code.req  message.req
+          worker.act  created-at.req  now.bol
+      ==
+    =.  logins.state  (~(put by logins.state) id.act next)
+    [~ state]
+      %post-login-challenge
+    =/  maybe-login  (~(get by logins.state) id.act)
+    ?~  maybe-login  [~ state]
+    =/  req  u.maybe-login
+    ?.  ?&  =(%working status.req)
+            =(worker.act worker.req)
+        ==
+      [~ state]
+    ?.  (bridge-proof-valid %post-login-challenge id.act worker.act ~[auth-url.act user-code.act] nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    =/  next=login-request
+      :*  id.req  provider.req  %challenge
+          auth-url.act  user-code.act  pasted-code.req  message.req
+          worker.req  created-at.req  now.bol
+      ==
+    =.  logins.state  (~(put by logins.state) id.act next)
+    [~ state]
+      %submit-login-code
+    =/  maybe-login  (~(get by logins.state) id.act)
+    ?~  maybe-login  [~ state]
+    =/  req  u.maybe-login
+    ?.  =(%challenge status.req)  [~ state]
+    =/  next=login-request
+      :*  id.req  provider.req  %challenge
+          auth-url.req  user-code.req  code.act  message.req
+          worker.req  created-at.req  now.bol
+      ==
+    =.  logins.state  (~(put by logins.state) id.act next)
+    [~ state]
+      %consume-login-code
+    =/  maybe-login  (~(get by logins.state) id.act)
+    ?~  maybe-login  [~ state]
+    =/  req  u.maybe-login
+    ?.  ?&  =(%challenge status.req)
+            =(worker.act worker.req)
+        ==
+      [~ state]
+    ?.  (bridge-proof-valid %consume-login-code id.act worker.act ~ nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    =/  next=login-request
+      :*  id.req  provider.req  %challenge
+          auth-url.req  user-code.req  ''  message.req
+          worker.req  created-at.req  now.bol
+      ==
+    =.  logins.state  (~(put by logins.state) id.act next)
+    [~ state]
+      %finish-login
+    =/  maybe-login  (~(get by logins.state) id.act)
+    ?~  maybe-login  [~ state]
+    =/  req  u.maybe-login
+    ?:  =(%done status.req)  [~ state]
+    ?.  ?&  ?|(=(%working status.req) =(%challenge status.req))
+            =(worker.act worker.req)
+        ==
+      [~ state]
+    ?.  (bridge-proof-valid %finish-login id.act worker.act ~ nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    =/  next=login-request
+      :*  id.req  provider.req  %done
+          ''  ''  ''  ''
+          worker.req  created-at.req  now.bol
+      ==
+    =.  logins.state  (~(put by logins.state) id.act next)
+    [~ state]
+      %fail-login
+    =/  maybe-login  (~(get by logins.state) id.act)
+    ?~  maybe-login  [~ state]
+    =/  req  u.maybe-login
+    ?:  ?|(=(%done status.req) =(%failed status.req))  [~ state]
+    ?.  =(worker.act worker.req)  [~ state]
+    ?.  (bridge-proof-valid %fail-login id.act worker.act ~[message.act] nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    =/  next=login-request
+      :*  id.req  provider.req  %failed
+          ''  ''  ''  message.act
+          worker.req  created-at.req  now.bol
+      ==
+    =.  logins.state  (~(put by logins.state) id.act next)
+    [~ state]
+      %retry-login
+    =/  maybe-login  (~(get by logins.state) id.act)
+    ?~  maybe-login  [~ state]
+    =/  req  u.maybe-login
+    ?.  =(%failed status.req)  [~ state]
+    =/  next=login-request
+      :*  id.req  provider.req  %pending
+          ''  ''  ''  ''  ''
+          created-at.req  now.bol
+      ==
+    =.  logins.state  (~(put by logins.state) id.act next)
+    [~ state]
+      %cancel-login
+    =/  maybe-login  (~(get by logins.state) id.act)
+    ?~  maybe-login  [~ state]
+    =/  req  u.maybe-login
+    ?:  ?|(=(%done status.req) =(%failed status.req))
+      =.  logins.state  (~(del by logins.state) id.act)
+      [~ state]
+    =/  next=login-request
+      :*  id.req  provider.req  %failed
+          ''  ''  ''  'Cancelled.'
+          worker.req  created-at.req  now.bol
+      ==
+    =.  logins.state  (~(put by logins.state) id.act next)
+    [~ state]
   ==
+::
+++  bridge-proof-valid
+  |=  [action=@tas id=@tas worker=@t fields=(list @t) nonce=@t proof=@]
+  ^-  ?
+  ?:  =(0 bridge-secret.state)  %.n
+  =/  issued=(unit @da)  (~(get by bridge-nonces.state) nonce)
+  ?~  issued  %.n
+  ?.  (lte (sub now.bol u.issued) ~m5)  %.n
+  =/  parts=(list @t)
+    (welp ~['seer-bridge-v1' action id worker nonce] fields)
+  =/  payload=@t
+    (crip (zing (turn parts |=(part=@t "{<(met 3 part)>}:{(trip part)}"))))
+  =(proof (hmac-sha256t:hmac:crypto bridge-secret.state payload))
 ::
 ++  peer-seertile
   |=  wir=wire
@@ -1775,7 +2056,16 @@
       ~&  >  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *[%8 state-seven]]
+      [~ *[%11 state-ten]]
+        [%set-bridge-capability @]
+      =/  token=@t  +.a
+      =.  bridge-secret.state  token
+      =.  bridge-nonces.state  ~
+      [~ state]
+        %clear-bridge-capability
+      =.  bridge-secret.state  ''
+      =.  bridge-nonces.state  ~
+      [~ state]
     ==
 ::
 ++  handle-import-stack

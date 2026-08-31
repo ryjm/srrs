@@ -1,5 +1,6 @@
 {
   "mcpUrl": "http://127.0.0.1:8080/mcp",
+  "bridgeSecret": "replace-with-at-least-32-random-bytes",
   "pollIntervalMs": 2000,
   "timeoutMs": 180000,
   "codex": {
