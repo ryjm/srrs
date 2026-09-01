@@ -75,7 +75,8 @@ Gall reloads an installed `%seer` agent. For the first installation, run `|insta
 - POST routes send typed `%seer-action` values and then render the changed view.
 - `hx-boost`, `hx-target`, `hx-select`, and `hx-swap` replace the `#seer-app` fragment.
 - Each route also returns usable HTML when JavaScript is unavailable.
-- The review page enhances itself with an inline script: vim-style keys on desktop (`space` flip, `1`–`4` grade, `j`/`k`/`d`/`u`/`gg`/`G` scroll, `i` assistant, `?` help), a session progress bar, and disclosure state that survives fragment swaps.
+- The shared app shell adds Vim-style navigation: `j`/`k` move between interactive targets, `J`/`K` and `d`/`u` scroll, `gg`/`G` jump, `gr`/`gi`/`gl`/`gs` change sections, `za`/`zo`/`zc`/`zR`/`zM` control disclosures, `i` enters a focused form, `ga` opens the assistant, and `?` opens the shortcut guide.
+- Review adds `space` to flip, `1`–`4` to grade, a session progress bar, and disclosure state that survives fragment swaps.
 
 The server owns the HTML and application state. Form fields decode into typed actions.
 
