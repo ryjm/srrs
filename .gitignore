@@ -11,6 +11,7 @@ full
 .beads/dolt
 .beads/dolt-wal
 .beads/.br_history/
+.beads/.auto-import-issues.jsonl
 
 # bv (beads viewer) local config and caches
 .bv/
