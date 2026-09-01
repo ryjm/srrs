@@ -75,6 +75,22 @@
       [%reject-proposal capture=@tas proposal=@tas]
       [%discard-capture capture=@tas]
       [%delete-capture capture=@tas]
+      $:  %add-context-source
+          id=@tas
+          owner=@p
+          stak=@tas
+          card=(unit @tas)
+          kind=context-kind
+          label=@t
+          locator=@t
+          content=@t
+      ==
+      [%remove-context-source id=@tas]
+      [%claim-context-source id=@tas worker=@t]
+      [%finish-context-source id=@tas worker=@t label=@t content=@t]
+      [%fail-context-source id=@tas worker=@t error=@t]
+      [%retry-context-source id=@tas]
+  ::
       $:  %ask-card
           id=@tas
           owner=@p
@@ -83,6 +99,7 @@
           mode=assistant-mode
           profile=assistant-model
           prompt=@t
+          context-ids=(list @tas)
       ==
       [%clear-assistant-models worker=@t]
       $:  %register-assistant-model
@@ -197,6 +214,27 @@
 ::
 +$  assistant-mode  $?(%ask %edit)
 ::
++$  context-kind  $?(%note %clay %file %web)
+::
++$  context-status  $?(%pending %working %ready %failed)
+::
++$  context-source
+  $:  id=@tas
+      owner=@p
+      stack=@tas
+      card=(unit @tas)
+      kind=context-kind
+      label=@t
+      locator=@t
+      content=@t
+      status=context-status
+      error=@t
+      worker=@t
+      active=?
+      created-at=@da
+      updated-at=@da
+  ==
+::
 +$  question-status  $?(%pending %working %answered %failed)
 ::
 ::  Durable question jobs snapshot the card so answers remain auditable even
@@ -290,6 +328,8 @@
       questions=(map @tas card-question)
       models=(map @tas assistant-model)
       changes=(map @tas change-request)
+      contexts=(map @tas context-source)
+      question-contexts=(map @tas (list @tas))
   ==
 ::  +stack-info: stack information
 ::

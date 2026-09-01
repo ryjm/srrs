@@ -96,6 +96,26 @@ tool:     mcp/import-mcp-tools {"desk":"seer"}
 
 Import the tools again after a Seer upgrade. `%mcp-server` sends `tools/list_changed` when imported definitions change.
 
+### Attach durable assistant context
+
+Stack and card context lives in `%seer` state and survives browser, bridge, and
+provider restarts. Stack context is available to every card in that stack; card
+context stays scoped to one card. Every prompt shows the ready sources selected
+by default, and each source can be excluded for that individual request.
+
+The browser accepts four source kinds:
+
+- **Note** — pasted facts, constraints, examples, or background.
+- **Ship file** — a text-compatible file at a mounted Clay path.
+- **Local file** — a browser-selected text file up to 128 KB.
+- **Web page** — a public HTTP or HTTPS page fetched by the paired bridge.
+
+Notes, local files, and Clay files are stored immediately. Web sources enter a
+durable queue; the bridge rejects private-network destinations, follows only
+validated redirects, extracts bounded readable text, and writes the normalized
+snapshot back to `%seer`. Removing a source archives it from future prompts
+without breaking the context snapshot selected by an already-queued request.
+
 ### Create cards from a source
 
 Seer stores each capture on the ship. Different MCP clients can inspect and continue the same capture.
@@ -115,7 +135,7 @@ The planning tools cannot approve a proposal. Seer applies an approval only afte
 
 ### MCP tools
 
-Seer publishes 30 tools:
+Seer publishes 34 tools:
 
 | Tool | Purpose |
 | --- | --- |
@@ -130,6 +150,10 @@ Seer publishes 30 tools:
 | `seer/list-assistant-models` | Lists models that use signed-in local accounts. |
 | `seer/clear-assistant-models` | Clears the model catalog before a bridge refresh. |
 | `seer/register-assistant-model` | Registers one provider and model profile. |
+| `seer/list-context-sources` | Lists durable stack/card sources and pending web ingestion jobs. |
+| `seer/claim-context-source` | Assigns one pending web source to the local bridge. |
+| `seer/finish-context-source` | Persists normalized fetched content on the ship. |
+| `seer/fail-context-source` | Stores a source ingestion error for browser retry. |
 | `seer/list-card-questions` | Lists card questions, edit requests, and results. |
 | `seer/claim-card-question` | Assigns one pending card request to a bridge worker. |
 | `seer/answer-card-question` | Stores the answer for a claimed card question. |
@@ -281,6 +305,9 @@ NIXPKGS_ALLOW_UNFREE=1 nix profile install --impure nixpkgs#claude-code
 ```
 
 Copy `bridge/ai-bridge.example.json` to `~/.config/seer/ai-bridge.json`. Set a command path only when the command is not on `PATH`.
+`mcpTimeoutMs` bounds each bridge-to-ship call (default 30000).
+`contextMaxBytes` bounds each fetched source (default 131072), and
+`contextFetchTimeoutMs` bounds each fetch (default 20000).
 
 Pair the bridge with Seer before enabling frontend sign-in. Generate a
 high-entropy shared secret on the bridge host:

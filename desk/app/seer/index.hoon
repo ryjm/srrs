@@ -19,6 +19,8 @@
           subscriptions=(map [@p @tas] stack)
           captures=(map @tas capture)
           questions=(map @tas card-question)
+          contexts=(map @tas context-source)
+          question-contexts=(map @tas (list @tas))
           models=(map @tas assistant-model)
           changes=(map @tas change-request)
           logins=(map @tas login-request)
@@ -286,8 +288,72 @@
                     if (key === "R") { setAllFolds(true); return; }
                     if (key === "M") { setAllFolds(false); }
                   }
+                  function contextFormStatus(form, message, state) {
+                    var status = form.querySelector("[data-context-file-status]");
+                    if (!status) { return; }
+                    status.textContent = message || "";
+                    if (state) { status.setAttribute("data-state", state); }
+                    else { status.removeAttribute("data-state"); }
+                  }
+                  function syncContextForm(form) {
+                    var select = form.querySelector("[data-context-type]");
+                    if (!select) { return; }
+                    var kind = select.value || "note";
+                    form.querySelectorAll("[data-context-kind]").forEach(function (section) {
+                      var active = section.getAttribute("data-context-kind") === kind;
+                      section.hidden = !active;
+                      section.querySelectorAll("input, textarea, select").forEach(function (field) {
+                        field.disabled = !active;
+                      });
+                    });
+                    var button = form.querySelector("[data-context-submit]");
+                    if (button) {
+                      var labels = { note: "Add note", clay: "Attach ship file", file: "Attach local file", web: "Fetch web page" };
+                      button.textContent = labels[kind] || "Add context";
+                      var content = form.querySelector("[data-context-file-content]");
+                      button.disabled = kind === "file" && !(content && content.value);
+                    }
+                  }
+                  function syncContextForms() {
+                    qa("[data-context-form]").forEach(syncContextForm);
+                  }
+                  async function loadContextFile(input) {
+                    var form = input.closest("[data-context-form]");
+                    var file = input.files && input.files[0];
+                    if (!form || !file) { return; }
+                    var content = form.querySelector("[data-context-file-content]");
+                    var locator = form.querySelector("[data-context-file-locator]");
+                    var label = form.querySelector("input[name=label]");
+                    if (content) { content.value = ""; }
+                    syncContextForm(form);
+                    if (file.size > 131072) {
+                      contextFormStatus(form, "Choose a text file smaller than 128 KB.", "error");
+                      return;
+                    }
+                    contextFormStatus(form, "Reading " + file.name + "…", "working");
+                    try {
+                      var text = await file.text();
+                      if (new TextEncoder().encode(text).length > 131072) {
+                        throw new Error("Choose a text file smaller than 128 KB.");
+                      }
+                      if (text.indexOf("\u0000") >= 0) {
+                        throw new Error("That file is not plain text.");
+                      }
+                      if (!text.trim()) { throw new Error("That file is empty."); }
+                      if (content) { content.value = text; }
+                      if (locator) { locator.value = file.name; }
+                      if (label && !label.value.trim()) { label.value = file.name; }
+                      contextFormStatus(form, file.name + " · " + Math.max(1, Math.ceil(file.size / 1024)) + " KB ready", "ready");
+                      syncContextForm(form);
+                    } catch (error) {
+                      if (content) { content.value = ""; }
+                      contextFormStatus(form, error.message || "That file could not be read.", "error");
+                      syncContextForm(form);
+                    }
+                  }
                   function sync() {
                     document.documentElement.classList.add("kb");
+                    syncContextForms();
                     var r = root();
                     if (r) {
                       var left = parseInt(r.getAttribute("data-remaining") || "0", 10);
@@ -333,6 +399,14 @@
                     if (summary) { focusTarget(summary); }
                     var b = e.target && e.target.closest ? e.target.closest("[data-help-open]") : null;
                     if (b) { help(true); }
+                  });
+                  document.addEventListener("change", function (e) {
+                    if (e.target && e.target.matches && e.target.matches("[data-context-type]")) {
+                      syncContextForm(e.target.closest("[data-context-form]"));
+                    }
+                    if (e.target && e.target.matches && e.target.matches("[data-context-file]")) {
+                      loadContextFile(e.target);
+                    }
                   });
                   document.addEventListener("htmx:beforeRequest", function (e) {
                     var el = e.detail ? e.detail.elt : null;
@@ -929,6 +1003,64 @@
                }
                @media (max-width: 430px) {
                  .item-list { grid-template-columns: 1fr; }
+               }
+               '''
+        ;style:'''
+               .context-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; min-width: 0; overflow: hidden; }
+               .context-panel[open] { border-color: var(--line-strong); }
+               .context-summary { align-items: center; cursor: pointer; display: flex; gap: 1rem; justify-content: space-between; list-style: none; min-height: 3.4rem; padding: .8rem 1rem; }
+               .context-summary::-webkit-details-marker, .context-add > summary::-webkit-details-marker { display: none; }
+               .context-summary:hover, .context-add > summary:hover { background: var(--surface-2); }
+               .context-summary-copy { display: grid; gap: .18rem; min-width: 0; }
+               .context-title { font-size: .9rem; font-weight: 650; letter-spacing: -.01em; }
+               .context-purpose { color: var(--muted); font-size: .76rem; line-height: 1.4; }
+               .context-count { color: var(--muted); flex: none; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .66rem; font-variant-numeric: tabular-nums; }
+               .context-body { border-top: 1px solid var(--line); display: grid; gap: 1rem; padding: 1rem; }
+               .context-list { display: grid; }
+               .context-source { align-items: start; display: flex; gap: .8rem; justify-content: space-between; min-width: 0; padding: .72rem 0; }
+               .context-source + .context-source { border-top: 1px solid var(--line); }
+               .context-source-copy { display: grid; gap: .3rem; min-width: 0; }
+               .context-source-head { align-items: baseline; display: flex; flex-wrap: wrap; gap: .45rem; }
+               .context-source-title { font-size: .84rem; font-weight: 650; overflow-wrap: anywhere; }
+               .context-kind, .context-scope { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .6rem; text-transform: uppercase; }
+               .context-locator { color: var(--muted); font-size: .72rem; line-height: 1.4; overflow-wrap: anywhere; }
+               .context-source-status { color: var(--muted); font-size: .72rem; line-height: 1.4; }
+               .context-source-status[data-status="ready"] { color: var(--ok); }
+               .context-source-status[data-status="working"], .context-source-status[data-status="pending"] { color: var(--warn); }
+               .context-source-status[data-status="failed"], [data-context-file-status][data-state="error"] { color: var(--danger); }
+               .context-source-actions { align-items: center; display: flex; flex: none; gap: .4rem; }
+               .context-source-actions button { min-height: 2rem; padding: .35rem .55rem; }
+               .context-empty { color: var(--muted); font-size: .78rem; line-height: 1.5; padding: .2rem 0; }
+               .context-add { border-top: 1px solid var(--line); }
+               .context-add > summary { cursor: pointer; font-size: .8rem; font-weight: 650; list-style: none; padding: .75rem 0 0; }
+               .context-form { display: grid; gap: .8rem; padding-top: .9rem; }
+               .context-type-row { align-items: end; display: grid; gap: .65rem; grid-template-columns: minmax(8rem, .7fr) minmax(0, 1.3fr); }
+               .context-fields { display: grid; gap: .65rem; }
+               .context-fields textarea { min-height: 6rem; }
+               .context-file-input { border: 1px dashed var(--line-strong); border-radius: 3px; display: grid; gap: .45rem; padding: .75rem; }
+               .context-file-input input[type="file"] { border: 0; min-height: 0; padding: 0; }
+               .context-file-input input[type="file"]::file-selector-button { background: var(--surface-2); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); cursor: pointer; font: inherit; margin-right: .6rem; padding: .45rem .6rem; }
+               [data-context-file-status] { color: var(--muted); font-size: .72rem; line-height: 1.4; min-height: 1rem; }
+               .context-picker { border: 0; border-top: 1px solid var(--line); display: grid; gap: .55rem; margin: 0; min-width: 0; padding: .75rem 0 0; }
+               .context-picker legend { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .66rem; padding: 0 .35rem 0 0; }
+               .context-choice-list { display: flex; flex-wrap: wrap; gap: .4rem; }
+               .context-choice { align-items: center; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); cursor: pointer; display: inline-flex; font-family: inherit; font-size: .72rem; gap: .4rem; line-height: 1.2; padding: .38rem .55rem; }
+               .context-choice:has(input:checked) { background: var(--surface-2); border-color: var(--line-strong); color: var(--ink); }
+               .context-choice input { accent-color: var(--focus); min-height: 0; padding: 0; width: auto; }
+               .context-choice .context-scope { font-size: .55rem; }
+               .item-detail > .context-panel { border-left: 0; border-radius: 0; border-right: 0; }
+               .editor-tools { display: grid; gap: 1rem; min-width: 0; }
+               @media (max-width: 650px) {
+                 .context-panel { border-radius: 9px; }
+                 .context-summary { min-height: 3.8rem; padding: .85rem 1rem; }
+                 .context-body { padding: 1rem; }
+                 .stack-layout > .editor-column { display: contents; }
+                 .stack-layout > .editor-column > .context-panel { order: -1; }
+                 .stack-layout > .editor-column > .editor-tools { order: 1; }
+                 .context-source { display: grid; justify-content: stretch; }
+                 .context-source-actions { justify-content: end; width: 100%; }
+                 .context-type-row { grid-template-columns: 1fr; }
+                 .item-detail > .context-panel { border-radius: 0; }
                }
                '''
       ==
@@ -2016,34 +2148,38 @@
   ++  stack-editor
     |=  [owner=@p name=@tas has-cards=?]
     ^-  manx
-    ?.  =(owner our)
-      ;div.hidden;
     ;div.editor-column
-      ;section.panel.form-panel.desktop-only
-        ;div.form-head
-          ;div.kicker: create
-          ;h2: Add a card
-        ==
-        ;+  (add-card-form name)
-      ==
+      ;+  (context-panel owner name ~)
       ;+
-      ?:  has-cards
-        (mobile-card-composer name %.n)
-      (mobile-card-composer name %.y)
-      ;section.panel.danger-zone.desktop-only
-        ;div.kicker: stack settings
-        ;+  (delete-stack-form name)
-      ==
-      ;details.mobile-compose.mobile-only.settings-disclosure
-        ;summary.compose-trigger
-          ;span.compose-title
-            ;span.kicker: manage
-            ;strong: Stack settings
+      ?.  =(owner our)
+        ;div.hidden;
+      ;div.editor-tools
+        ;section.panel.form-panel.desktop-only
+          ;div.form-head
+            ;div.kicker: create
+            ;h2: Add a card
           ==
+          ;+  (add-card-form name)
         ==
-        ;div.compose-body
-          ;p.muted: Permanently remove this stack and every card in it.
+        ;+
+        ?:  has-cards
+          (mobile-card-composer name %.n)
+        (mobile-card-composer name %.y)
+        ;section.panel.danger-zone.desktop-only
+          ;div.kicker: stack settings
           ;+  (delete-stack-form name)
+        ==
+        ;details.mobile-compose.mobile-only.settings-disclosure
+          ;summary.compose-trigger
+            ;span.compose-title
+              ;span.kicker: manage
+              ;strong: Stack settings
+            ==
+          ==
+          ;div.compose-body
+            ;p.muted: Permanently remove this stack and every card in it.
+            ;+  (delete-stack-form name)
+          ==
         ==
       ==
     ==
@@ -2177,8 +2313,194 @@
             ;div.answer: {(trip (body-text back.content.item))}
           ==
         ==
+        ;+  (context-panel owner stack-name `item-name)
         ;+  (question-panel owner stack-name item-name (stack-url owner stack-name) 'stack' %.y)
         ;+  (item-actions owner stack-name item-name)
+      ==
+    ==
+  ::
+  ++  context-panel
+    |=  [owner=@p stack-name=@tas card=(unit @tas)]
+    ^-  manx
+    =/  rows=(list [@tas context-source])
+      (scope-contexts owner stack-name card %.y)
+    =/  waiting=?  (contexts-waiting rows)
+    =/  scope-key=tape
+      ?~(card "stack" "card|{(tas-tape u.card)}")
+    =/  persist-key=tape
+      "context|{(scow %p owner)}|{(tas-tape stack-name)}|{scope-key}"
+    ?:  waiting
+      ;details.context-panel
+        =data-persist  persist-key
+        =hx-get        (stack-url owner stack-name)
+        =hx-trigger    "every 2s"
+        =hx-target     "#seer-app"
+        =hx-select     "#seer-app"
+        =hx-swap       "outerHTML"
+        ;*  (context-panel-body owner stack-name card rows)
+      ==
+    ;details.context-panel
+      =data-persist  persist-key
+      ;*  (context-panel-body owner stack-name card rows)
+    ==
+  ::
+  ++  context-panel-body
+    |=  $:  owner=@p
+            stack-name=@tas
+            card=(unit @tas)
+            rows=(list [@tas context-source])
+        ==
+    ^-  (list manx)
+    =/  card-scope=?  ?=(^ card)
+    =/  count=@ud  (lent rows)
+    =/  panel-title=tape  ?:(card-scope "Card context" "Stack context")
+    =/  purpose=tape
+      ?:(card-scope "Available only to prompts for this card." "Available to every card prompt in this stack.")
+    =/  source-word=tape  ?:(=(count 1) "source" "sources")
+    :~
+      ;summary.context-summary
+        ;span.context-summary-copy
+          ;span.context-title: {panel-title}
+          ;span.context-purpose: {purpose}
+        ==
+        ;span.context-count: {<count>} {source-word}
+      ==
+      ;div.context-body
+        ;+
+        ?~  rows
+          ;p.context-empty: No context attached yet. Add a note, ship file, local file, or web page.
+        ;div.context-list
+          ;*
+          %+  turn  rows
+          |=  [context-id=@tas source=context-source]
+          (context-source-row context-id source)
+        ==
+        ;+  (context-source-form owner stack-name card)
+      ==
+    ==
+  ::
+  ++  context-source-row
+    |=  [context-id=@tas source=context-source]
+    ^-  manx
+    ;article.context-source
+      ;div.context-source-copy
+        ;div.context-source-head
+          ;strong.context-source-title: {(trip label.source)}
+          ;span.context-kind: {(context-kind-name kind.source)}
+        ==
+        ;+
+        ?:  =(0 (met 3 locator.source))
+          ;span.hidden;
+        ;div.context-locator: {(trip locator.source)}
+        ;div.context-source-status
+          =data-status  (trip status.source)
+          ;span: {(context-status-name status.source)}
+        ==
+        ;+
+        ?:  ?&  =(%failed status.source)
+                !=(0 (met 3 error.source))
+            ==
+          ;div.context-source-status(data-status "failed"): {(trip error.source)}
+        ;span.hidden;
+      ==
+      ;div.context-source-actions
+        ;+
+        ?:  =(%failed status.source)
+          ;form.inline
+            =method   "post"
+            =action   "/apps/seer/actions/retry-context-source"
+            =hx-post  "/apps/seer/actions/retry-context-source"
+            ;input(type "hidden", name "context-id", value (tas-tape context-id));
+            ;input(type "hidden", name "owner", value (scow %p owner.source));
+            ;input(type "hidden", name "stack", value (tas-tape stack.source));
+            ;button.secondary(type "submit"): Retry
+          ==
+        ;span.hidden;
+        ;form.inline(hx-confirm "Remove this source from future prompts?")
+          =method     "post"
+          =action     "/apps/seer/actions/remove-context-source"
+          =hx-post    "/apps/seer/actions/remove-context-source"
+          ;input(type "hidden", name "context-id", value (tas-tape context-id));
+          ;input(type "hidden", name "owner", value (scow %p owner.source));
+          ;input(type "hidden", name "stack", value (tas-tape stack.source));
+          ;button.linkish(type "submit"): Remove
+        ==
+      ==
+    ==
+  ::
+  ++  context-source-form
+    |=  [owner=@p stack-name=@tas card=(unit @tas)]
+    ^-  manx
+    =/  card-value=tape  ?~(card "" (tas-tape u.card))
+    ;details.context-add
+      ;summary: Add source
+      ;form.context-form
+        =data-context-form  ""
+        =method             "post"
+        =action             "/apps/seer/actions/add-context-source"
+        =hx-post            "/apps/seer/actions/add-context-source"
+        ;input(type "hidden", name "owner", value (scow %p owner));
+        ;input(type "hidden", name "stack", value (tas-tape stack-name));
+        ;input(type "hidden", name "card", value card-value);
+        ;div.context-type-row
+          ;label
+            ;span: source
+            ;select
+              =name               "kind"
+              =data-context-type  ""
+              ;option(value "note"): Note
+              ;option(value "clay"): Ship file
+              ;option(value "file"): Local file
+              ;option(value "web"): Web page
+            ==
+          ==
+          ;label
+            ;span: name · optional
+            ;input(name "label", maxlength "240", placeholder "Research notes");
+          ==
+        ==
+        ;div.context-fields(data-context-kind "note")
+          ;label
+            ;span: context
+            ;textarea(name "content", required "", maxlength "131072", placeholder "Paste the facts, constraints, examples, or background this assistant should carry.");
+          ==
+        ==
+        ;div.context-fields
+          =data-context-kind  "clay"
+          =hidden             ""
+          ;label
+            ;span: mounted Clay path
+            ;input(name "locator", required "", disabled "", maxlength "2048", placeholder "/doc/project/md", autocomplete "off", autocapitalize "none", spellcheck "false");
+          ==
+          ;p.muted: Reads a text-compatible file from this ship's current desk.
+        ==
+        ;div.context-fields
+          =data-context-kind  "file"
+          =hidden             ""
+          ;label.context-file-input
+            ;span: local text file · 128 KB max
+            ;input
+              =type               "file"
+              =data-context-file  ""
+              =disabled           ""
+              =accept             ".txt,.md,.markdown,.org,.json,.csv,.tsv,.html,.htm,.xml,.hoon,.js,.mjs,.ts,.tsx,.jsx,.py,.rs,.go,.toml,.yaml,.yml,text/*,application/json"
+              ;
+            ==
+            ;span(data-context-file-status "", aria-live "polite");
+          ==
+          ;input(type "hidden", name "locator", disabled "", data-context-file-locator "");
+          ;textarea(name "content", hidden "", disabled "", data-context-file-content "");
+        ==
+        ;div.context-fields
+          =data-context-kind  "web"
+          =hidden             ""
+          ;label
+            ;span: public URL
+            ;input(type "url", name "locator", required "", disabled "", maxlength "2048", placeholder "https://example.com/reference");
+          ==
+          ;p.muted: The paired bridge fetches readable text and stores the snapshot on this ship.
+        ==
+        ;button(type "submit", data-context-submit ""): Add note
       ==
     ==
   ::
@@ -2212,6 +2534,8 @@
     ^-  manx
     =/  available-models=(list [@tas assistant-model])
       ordered-assistant-models
+    =/  prompt-sources=(list [@tas context-source])
+      (prompt-contexts owner stack-name item-name)
     ;div
       ;+
       ?.  chrome
@@ -2248,6 +2572,7 @@
         ;input(type "hidden", name "stack", value (tas-tape stack-name));
         ;input(type "hidden", name "item", value (tas-tape item-name));
         ;input(type "hidden", name "return", value (trip return));
+        ;+  (context-picker prompt-sources)
         ;div.ai-form-row
           ;label
             ;span: action
@@ -2277,6 +2602,27 @@
       ==
     ==
   ::
+  ++  context-picker
+    |=  rows=(list [@tas context-source])
+    ^-  manx
+    ?~  rows
+      ;div.hidden;
+    =/  count=@ud  (lent rows)
+    ;fieldset.context-picker
+      ;legend: Use context · {<count>} ready
+      ;div.context-choice-list
+        ;*
+        %+  turn  rows
+        |=  [context-id=@tas source=context-source]
+        =/  scope=tape  ?~(card.source "stack" "card")
+        ;label.context-choice(title (trip locator.source))
+          ;input(type "checkbox", name (weld "context-" (tas-tape context-id)), value "1", checked "");
+          ;span: {(trip label.source)}
+          ;span.context-scope: {scope}
+        ==
+      ==
+    ==
+  ::
   ++  question-row
     |=  [question-id=@tas job=card-question return=@t]
     ^-  manx
@@ -2284,10 +2630,15 @@
       ?|  =(%pending status.job)
           =(%working status.job)
       ==
+    =/  context-count=@ud
+      (lent (fall (~(get by question-contexts) question-id) ~))
+    =/  context-meta=tape
+      ?:  =(context-count 0)  ""
+      ?:(=(context-count 1) " · 1 source" " · {<context-count>} sources")
     ;article
       =class  ?:(active "ai-turn is-thinking" "ai-turn")
       ;div.ai-head
-        ;div.meta: {(trip mode.job)} · {(role-name role.profile.job)} · {(trip label.profile.job)}
+        ;div.meta: {(trip mode.job)} · {(role-name role.profile.job)} · {(trip label.profile.job)}{context-meta}
         ;span(class ?:(active "pill thinking-pill" "pill")): {(trip status.job)}
       ==
       ;div.ai-question: {(trip prompt.job)}
@@ -2363,6 +2714,63 @@
         ;span;
       ==
       ;span: {message}
+    ==
+  ::
+  ++  scope-contexts
+    |=  [owner=@p stack-name=@tas card=(unit @tas) exact=?]
+    ^-  (list [@tas context-source])
+    =/  matched=(list [@tas context-source])
+      %+  skim  ~(tap by contexts)
+      |=  [context-id=@tas source=context-source]
+      ?&  active.source
+          =(owner owner.source)
+          =(stack-name stack.source)
+          ?:  exact
+            =(card card.source)
+          ?|  ?=(~ card.source)
+              =(card card.source)
+          ==
+      ==
+    %+  sort  matched
+    |=  [a=[@tas context-source] b=[@tas context-source]]
+    ?:  =(created-at.+.a created-at.+.b)
+      (gth -.a -.b)
+    (gth created-at.+.a created-at.+.b)
+  ::
+  ++  prompt-contexts
+    |=  [owner=@p stack-name=@tas item-name=@tas]
+    ^-  (list [@tas context-source])
+    %+  skim  (scope-contexts owner stack-name `item-name %.n)
+    |=  [context-id=@tas source=context-source]
+    =(%ready status.source)
+  ::
+  ++  contexts-waiting
+    |=  rows=(list [@tas context-source])
+    ^-  ?
+    ?~  rows  %.n
+    ?|  =(%pending status.+.i.rows)
+        =(%working status.+.i.rows)
+        $(rows t.rows)
+    ==
+  ::
+  ++  context-kind-name
+    |=  kind=context-kind
+    ^-  tape
+    ?-  kind
+      %note  "note"
+      %clay  "ship"
+      %file  "file"
+      %web   "web"
+    ==
+  ::
+  ++  context-status-name
+    |=  status=context-status
+    ^-  tape
+    ?-  status
+      %pending  "Waiting for bridge"
+      %working  "Fetching source…"
+      %ready    "Ready"
+      %failed   "Needs attention"
     ==
   ::
   ++  ordered-assistant-models

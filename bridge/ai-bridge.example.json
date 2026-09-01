@@ -3,6 +3,9 @@
   "bridgeSecret": "replace-with-at-least-32-random-bytes",
   "pollIntervalMs": 2000,
   "timeoutMs": 180000,
+  "mcpTimeoutMs": 30000,
+  "contextMaxBytes": 131072,
+  "contextFetchTimeoutMs": 20000,
   "codex": {
     "enabled": true,
     "command": "/path/to/codex"

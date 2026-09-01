@@ -19,6 +19,10 @@
       list-assistant-models-tool
       clear-assistant-models-tool
       register-assistant-model-tool
+      list-context-sources-tool
+      claim-context-source-tool
+      finish-context-source-tool
+      fail-context-source-tool
       list-card-questions-tool
       claim-card-question-tool
       answer-card-question-tool
@@ -975,6 +979,211 @@
       [%result %structured (model-write-result 'registered' profile)]
   ==
 ::
+++  list-context-sources-tool
+  ^-  tool:mcp
+  :*  'seer/list-context-sources'
+      '''
+      List durable stack and card context sources. Pending web sources are jobs
+      for the paired local bridge. Ready sources are already stored on the ship.
+      This tool is read-only.
+      '''
+      *parameters:tool:mcp
+      ~
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      ;<  snapshot=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (contexts-to-json contexts.snapshot)]
+  ==
+::
+++  claim-context-source-tool
+  ^-  tool:mcp
+  :*  'seer/claim-context-source'
+      '''
+      Claim one pending web context source for the local bridge. Only the
+      claiming worker may finish or fail the ingestion job.
+      '''
+      %-  my
+      :~  ['context_id' [%string 'Pending Seer context-source ID.']]
+          ['worker_id' [%string 'Stable identifier for the local bridge process.']]
+      ==
+      ~['context_id' 'worker_id']
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      =/  raw-id=(unit @t)  (string-arg args 'context_id')
+      =/  worker=(unit @t)  (string-arg args 'worker_id')
+      ?~  raw-id  (pure:m !>([%error 'missing context_id' ~]))
+      ?~  worker  (pure:m !>([%error 'missing worker_id' ~]))
+      ?.  (valid-slug u.raw-id)
+        (pure:m !>([%error 'invalid context_id' `(error-json 'invalid-context-id' u.raw-id)]))
+      =/  context-id=@tas  (@tas u.raw-id)
+      ;<  snapshot=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  found=(unit context-source)
+        (~(get by contexts.snapshot) context-id)
+      ?~  found
+        (pure:m !>([%error 'context source not found' `(error-json 'context-not-found' u.raw-id)]))
+      ?:  ?&  =(%working status.u.found)
+              =(u.worker worker.u.found)
+          ==
+        (pure:m !>([%result %structured (context-write-result 'already-claimed' u.found)]))
+      ?.  ?&  active.u.found
+              =(%web kind.u.found)
+              =(%pending status.u.found)
+          ==
+        (pure:m !>([%error 'context source is not pending' `(error-json 'context-not-pending' u.raw-id)]))
+      =/  act=action  [%claim-context-source context-id u.worker]
+      ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
+      ;<  latest=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  claimed=(unit context-source)
+        (~(get by contexts.latest) context-id)
+      ?~  claimed
+        (pure:m !>([%error 'context source disappeared after claim' `(error-json 'context-not-found' u.raw-id)]))
+      ?.  ?&  =(%working status.u.claimed)
+              =(u.worker worker.u.claimed)
+          ==
+        (pure:m !>([%error 'context claim failed' `(error-json 'context-claim-failed' u.raw-id)]))
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (context-write-result 'claimed' u.claimed)]
+  ==
+::
+++  finish-context-source-tool
+  ^-  tool:mcp
+  :*  'seer/finish-context-source'
+      '''
+      Store normalized web content for one claimed context source. The worker
+      must match the claim. Content is persisted in Seer's Gall state.
+      '''
+      %-  my
+      :~  ['context_id' [%string 'Claimed Seer context-source ID.']]
+          ['worker_id' [%string 'Worker ID used to claim the source.']]
+          ['label' [%string 'Human-readable source title.']]
+          ['content' [%string 'Normalized plain-text source content, at most 128 KB.']]
+      ==
+      ~['context_id' 'worker_id' 'label' 'content']
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      =/  raw-id=(unit @t)  (string-arg args 'context_id')
+      =/  worker=(unit @t)  (string-arg args 'worker_id')
+      =/  label=(unit @t)  (string-arg args 'label')
+      =/  content=(unit @t)  (string-arg args 'content')
+      ?~  raw-id  (pure:m !>([%error 'missing context_id' ~]))
+      ?~  worker  (pure:m !>([%error 'missing worker_id' ~]))
+      ?~  label  (pure:m !>([%error 'missing label' ~]))
+      ?~  content  (pure:m !>([%error 'missing content' ~]))
+      ?:  ?|  =(0 (met 3 u.content))
+              (gth (met 3 u.content) 131.072)
+          ==
+        (pure:m !>([%error 'context content must be between 1 byte and 128 KB' `(error-json 'invalid-context-size' u.raw-id)]))
+      ?:  (gth (met 3 u.label) 240)
+        (pure:m !>([%error 'context label must be 240 bytes or smaller' `(error-json 'invalid-context-label' u.raw-id)]))
+      ?.  (valid-slug u.raw-id)
+        (pure:m !>([%error 'invalid context_id' `(error-json 'invalid-context-id' u.raw-id)]))
+      =/  context-id=@tas  (@tas u.raw-id)
+      ;<  snapshot=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  found=(unit context-source)
+        (~(get by contexts.snapshot) context-id)
+      ?~  found
+        (pure:m !>([%error 'context source not found' `(error-json 'context-not-found' u.raw-id)]))
+      ?:  ?&  =(%ready status.u.found)
+              =(u.content content.u.found)
+          ==
+        (pure:m !>([%result %structured (context-write-result 'already-finished' u.found)]))
+      ?.  ?&  active.u.found
+              =(%working status.u.found)
+              =(u.worker worker.u.found)
+          ==
+        (pure:m !>([%error 'context source is not claimed by this worker' `(error-json 'context-claim-mismatch' u.raw-id)]))
+      =/  act=action
+        [%finish-context-source context-id u.worker u.label u.content]
+      ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
+      ;<  latest=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  completed=(unit context-source)
+        (~(get by contexts.latest) context-id)
+      ?~  completed
+        (pure:m !>([%error 'context source disappeared after finish' `(error-json 'context-not-found' u.raw-id)]))
+      ?.  =(%ready status.u.completed)
+        (pure:m !>([%error 'context source did not finish' `(error-json 'context-finish-failed' u.raw-id)]))
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (context-write-result 'finished' u.completed)]
+  ==
+::
+++  fail-context-source-tool
+  ^-  tool:mcp
+  :*  'seer/fail-context-source'
+      '''
+      Store a short ingestion error for one claimed web context source so the
+      browser can offer a retry.
+      '''
+      %-  my
+      :~  ['context_id' [%string 'Claimed Seer context-source ID.']]
+          ['worker_id' [%string 'Worker ID used to claim the source.']]
+          ['error' [%string 'Short human-readable ingestion failure.']]
+      ==
+      ~['context_id' 'worker_id' 'error']
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      =/  raw-id=(unit @t)  (string-arg args 'context_id')
+      =/  worker=(unit @t)  (string-arg args 'worker_id')
+      =/  error=(unit @t)  (string-arg args 'error')
+      ?~  raw-id  (pure:m !>([%error 'missing context_id' ~]))
+      ?~  worker  (pure:m !>([%error 'missing worker_id' ~]))
+      ?~  error  (pure:m !>([%error 'missing error' ~]))
+      ?:  ?|  =(0 (met 3 u.error))
+              (gth (met 3 u.error) 2.048)
+          ==
+        (pure:m !>([%error 'context error must be between 1 byte and 2 KB' `(error-json 'invalid-context-error' u.raw-id)]))
+      ?.  (valid-slug u.raw-id)
+        (pure:m !>([%error 'invalid context_id' `(error-json 'invalid-context-id' u.raw-id)]))
+      =/  context-id=@tas  (@tas u.raw-id)
+      ;<  snapshot=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  found=(unit context-source)
+        (~(get by contexts.snapshot) context-id)
+      ?~  found
+        (pure:m !>([%error 'context source not found' `(error-json 'context-not-found' u.raw-id)]))
+      ?:  ?&  =(%failed status.u.found)
+              =(u.error error.u.found)
+          ==
+        (pure:m !>([%result %structured (context-write-result 'already-failed' u.found)]))
+      ?.  ?&  active.u.found
+              =(%working status.u.found)
+              =(u.worker worker.u.found)
+          ==
+        (pure:m !>([%error 'context source is not claimed by this worker' `(error-json 'context-claim-mismatch' u.raw-id)]))
+      =/  act=action
+        [%fail-context-source context-id u.worker u.error]
+      ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
+      ;<  latest=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  failed=(unit context-source)
+        (~(get by contexts.latest) context-id)
+      ?~  failed
+        (pure:m !>([%error 'context source disappeared after failure' `(error-json 'context-not-found' u.raw-id)]))
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (context-write-result 'failed' u.failed)]
+  ==
+::
 ++  list-card-questions-tool
   ^-  tool:mcp
   :*  'seer/list-card-questions'
@@ -994,7 +1203,7 @@
         (scry:io ai-state %gx /seer/ai-state/noun)
       %-  pure:m
       !>  ^-  response:tool:mcp
-      [%result %structured (questions-to-json questions.snapshot)]
+      [%result %structured (questions-to-json questions.snapshot contexts.snapshot question-contexts.snapshot)]
   ==
 ::
 ++  claim-card-question-tool
@@ -1738,20 +1947,70 @@
       ['registered_at' s+(scot %da registered-at.profile)]
   ==
 ::
+++  contexts-to-json
+  |=  contexts=(map @tas context-source)
+  ^-  json
+  %-  pairs:enjs:format
+  :~  :-  'contexts'
+      :-  %a
+      %+  turn  ~(tap by contexts)
+      |=  [context-id=@tas source=context-source]
+      (context-source-json source %.n)
+  ==
+::
+++  context-source-json
+  |=  [source=context-source include-content=?]
+  ^-  json
+  %-  pairs:enjs:format
+  :~  ['context_id' s+id.source]
+      ['owner' s+(scot %p owner.source)]
+      ['stack_id' s+stack.source]
+      :-  'card_id'
+      ?~  card.source  ~
+      s+u.card.source
+      ['scope' s+?:(?=(~ card.source) %stack %card)]
+      ['kind' s+kind.source]
+      ['label' s+label.source]
+      ['locator' s+locator.source]
+      ['content' s+?:(include-content content.source '')]
+      ['status' s+status.source]
+      ['error' s+error.source]
+      ['worker_id' s+worker.source]
+      ['active' b+active.source]
+      ['created_at' s+(scot %da created-at.source)]
+      ['updated_at' s+(scot %da updated-at.source)]
+  ==
+::
 ++  questions-to-json
-  |=  questions=(map @tas card-question)
+  |=  $:  questions=(map @tas card-question)
+          contexts=(map @tas context-source)
+          question-contexts=(map @tas (list @tas))
+      ==
   ^-  json
   %-  pairs:enjs:format
   :~  :-  'questions'
       :-  %a
       %+  turn  ~(tap by questions)
       |=  [question-id=@tas job=card-question]
-      (question-json question-id job)
+      =/  selected=(list @tas)
+        (fall (~(get by question-contexts) question-id) ~)
+      (question-json question-id job selected contexts)
   ==
 ::
 ++  question-json
-  |=  [question-id=@tas job=card-question]
+  |=  $:  question-id=@tas
+          job=card-question
+          selected=(list @tas)
+          contexts=(map @tas context-source)
+      ==
   ^-  json
+  =/  attached=(list json)
+    %+  murn  selected
+    |=  context-id=@tas
+    =/  found=(unit context-source)
+      (~(get by contexts) context-id)
+    ?~  found  ~
+    `(context-source-json u.found %.y)
   %-  pairs:enjs:format
   :~  ['question_id' s+question-id]
       ['owner' s+(scot %p owner.job)]
@@ -1762,6 +2021,7 @@
       ['back' s+(clean-body back.job)]
       ['mode' s+mode.job]
       ['question' s+prompt.job]
+      ['contexts' [%a attached]]
       ['provider' s+provider.profile.job]
       ['model_id' s+id.profile.job]
       ['model_role' s+role.profile.job]
@@ -2013,12 +2273,20 @@
       ['path' s+'/apps/seer/inbox']
   ==
 ::
+++  context-write-result
+  |=  [result-status=@t source=context-source]
+  ^-  json
+  %-  pairs:enjs:format
+  :~  ['result' s+result-status]
+      ['context' (context-source-json source %.n)]
+  ==
+::
 ++  question-write-result
   |=  [result-status=@t question-id=@tas job=card-question]
   ^-  json
   %-  pairs:enjs:format
   :~  ['status' s+result-status]
-      ['question' (question-json question-id job)]
+      ['question' (question-json question-id job ~ ~)]
       ['path' s+(crip "/apps/seer/stack/{(scow %p owner.job)}/{(trip stack.job)}")]
   ==
 ::

@@ -17,6 +17,7 @@
       [%9 state-eight]
       [%10 state-nine]
       [%11 state-ten]
+      [%12 state-eleven]
   ==
 ::
 +$  state-zero
@@ -119,6 +120,21 @@
       bridge-secret=@t
       bridge-nonces=(map @t @da)
   ==
++$  state-eleven
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+      bridge-secret=@t
+      bridge-nonces=(map @t @da)
+      contexts=(map @tas context-source)
+      question-contexts=(map @tas (list @tas))
+  ==
 +$  card-question-five
   $:  id=@tas
       owner=@p
@@ -160,7 +176,7 @@
 ::
 --
 ::
-=|  [%11 state-ten]
+=|  [%12 state-eleven]
 =*  state  -
 ^-  agent:gall
 =<
@@ -303,14 +319,14 @@
           |=  old-stack=stack-1
           ^-  stack
           (convert-stack-1-2 old-stack)
-        [%11 new-stacks ~ new-stack-subs ~ ~ ~ ~ ~ ~ '' ~]
+        [%12 new-stacks ~ new-stack-subs ~ ~ ~ ~ ~ ~ '' ~ ~ ~]
       ==
     %2
-      [~ this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~])]
+      [~ this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~ ~ ~])]
     %3
-      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~])]
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~ ~ ~])]
     %4
-      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~ ~ ~ '' ~])]
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~ ~ ~ '' ~ ~ ~])]
     %5
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -335,7 +351,7 @@
             ''
             updated-at.old
         ==
-      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~])]
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~ ~ ~])]
     %6
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -360,16 +376,18 @@
             result-back.old
             updated-at.old
         ==
-      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~])]
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~ ~ ~])]
     %7
-      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state ~ ~ '' ~])]
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state ~ ~ '' ~ ~ ~])]
     %8
-      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state ~ '' ~])]
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state ~ '' ~ ~ ~])]
     %9
-      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~])]
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~ ~ ~])]
     %10
-      [init-cards this(state [%11 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~])]
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~ ~ ~])]
     %11
+      [init-cards this(state [%12 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state ~ ~])]
+    %12
       [init-cards this(state p.old-state)]
     ==
     ++  legacy-model
@@ -412,7 +430,7 @@
         [%x %review ~]        ``noun+!>(all-reviews)
         [%x %all ~]        ``noun+!>(stacks.state)
         [%x %ai-state ~]
-      ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state models.state changes.state])
+      ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state models.state changes.state contexts.state question-contexts.state])
         [%x %logins ~]  ``noun+!>(logins.state)
         [%x %stack-subs ~]        ``noun+!>(stack-subs.state)
         [%x %stacks *]
@@ -869,6 +887,81 @@
       [%inbox ~]
       `'Change history removed.'
     ==
+      [[~ [%apps %seer %actions %add-context-source ~]] ~]
+    =/  owner       (slav %p (form-got fields 'owner'))
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    =/  card-raw    (form-got fields 'card')
+    =/  card=(unit @tas)
+      ?:(=(0 (met 3 card-raw)) ~ (some `@tas`(slav %tas card-raw)))
+    =/  kind-name  (slav %tas (form-got fields 'kind'))
+    =/  kind=context-kind
+      ?+  kind-name  %note
+        %clay  %clay
+        %file  %file
+        %web   %web
+      ==
+    =/  locator  (form-got fields 'locator')
+    =/  submitted-content  (form-got fields 'content')
+    =/  maybe-content=(unit @t)
+      ?:  =(%clay kind)
+        =/  loaded=(each @t tang)
+          (mule |.((read-clay-context locator)))
+        ?:  ?=(%| -.loaded)  ~
+        `p.loaded
+      `submitted-content
+    ?~  maybe-content
+      (respond-page eyre-id [%stack owner stack-name] `'That Clay path could not be read. Use a mounted file path such as /app/seer/hoon.')
+    =/  content=@t  u.maybe-content
+    ?:  (gth (met 3 content) 131.072)
+      (respond-page eyre-id [%stack owner stack-name] `'Context sources must be 128 KB or smaller.')
+    ?:  ?&  !=(%web kind)
+            =(0 (met 3 content))
+        ==
+      (respond-page eyre-id [%stack owner stack-name] `'This context source is empty.')
+    ?:  ?&  =(%web kind)
+            =(0 (met 3 locator))
+        ==
+      (respond-page eyre-id [%stack owner stack-name] `'Enter an HTTP or HTTPS URL to fetch.')
+    =/  raw-label  (form-got fields 'label')
+    =/  label=@t
+      ?:  !=(0 (met 3 raw-label))  raw-label
+      ?:(=(%note kind) 'Context note' locator)
+    =/  id-suffix=tape
+      %+  skim
+        (trip (scot %uv (mug [now.bol owner stack-name card kind label locator content])))
+      |=  char=@
+      !=(char '.')
+    =/  context-id=@tas
+      `@tas`(slav %tas (crip (weld "ctx-" id-suffix)))
+    %:  apply-web-action
+      eyre-id
+      [%add-context-source context-id owner stack-name card kind label locator content]
+      [%stack owner stack-name]
+      ?:(=(%web kind) `'Web source queued for the local bridge.' `'Context attached.')
+    ==
+  ::
+      [[~ [%apps %seer %actions %remove-context-source ~]] ~]
+    =/  context-id  (slav %tas (form-got fields 'context-id'))
+    =/  owner       (slav %p (form-got fields 'owner'))
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    %:  apply-web-action
+      eyre-id
+      [%remove-context-source context-id]
+      [%stack owner stack-name]
+      `'Context removed from future prompts.'
+    ==
+  ::
+      [[~ [%apps %seer %actions %retry-context-source ~]] ~]
+    =/  context-id  (slav %tas (form-got fields 'context-id'))
+    =/  owner       (slav %p (form-got fields 'owner'))
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    %:  apply-web-action
+      eyre-id
+      [%retry-context-source context-id]
+      [%stack owner stack-name]
+      `'Web source queued again.'
+    ==
+  ::
   ::
       [[~ [%apps %seer %actions %ask-card ~]] ~]
     =/  owner          (slav %p (form-got fields 'owner'))
@@ -894,9 +987,17 @@
       !=(char '.')
     =/  question-id=@tas
       `@tas`(slav %tas (crip (weld "q-" id-suffix)))
+    =/  context-ids=(list @tas)
+      %+  murn  ~(tap by contexts.state)
+      |=  [source-id=@tas source=context-source]
+      ?.  (context-applies source owner stack-name `item-name)  ~
+      =/  key=@t
+        (crip "context-{(trip source-id)}")
+      ?:  (~(has by fields) key)  `source-id
+      ~
     %:  apply-web-action
       eyre-id
-      [%ask-card question-id owner stack-name item-name mode profile prompt]
+      [%ask-card question-id owner stack-name item-name mode profile prompt context-ids]
       target-page
       `'Request sent to {(trip label.profile)}.'
     ==
@@ -1093,7 +1194,7 @@
   |=  [page=page:index notice=(unit @t)]
   ^-  simple-payload:http
   %-  manx-response:gen
-  (render:index our.bol stacks.state stack-subs.state captures.state questions.state models.state changes.state logins.state all-reviews page notice)
+  (render:index our.bol stacks.state stack-subs.state captures.state questions.state contexts.state question-contexts.state models.state changes.state logins.state all-reviews page notice)
 ::
 ++  form-got
   |=  [fields=(map @t @t) key=@t]
@@ -1108,12 +1209,58 @@
   =/  start  (add 3 u.marker)
   (cut 3 [start (met 3 raw)] raw)
 ::
+++  read-clay-context
+  |=  raw=@t
+  ^-  @t
+  =/  maybe-px=(unit path)
+    %+  rush  raw
+    ;~(pfix fas (more fas (cook crip (star ;~(less fas prn)))))
+  ?~  maybe-px  !!
+  =/  px=path  u.maybe-px
+  =/  pax=path  (welp our-beak px)
+  =/  archive=arch  .^(arch %cy pax)
+  ?~  fil.archive  !!
+  =/  value  .^(noun %cx pax)
+  =/  maybe-lines=(unit wain)
+    ?@(value `(to-wain:format value) ((soft wain) value))
+  ?~  maybe-lines  !!
+  =/  lines=wall
+    (turn u.maybe-lines |=(line=cord (trip line)))
+  (crip (zing (join "\0a" lines)))
+::
 ++  local-stack-title
   |=  =stack
   ^-  @t
   ?.  ?=(%.y -.info.stack)
     name.stack
   title.p.info.stack
+::
+++  context-stack
+  |=  [owner=@p stak=@tas]
+  ^-  (unit stack)
+  ?:  =(owner our.bol)
+    (~(get by stacks.state) stak)
+  (~(get by stack-subs.state) [owner stak])
+::
+++  context-scope-exists
+  |=  [owner=@p stak=@tas card=(unit @tas)]
+  ^-  ?
+  =/  found=(unit stack)  (context-stack owner stak)
+  ?~  found  %.n
+  ?~  card  %.y
+  (~(has by items.u.found) u.card)
+::
+++  context-applies
+  |=  [source=context-source owner=@p stak=@tas card=(unit @tas)]
+  ^-  ?
+  ?&  active.source
+      =(%ready status.source)
+      =(owner owner.source)
+      =(stak stack.source)
+      ?|  ?=(~ card.source)
+          =(card.source card)
+      ==
+  ==
 ::
 ++  operation-shape-valid
   |=  op=state-operation
@@ -1533,6 +1680,111 @@
     ?.  =(%complete status.u.maybe-session)  [~ state]
     =.  captures.state  (~(del by captures.state) capture.act)
     [~ state]
+      %add-context-source
+    ?:  ?|  (~(has by contexts.state) id.act)
+            =(0 (met 3 label.act))
+            (gth (met 3 label.act) 240)
+            (gth (met 3 locator.act) 2.048)
+            (gth (met 3 content.act) 131.072)
+            !(context-scope-exists owner.act stak.act card.act)
+            ?&  !=(%web kind.act)
+                =(0 (met 3 content.act))
+            ==
+            ?&  =(%web kind.act)
+                =(0 (met 3 locator.act))
+            ==
+        ==
+      [~ state]
+    =/  source=context-source
+      :*  id.act
+          owner.act
+          stak.act
+          card.act
+          kind.act
+          label.act
+          locator.act
+          content.act
+          ?:(=(%web kind.act) %pending %ready)
+          ''
+          ''
+          %.y
+          now.bol
+          now.bol
+      ==
+    =.  contexts.state  (~(put by contexts.state) id.act source)
+    [~ state]
+      %remove-context-source
+    =/  maybe-source  (~(get by contexts.state) id.act)
+    ?~  maybe-source  [~ state]
+    =/  source  u.maybe-source
+    =.  active.source  %.n
+    =.  updated-at.source  now.bol
+    =.  contexts.state  (~(put by contexts.state) id.act source)
+    [~ state]
+      %claim-context-source
+    =/  maybe-source  (~(get by contexts.state) id.act)
+    ?~  maybe-source  [~ state]
+    =/  source  u.maybe-source
+    ?.  ?&  active.source
+            =(%pending status.source)
+            =(%web kind.source)
+        ==
+      [~ state]
+    =.  status.source  %working
+    =.  worker.source  worker.act
+    =.  updated-at.source  now.bol
+    =.  contexts.state  (~(put by contexts.state) id.act source)
+    [~ state]
+      %finish-context-source
+    =/  maybe-source  (~(get by contexts.state) id.act)
+    ?~  maybe-source  [~ state]
+    =/  source  u.maybe-source
+    ?.  ?&  active.source
+            =(%working status.source)
+            =(worker.act worker.source)
+            !=(0 (met 3 content.act))
+            (lte (met 3 content.act) 131.072)
+            (lte (met 3 label.act) 240)
+        ==
+      [~ state]
+    =.  label.source  ?:(=(0 (met 3 label.act)) label.source label.act)
+    =.  content.source  content.act
+    =.  status.source  %ready
+    =.  error.source  ''
+    =.  updated-at.source  now.bol
+    =.  contexts.state  (~(put by contexts.state) id.act source)
+    [~ state]
+      %fail-context-source
+    =/  maybe-source  (~(get by contexts.state) id.act)
+    ?~  maybe-source  [~ state]
+    =/  source  u.maybe-source
+    ?.  ?&  active.source
+            =(%working status.source)
+            =(worker.act worker.source)
+            !=(0 (met 3 error.act))
+            (lte (met 3 error.act) 2.048)
+        ==
+      [~ state]
+    =.  status.source  %failed
+    =.  error.source  error.act
+    =.  updated-at.source  now.bol
+    =.  contexts.state  (~(put by contexts.state) id.act source)
+    [~ state]
+      %retry-context-source
+    =/  maybe-source  (~(get by contexts.state) id.act)
+    ?~  maybe-source  [~ state]
+    =/  source  u.maybe-source
+    ?.  ?&  active.source
+            =(%failed status.source)
+            =(%web kind.source)
+        ==
+      [~ state]
+    =.  status.source  %pending
+    =.  error.source  ''
+    =.  worker.source  ''
+    =.  updated-at.source  now.bol
+    =.  contexts.state  (~(put by contexts.state) id.act source)
+    [~ state]
       %ask-card
     ?:  ?|  =(0 (met 3 prompt.act))
             (~(has by questions.state) id.act)
@@ -1549,6 +1801,16 @@
     =/  maybe-item=(unit item)
       (~(get by items.u.maybe-stack) item.act)
     ?~  maybe-item  [~ state]
+    =/  selected-contexts=(list @tas)
+      %+  murn  context-ids.act
+      |=  source-id=@tas
+      =/  found=(unit context-source)
+        (~(get by contexts.state) source-id)
+      ?~  found  ~
+      ?:  (context-applies u.found owner.act stak.act `item.act)
+        `source-id
+      ~
+    =.  selected-contexts  (scag 12 selected-contexts)
     =/  current=item  u.maybe-item
     =/  question=card-question
       :*  id.act
@@ -1571,6 +1833,8 @@
           now.bol
       ==
     =.  questions.state  (~(put by questions.state) id.act question)
+    =.  question-contexts.state
+      (~(put by question-contexts.state) id.act selected-contexts)
     [~ state]
       %clear-assistant-models
     =.  models.state  ~
@@ -1702,6 +1966,8 @@
     [~ state]
       %delete-card-question
     =.  questions.state  (~(del by questions.state) id.act)
+    =.  question-contexts.state
+      (~(del by question-contexts.state) id.act)
     [~ state]
       %request-change
     ?:  ?|  =(0 (met 3 prompt.act))
@@ -2056,7 +2322,7 @@
       ~&  >  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *[%11 state-ten]]
+      [~ *[%12 state-eleven]]
         [%set-bridge-capability @]
       =/  token=@t  +.a
       =.  bridge-secret.state  token
