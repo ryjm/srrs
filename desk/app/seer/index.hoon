@@ -140,10 +140,16 @@
                     }
                     return null;
                   }
+                  function clearTarget() {
+                    qa("[data-vim-active]").forEach(function (old) { old.removeAttribute("data-vim-active"); });
+                    qa("[data-vim-selected]").forEach(function (old) { old.removeAttribute("data-vim-selected"); });
+                  }
                   function focusTarget(el) {
                     if (!el) { return; }
-                    qa("[data-vim-active]").forEach(function (old) { old.removeAttribute("data-vim-active"); });
+                    clearTarget();
                     el.setAttribute("data-vim-active", "");
+                    var card = el.matches(".item-summary") ? el.closest(".item") : null;
+                    if (card) { card.setAttribute("data-vim-selected", ""); }
                     if (!el.hasAttribute("tabindex") && !el.matches("a, button, input, textarea, select, summary")) {
                       el.tabIndex = -1;
                     }
@@ -152,6 +158,15 @@
                     lastTargetKey = targetKey(el);
                   }
                   function moveTarget(step) {
+                    var cards = qa(".item-list .item-summary").filter(visible);
+                    if (cards.length) {
+                      var cardIndex = cards.indexOf(activeTarget());
+                      cardIndex = cardIndex < 0
+                        ? (step > 0 ? 0 : cards.length - 1)
+                        : (cardIndex + step + cards.length) % cards.length;
+                      focusTarget(cards[cardIndex]);
+                      return;
+                    }
                     var all = targets();
                     if (!all.length) {
                       window.scrollBy({ top: step * 140, behavior: move() });
@@ -179,7 +194,9 @@
                   function setFold(mode) {
                     var d = focusedDetails();
                     if (!d) { return false; }
-                    d.open = mode === "toggle" ? !d.open : mode === "open";
+                    var next = mode === "toggle" ? !d.open : mode === "open";
+                    if (d.open === next) { return false; }
+                    d.open = next;
                     var summary = d.querySelector(":scope > summary");
                     if (summary) { focusTarget(summary); }
                     return true;
@@ -312,6 +329,8 @@
                     }
                   }, true);
                   document.addEventListener("click", function (e) {
+                    var summary = e.target && e.target.closest ? e.target.closest(".item-summary") : null;
+                    if (summary) { focusTarget(summary); }
                     var b = e.target && e.target.closest ? e.target.closest("[data-help-open]") : null;
                     if (b) { help(true); }
                   });
@@ -390,7 +409,7 @@
                       if (setFold("close")) { e.preventDefault(); }
                       else {
                         var selected = q("[data-vim-active]");
-                        if (selected) { selected.removeAttribute("data-vim-active"); selected.blur(); }
+                        if (selected) { clearTarget(); selected.blur(); }
                       }
                       return;
                     }
@@ -625,10 +644,15 @@
                .item-list { align-items: start; display: grid; gap: .75rem; grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr)); min-width: 0; }
                .item {
                  background: var(--surface); border: 1px solid var(--line); border-radius: 4px;
-                 min-width: 0; overflow: hidden;
+                 min-width: 0; overflow: hidden; position: relative; transition: border-color 160ms cubic-bezier(.16, 1, .3, 1), box-shadow 160ms cubic-bezier(.16, 1, .3, 1), transform 160ms cubic-bezier(.16, 1, .3, 1);
                }
                .item:hover, .item[open] { border-color: var(--line-strong); }
                .item[open] { grid-column: 1 / -1; min-width: 0; box-shadow: var(--shadow); }
+               .item[data-vim-selected] { border-color: var(--line-strong); box-shadow: var(--shadow); transform: translateY(-1px); }
+               .item[data-vim-selected]::before { background: var(--focus); content: ""; inset: .8rem auto .8rem .35rem; position: absolute; width: 1px; z-index: 2; }
+               .item[data-vim-selected] > .item-summary { background: var(--surface-2); }
+               .item[data-vim-selected] .item-id { color: var(--ink); }
+               .item[data-vim-selected] .item-toggle { background: var(--ink); border-color: var(--ink); color: var(--bg); }
                .item-summary {
                  align-items: start; cursor: pointer; display: flex; gap: 1rem;
                  justify-content: space-between; list-style: none; min-height: 7.25rem; padding: 1rem;
@@ -733,6 +757,7 @@
                .hidden { display: none; }
                .app-footer { border-top: 1px solid var(--line); margin-top: 3rem; padding-top: 1rem; }
                [data-vim-active] { outline: 2px solid var(--focus); outline-offset: 3px; }
+               .item-summary[data-vim-active] { outline: none; }
                form[data-vim-active] { border-radius: 4px; }
                .vim-chord {
                  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
@@ -761,6 +786,8 @@
                  .is-thinking::before { display: none; }
                  details.flip[open] > .review-answer, details.flip[open] > .grade-row { animation: none; }
                  .session-progress-fill { transition: none; }
+                 .item { transition: none; }
+                 .item[data-vim-selected] { transform: none; }
                }
                @media (max-width: 850px) {
                  .app-shell { grid-template-columns: 12.5rem minmax(0, 1fr); }
