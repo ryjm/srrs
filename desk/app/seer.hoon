@@ -1730,6 +1730,8 @@
             =(%web kind.source)
         ==
       [~ state]
+    ?.  (bridge-proof-valid %claim-context-source id.act worker.act ~ nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
     =.  status.source  %working
     =.  worker.source  worker.act
     =.  updated-at.source  now.bol
@@ -1747,6 +1749,8 @@
             (lte (met 3 label.act) 240)
         ==
       [~ state]
+    ?.  (bridge-proof-valid %finish-context-source id.act worker.act ~[label.act content.act] nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
     =.  label.source  ?:(=(0 (met 3 label.act)) label.source label.act)
     =.  content.source  content.act
     =.  status.source  %ready
@@ -1765,6 +1769,8 @@
             (lte (met 3 error.act) 2.048)
         ==
       [~ state]
+    ?.  (bridge-proof-valid %fail-context-source id.act worker.act ~[error.act] nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
     =.  status.source  %failed
     =.  error.source  error.act
     =.  updated-at.source  now.bol

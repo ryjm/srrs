@@ -115,6 +115,9 @@ durable queue; the bridge rejects private-network destinations, follows only
 validated redirects, extracts bounded readable text, and writes the normalized
 snapshot back to `%seer`. Removing a source archives it from future prompts
 without breaking the context snapshot selected by an already-queued request.
+Every bridge claim, completion, and failure requires a fresh nonce-bound HMAC
+proof covering the source ID, worker, nonce, and every mutable field. Gall
+verifies and consumes the nonce in the same event that changes context state.
 
 ### Create cards from a source
 
@@ -151,9 +154,9 @@ Seer publishes 34 tools:
 | `seer/clear-assistant-models` | Clears the model catalog before a bridge refresh. |
 | `seer/register-assistant-model` | Registers one provider and model profile. |
 | `seer/list-context-sources` | Lists durable stack/card sources and pending web ingestion jobs. |
-| `seer/claim-context-source` | Assigns one pending web source to the local bridge. |
-| `seer/finish-context-source` | Persists normalized fetched content on the ship. |
-| `seer/fail-context-source` | Stores a source ingestion error for browser retry. |
+| `seer/claim-context-source` | Claims one pending web source with a nonce-bound bridge proof. |
+| `seer/finish-context-source` | Persists content only when the proof covers its complete label and text. |
+| `seer/fail-context-source` | Stores a retryable error only when the proof covers that exact error. |
 | `seer/list-card-questions` | Lists card questions, edit requests, and results. |
 | `seer/claim-card-question` | Assigns one pending card request to a bridge worker. |
 | `seer/answer-card-question` | Stores the answer for a claimed card question. |

@@ -446,8 +446,10 @@ test("context URL validation blocks local and private destinations", () => {
   assert.throws(() => validateContextUrl("file:///tmp/notes.txt"), /Only HTTP and HTTPS/);
 });
 
-test("web context ingestion follows the bridge claim and finish lifecycle", async () => {
+test("web context ingestion signs claim and every persisted field", async () => {
   const calls = [];
+  const secret = "context-bridge-secret-with-at-least-32-bytes";
+  let nonceIndex = 0;
   const context = await fetchWebContext("https://example.com/guide", {
     lookupImpl: async () => [{ address: "203.0.113.10", family: 4 }],
     fetchImpl: async () => new Response(
@@ -459,7 +461,12 @@ test("web context ingestion follows the bridge claim and finish lifecycle", asyn
   assert.match(context.content, /Stored on the ship/);
 
   const ok = await processContextSource(
-    { workerId: "bridge-test", contextMaxBytes: 131_072, contextFetchTimeoutMs: 2_000 },
+    {
+      workerId: "bridge-test",
+      bridgeSecret: secret,
+      contextMaxBytes: 131_072,
+      contextFetchTimeoutMs: 2_000,
+    },
     "cookie",
     { context_id: "ctx-one", locator: "https://example.com/guide", label: "Guide" },
     {
@@ -467,16 +474,75 @@ test("web context ingestion follows the bridge claim and finish lifecycle", asyn
       fetchImpl: async () => new Response("One durable fact.", { status: 200, headers: { "content-type": "text/plain" } }),
       callTool: async (_config, _cookie, name, args) => {
         calls.push({ name, args });
+        if (name === "seer/issue-bridge-nonce") return { nonce: `nonce-${++nonceIndex}` };
         return name === "seer/claim-context-source" ? { context: { status: "working" } } : {};
       },
     },
   );
   assert.equal(ok, true);
   assert.deepEqual(calls.map(({ name }) => name), [
+    "seer/issue-bridge-nonce",
     "seer/claim-context-source",
+    "seer/issue-bridge-nonce",
     "seer/finish-context-source",
   ]);
-  assert.equal(calls[1].args.content, "One durable fact.");
+  assert.equal(
+    calls[1].args.proof,
+    createBridgeProof(secret, "claim-context-source", "ctx-one", "bridge-test", "nonce-1"),
+  );
+  assert.equal(calls[3].args.content, "One durable fact.");
+  assert.equal(
+    calls[3].args.proof,
+    createBridgeProof(
+      secret,
+      "finish-context-source",
+      "ctx-one",
+      "bridge-test",
+      "nonce-2",
+      [calls[3].args.label, calls[3].args.content],
+    ),
+  );
+  assert.notEqual(
+    calls[3].args.proof,
+    createBridgeProof(secret, "finish-context-source", "ctx-one", "bridge-test", "nonce-2", [calls[3].args.label, "tampered"]),
+  );
+});
+
+test("web context failures sign the persisted error", async () => {
+  const calls = [];
+  const secret = "context-bridge-secret-with-at-least-32-bytes";
+  let nonceIndex = 0;
+  const ok = await processContextSource(
+    { workerId: "bridge-test", bridgeSecret: secret, contextMaxBytes: 131_072, contextFetchTimeoutMs: 2_000 },
+    "cookie",
+    { context_id: "ctx-fail", locator: "http://127.0.0.1/private", label: "Private" },
+    {
+      callTool: async (_config, _cookie, name, args) => {
+        calls.push({ name, args });
+        if (name === "seer/issue-bridge-nonce") return { nonce: `nonce-${++nonceIndex}` };
+        return name === "seer/claim-context-source" ? { context: { status: "working" } } : {};
+      },
+    },
+  );
+  assert.equal(ok, false);
+  assert.deepEqual(calls.map(({ name }) => name), [
+    "seer/issue-bridge-nonce",
+    "seer/claim-context-source",
+    "seer/issue-bridge-nonce",
+    "seer/fail-context-source",
+  ]);
+  assert.match(calls[3].args.error, /Private network addresses/);
+  assert.equal(
+    calls[3].args.proof,
+    createBridgeProof(
+      secret,
+      "fail-context-source",
+      "ctx-fail",
+      "bridge-test",
+      "nonce-2",
+      [calls[3].args.error],
+    ),
+  );
 });
 
 test("structured card edits tolerate a fenced provider response", () => {

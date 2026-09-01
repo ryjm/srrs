@@ -1005,14 +1005,17 @@
   ^-  tool:mcp
   :*  'seer/claim-context-source'
       '''
-      Claim one pending web context source for the local bridge. Only the
-      claiming worker may finish or fail the ingestion job.
+      Claim one pending web context source for the paired local bridge. A fresh
+      nonce-bound HMAC proof is required; only the claiming worker may finish
+      or fail the ingestion job.
       '''
       %-  my
       :~  ['context_id' [%string 'Pending Seer context-source ID.']]
           ['worker_id' [%string 'Stable identifier for the local bridge process.']]
+          ['proof_nonce' [%string 'Fresh short-lived nonce issued by Seer.']]
+          ['proof' [%string 'Nonce-bound HMAC-SHA256 proof encoded as @ux.']]
       ==
-      ~['context_id' 'worker_id']
+      ~['context_id' 'worker_id' 'proof_nonce' 'proof']
       ^-  thread-builder:tool:mcp
       |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
       ^-  shed:khan
@@ -1020,11 +1023,16 @@
       ^-  form:m
       =/  raw-id=(unit @t)  (string-arg args 'context_id')
       =/  worker=(unit @t)  (string-arg args 'worker_id')
+      =/  nonce=(unit @t)  (string-arg args 'proof_nonce')
+      =/  raw-proof=(unit @t)  (string-arg args 'proof')
       ?~  raw-id  (pure:m !>([%error 'missing context_id' ~]))
       ?~  worker  (pure:m !>([%error 'missing worker_id' ~]))
+      ?~  nonce  (pure:m !>([%error 'missing proof_nonce' ~]))
+      ?~  raw-proof  (pure:m !>([%error 'missing proof' ~]))
       ?.  (valid-slug u.raw-id)
         (pure:m !>([%error 'invalid context_id' `(error-json 'invalid-context-id' u.raw-id)]))
       =/  context-id=@tas  (@tas u.raw-id)
+      =/  proof=@  (slav %ux u.raw-proof)
       ;<  snapshot=ai-state  bind:m
         (scry:io ai-state %gx /seer/ai-state/noun)
       =/  found=(unit context-source)
@@ -1040,7 +1048,7 @@
               =(%pending status.u.found)
           ==
         (pure:m !>([%error 'context source is not pending' `(error-json 'context-not-pending' u.raw-id)]))
-      =/  act=action  [%claim-context-source context-id u.worker]
+      =/  act=action  [%claim-context-source context-id u.worker u.nonce proof]
       ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
       ;<  latest=ai-state  bind:m
         (scry:io ai-state %gx /seer/ai-state/noun)
@@ -1061,16 +1069,19 @@
   ^-  tool:mcp
   :*  'seer/finish-context-source'
       '''
-      Store normalized web content for one claimed context source. The worker
-      must match the claim. Content is persisted in Seer's Gall state.
+      Store normalized web content for one claimed context source. The worker,
+      source ID, label, and full content are covered by a fresh nonce-bound HMAC
+      proof before Gall persists anything.
       '''
       %-  my
       :~  ['context_id' [%string 'Claimed Seer context-source ID.']]
           ['worker_id' [%string 'Worker ID used to claim the source.']]
           ['label' [%string 'Human-readable source title.']]
           ['content' [%string 'Normalized plain-text source content, at most 128 KB.']]
+          ['proof_nonce' [%string 'Fresh short-lived nonce issued by Seer.']]
+          ['proof' [%string 'Nonce-bound HMAC-SHA256 proof covering label and content.']]
       ==
-      ~['context_id' 'worker_id' 'label' 'content']
+      ~['context_id' 'worker_id' 'label' 'content' 'proof_nonce' 'proof']
       ^-  thread-builder:tool:mcp
       |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
       ^-  shed:khan
@@ -1080,10 +1091,14 @@
       =/  worker=(unit @t)  (string-arg args 'worker_id')
       =/  label=(unit @t)  (string-arg args 'label')
       =/  content=(unit @t)  (string-arg args 'content')
+      =/  nonce=(unit @t)  (string-arg args 'proof_nonce')
+      =/  raw-proof=(unit @t)  (string-arg args 'proof')
       ?~  raw-id  (pure:m !>([%error 'missing context_id' ~]))
       ?~  worker  (pure:m !>([%error 'missing worker_id' ~]))
       ?~  label  (pure:m !>([%error 'missing label' ~]))
       ?~  content  (pure:m !>([%error 'missing content' ~]))
+      ?~  nonce  (pure:m !>([%error 'missing proof_nonce' ~]))
+      ?~  raw-proof  (pure:m !>([%error 'missing proof' ~]))
       ?:  ?|  =(0 (met 3 u.content))
               (gth (met 3 u.content) 131.072)
           ==
@@ -1093,6 +1108,7 @@
       ?.  (valid-slug u.raw-id)
         (pure:m !>([%error 'invalid context_id' `(error-json 'invalid-context-id' u.raw-id)]))
       =/  context-id=@tas  (@tas u.raw-id)
+      =/  proof=@  (slav %ux u.raw-proof)
       ;<  snapshot=ai-state  bind:m
         (scry:io ai-state %gx /seer/ai-state/noun)
       =/  found=(unit context-source)
@@ -1109,7 +1125,7 @@
           ==
         (pure:m !>([%error 'context source is not claimed by this worker' `(error-json 'context-claim-mismatch' u.raw-id)]))
       =/  act=action
-        [%finish-context-source context-id u.worker u.label u.content]
+        [%finish-context-source context-id u.worker u.label u.content u.nonce proof]
       ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
       ;<  latest=ai-state  bind:m
         (scry:io ai-state %gx /seer/ai-state/noun)
@@ -1129,14 +1145,17 @@
   :*  'seer/fail-context-source'
       '''
       Store a short ingestion error for one claimed web context source so the
-      browser can offer a retry.
+      browser can offer a retry. The error text is covered by a fresh
+      nonce-bound HMAC proof.
       '''
       %-  my
       :~  ['context_id' [%string 'Claimed Seer context-source ID.']]
           ['worker_id' [%string 'Worker ID used to claim the source.']]
           ['error' [%string 'Short human-readable ingestion failure.']]
+          ['proof_nonce' [%string 'Fresh short-lived nonce issued by Seer.']]
+          ['proof' [%string 'Nonce-bound HMAC-SHA256 proof covering the error.']]
       ==
-      ~['context_id' 'worker_id' 'error']
+      ~['context_id' 'worker_id' 'error' 'proof_nonce' 'proof']
       ^-  thread-builder:tool:mcp
       |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
       ^-  shed:khan
@@ -1145,9 +1164,13 @@
       =/  raw-id=(unit @t)  (string-arg args 'context_id')
       =/  worker=(unit @t)  (string-arg args 'worker_id')
       =/  error=(unit @t)  (string-arg args 'error')
+      =/  nonce=(unit @t)  (string-arg args 'proof_nonce')
+      =/  raw-proof=(unit @t)  (string-arg args 'proof')
       ?~  raw-id  (pure:m !>([%error 'missing context_id' ~]))
       ?~  worker  (pure:m !>([%error 'missing worker_id' ~]))
       ?~  error  (pure:m !>([%error 'missing error' ~]))
+      ?~  nonce  (pure:m !>([%error 'missing proof_nonce' ~]))
+      ?~  raw-proof  (pure:m !>([%error 'missing proof' ~]))
       ?:  ?|  =(0 (met 3 u.error))
               (gth (met 3 u.error) 2.048)
           ==
@@ -1155,6 +1178,7 @@
       ?.  (valid-slug u.raw-id)
         (pure:m !>([%error 'invalid context_id' `(error-json 'invalid-context-id' u.raw-id)]))
       =/  context-id=@tas  (@tas u.raw-id)
+      =/  proof=@  (slav %ux u.raw-proof)
       ;<  snapshot=ai-state  bind:m
         (scry:io ai-state %gx /seer/ai-state/noun)
       =/  found=(unit context-source)
@@ -1171,7 +1195,7 @@
           ==
         (pure:m !>([%error 'context source is not claimed by this worker' `(error-json 'context-claim-mismatch' u.raw-id)]))
       =/  act=action
-        [%fail-context-source context-id u.worker u.error]
+        [%fail-context-source context-id u.worker u.error u.nonce proof]
       ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
       ;<  latest=ai-state  bind:m
         (scry:io ai-state %gx /seer/ai-state/noun)

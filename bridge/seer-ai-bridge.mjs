@@ -983,10 +983,16 @@ function safeContextError(error) {
 
 export async function processContextSource(config, cookie, job, dependencies = {}) {
   const call = dependencies.callTool || callTool;
-  const claim = await call(config, cookie, "seer/claim-context-source", {
+  const claimValues = {
     context_id: job.context_id,
     worker_id: config.workerId,
-  });
+  };
+  const claim = await call(
+    config,
+    cookie,
+    "seer/claim-context-source",
+    await bridgeProofArgs(config, cookie, call, "claim-context-source", claimValues, [], "context_id"),
+  );
   if (!claim?.context) return false;
   try {
     const fetched = await fetchWebContext(job.locator, {
@@ -995,21 +1001,49 @@ export async function processContextSource(config, cookie, job, dependencies = {
       maxBytes: config.contextMaxBytes,
       timeoutMs: config.contextFetchTimeoutMs,
     });
-    await call(config, cookie, "seer/finish-context-source", {
+    const finishValues = {
       context_id: job.context_id,
       worker_id: config.workerId,
       label: fetched.label || job.label,
       content: fetched.content,
-    });
+    };
+    await call(
+      config,
+      cookie,
+      "seer/finish-context-source",
+      await bridgeProofArgs(
+        config,
+        cookie,
+        call,
+        "finish-context-source",
+        finishValues,
+        [finishValues.label, finishValues.content],
+        "context_id",
+      ),
+    );
     console.log(`[seer-ai] ingested context ${job.context_id} from ${fetched.url}`);
     return true;
   } catch (error) {
     const message = safeContextError(error);
-    await call(config, cookie, "seer/fail-context-source", {
+    const failValues = {
       context_id: job.context_id,
       worker_id: config.workerId,
       error: message,
-    });
+    };
+    await call(
+      config,
+      cookie,
+      "seer/fail-context-source",
+      await bridgeProofArgs(
+        config,
+        cookie,
+        call,
+        "fail-context-source",
+        failValues,
+        [failValues.error],
+        "context_id",
+      ),
+    );
     console.error(`[seer-ai] ${message}`);
     return false;
   }
@@ -1163,14 +1197,14 @@ function formatHoonHex(hex) {
   return `0x${groups.join(".")}`;
 }
 
-export function createBridgeProof(secret, action, loginId, workerId, nonce, fields = []) {
-  const payload = ["seer-bridge-v1", action, loginId, workerId, nonce, ...fields]
+export function createBridgeProof(secret, action, requestId, workerId, nonce, fields = []) {
+  const payload = ["seer-bridge-v1", action, requestId, workerId, nonce, ...fields]
     .map(canonicalField)
     .join("");
   return formatHoonHex(createHmac("sha256", secret).update(payload, "utf8").digest("hex"));
 }
 
-async function bridgeProofArgs(config, cookie, call, action, values, fields = []) {
+async function bridgeProofArgs(config, cookie, call, action, values, fields = [], idKey = "login_id") {
   const secret = requireBridgeSecret(config);
   const issued = await call(config, cookie, "seer/issue-bridge-nonce");
   const nonce = issued?.nonce;
@@ -1178,7 +1212,7 @@ async function bridgeProofArgs(config, cookie, call, action, values, fields = []
   return {
     ...values,
     proof_nonce: nonce,
-    proof: createBridgeProof(secret, action, values.login_id, values.worker_id, nonce, fields),
+    proof: createBridgeProof(secret, action, values[idKey], values.worker_id, nonce, fields),
   };
 }
 

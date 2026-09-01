@@ -86,9 +86,9 @@
           content=@t
       ==
       [%remove-context-source id=@tas]
-      [%claim-context-source id=@tas worker=@t]
-      [%finish-context-source id=@tas worker=@t label=@t content=@t]
-      [%fail-context-source id=@tas worker=@t error=@t]
+      [%claim-context-source id=@tas worker=@t nonce=@t proof=@]
+      [%finish-context-source id=@tas worker=@t label=@t content=@t nonce=@t proof=@]
+      [%fail-context-source id=@tas worker=@t error=@t nonce=@t proof=@]
       [%retry-context-source id=@tas]
   ::
       $:  %ask-card
