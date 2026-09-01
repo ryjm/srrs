@@ -1,5 +1,5 @@
 [Unit]
-Description=Seer AI card-assistant bridge
+Description=Seer local assistant bridge
 After=network-online.target
 
 [Service]

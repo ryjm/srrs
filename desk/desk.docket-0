@@ -1,6 +1,6 @@
 :~
   title+'Seer'
-  info+'Server-rendered spaced repetition'
+  info+'Spaced repetition on your Urbit ship'
   color+0xff.ffff
   image+'/apps/seer/tile.png'
   version+[0 2 0]

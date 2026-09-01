@@ -1,7 +1,13 @@
-* Tasks
-** TODO seer -> seer migration
+#+title: Seer historical development notes
 
-*** TODO Migrate to docket
+These notes record the 2021 Seer desk setup. They do not describe the current
+Zuse 408 application. Use =README.md= for current installation and development
+instructions.
+
+* Archived tasks
+** TODO Migrate the legacy Seer desk
+
+*** TODO Migrate to a docket
 **** DONE Write docket and bill
 :LOGBOOK:
 CLOCK: [2021-09-13 Mon 12:57]--[2021-09-13 Mon 16:23] =>  3:26
@@ -13,28 +19,27 @@ CLOCK: [2021-09-13 Mon 12:57]--[2021-09-13 Mon 16:23] =>  3:26
 **** TODO Update state
 **** TODO Make changes to docket
 
-***** NEXT Store glob in spot
+***** NEXT Store the glob in =spot=
 :LOGBOOK:
 CLOCK: [2021-10-25 Mon 16:16]--[2021-10-28 Thu 16:58] => 72:42
 CLOCK: [2021-10-25 Mon 15:58]--[2021-10-25 Mon 16:04] =>  0:06
 CLOCK: [2021-10-25 Mon 10:53]--[2021-10-25 Mon 15:57] =>  5:04
 :END:
-instead of  storing the glob reference in the =href= of the docket structure, we should
-store it in =spot= and populate a =chad= from there. this means adding a new
-attribute to the docket mold called =spot= and modifying lib/docket
-accordingly.
+Store the glob reference in =spot= instead of the docket =href= field. Build a
+=chad= value from =spot=. This change requires a =spot= field in the docket mold
+and a matching change in =lib/docket=.
 
-=chad= will still hold the actual glob, and the structure of the docket file
-itself will remain unchanged.
+The =chad= value continues to contain the glob. The docket file format does not
+change.
 
-* Install
+* Archived installation log
 :PROPERTIES:
 :header-args+: :dir /home/jake/vault/projects/urbit/git/urbit/
 :header-args:sh+: :var desk='distem-bottus-littel-wolfur
 :END:
-** unix install
-Copy into the urbit/urbit repo so that dependencies can be symlinked without
-messing with the app source.
+** Unix installation experiment
+Copy the desk into the Urbit source tree. This layout let the old build use
+symbolic links without changing the Seer source.
 
 #+begin_src sh
 ls ./pkg
@@ -81,14 +86,14 @@ cd pkg
 ls ./pkg/seer
 #+end_src
 
-Metadata files
+Copied metadata files:
 
 #+begin_src sh :results none
 cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/$desk/seer/
 cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/$desk/seer/
 #+end_src
 
-Source files. Ensure we don't accidently include files we do not have marks for.
+Copy only files with supported marks.
 
 #+begin_src sh :results none
 cd pkg/seer
@@ -98,15 +103,15 @@ find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name
 
 
 
-** Initial Setup
-*** urbit install
-create new desk and mount.
+** Initial setup
+*** Install on Urbit
+Create and mount the desk.
 #+begin_src tmux
 |merge %seer our %base
 |mount %seer
 #+end_src
 
-symlink the garden dev and landscape desk into the seer desk.
+Link the old Garden development and Landscape desks into the Seer desk.
 
 #+begin_src sh
 cd pkg
@@ -116,19 +121,19 @@ cd pkg
 
 #+results:
 
-Remove files from seer desk
+The following historical cleanup command removes all files from its target.
 #+begin_src sh :results none
 rm -rf /mnt/laptop-sandisk/$desk/seer/*
 #+end_src
 
 
-copy metadata files into mounted unix path
+Copy the metadata files into the mounted desk.
 #+begin_src sh :results none
 cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/$desk/seer/
 cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/$desk/seer/
 #+end_src
 
-Copy hoon files into mounted unix path. this is to ensure we don't include files we do not have marks for.
+Copy only Hoon and asset files into the mounted desk.
 
 #+begin_src sh :results none
 cd pkg/seer
@@ -145,15 +150,15 @@ find -L -type f \( -name \*.hoon\* -o -name \*.png\* -o -name \*.html\* -o -name
 
 #+results:
 
-Run globulator.
+Run the old glob generator.
 
-switch to the garden desk and publish
+Switch to the Garden desk and publish Seer.
 
 #+begin_src tmux
 :treaty|garden!publish %seer
 #+end_src
 
-install seer
+Install Seer.
 #+begin_src hoon :session testnet:distem.0
 |install our %seer
 #+end_src
@@ -161,8 +166,8 @@ install seer
 #+results:
 
 
-*** unix install
-Mirror the desk setup found in pkg/<desk>
+*** Unix installation example
+Mirror the desk structure from =pkg/<desk>=.
 
 #+begin_src sh
 ls pkg/garden
@@ -226,7 +231,7 @@ cp -Rn pkg/seer/desk.* /mnt/laptop-sandisk/$desk/seer/
 cp -Rn pkg/seer/sys.kelvin /mnt/laptop-sandisk/$desk/seer/
 #+end_src
 
-Check docket and bill files
+Inspect the docket and bill files.
 #+begin_src zsh :results output replace :dir /mnt/laptop-sandisk/distem-bottus-littel-wolfur/seer/
 pwd
 cat desk.docket-0
@@ -251,12 +256,12 @@ cat desk.bill
   %seer-cli
 ==
 #+end_example
-*** Manifests
+*** Desk manifests
 :PROPERTIES:
 :header-args: :dir /home/jake/vault/projects/urbit/git/urbit/pkg/seer
 :END:
 
-Define the docket and the bill for the desk.
+Define the desk docket and bill.
 
 #+begin_src hoon :tangle /home/jake/vault/projects/urbit/git/urbit/pkg/seer/desk.docket-0
 :~
@@ -300,14 +305,14 @@ cat desk.bill
   %seer-cli
 ==
 #+end_example
-*** Desk Install
-**** Dev install
+*** Desk installation
+**** Development installation
 :PROPERTIES:
 :header-args: :dir /home/jake/vault/projects/urbit/git/urbit/
 :END:
-Do this if not booting with a multi-desk pill containing the necessary desks.
+Use these archived steps when the pill does not contain the required desks.
 
-Unmount if necessary.
+Unmount the desks if necessary.
 
 #+begin_src tmux
 |unmount %base-dev
@@ -315,7 +320,7 @@ Unmount if necessary.
 |unmount %landscape
 #+end_src
 
-Create desks and mount.
+Create and mount the desks.
 #+begin_src tmux
 |merge %base-dev our %base
 |merge %garden our %base
@@ -402,6 +407,6 @@ yes | cp -RL /mnt/laptop-sandisk/$desk-old/garden/* /mnt/laptop-sandisk/$desk/ga
 tadnul-nismyn-dabryn-balhes
 
 
-*** Changes
-- No more chat store
-- had to symlink landscape
+*** Recorded changes
+- Removed the chat store.
+- Linked the Landscape desk.
