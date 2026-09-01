@@ -8,3 +8,14 @@ full
 *.db
 .beads-credential-key
 .beads/proxieddb/
+.beads/dolt
+.beads/dolt-wal
+.beads/.br_history/
+
+# bv (beads viewer) local config and caches
+.bv/
+
+# Local agent/editor state
+.claude/settings.local.json
+.cursor/
+.grok/
