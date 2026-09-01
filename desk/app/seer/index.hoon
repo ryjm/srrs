@@ -924,7 +924,7 @@
                 =href          "/apps/seer/review"
                 ;span.nav-label
                   ;span: Review
-                  ;kbd.nav-key: g r
+                  ;kbd.nav-key(aria-hidden "true"): g r
                 ==
                 ;span.nav-count: {<(lent reviews)>}
               ==
@@ -934,7 +934,7 @@
                 =href          "/apps/seer/inbox"
                 ;span.nav-label
                   ;span: Inbox
-                  ;kbd.nav-key: g i
+                  ;kbd.nav-key(aria-hidden "true"): g i
                 ==
                 ;span.nav-count: {<inbox-count>}
               ==
@@ -944,7 +944,7 @@
                 =href          "/apps/seer/stacks"
                 ;span.nav-label
                   ;span: Library
-                  ;kbd.nav-key: g l
+                  ;kbd.nav-key(aria-hidden "true"): g l
                 ==
                 ;span.nav-count: {<stack-count>}
               ==
@@ -954,7 +954,7 @@
                 =href          "/apps/seer/subscriptions"
                 ;span.nav-label
                   ;span: Shared
-                  ;kbd.nav-key: g s
+                  ;kbd.nav-key(aria-hidden "true"): g s
                 ==
                 ;span.nav-count: {<subscription-count>}
               ==
