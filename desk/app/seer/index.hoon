@@ -1524,6 +1524,7 @@
         ;div.key-row
           ;dt
             ;kbd.key: g g
+            ;kbd.key: g b
             ;kbd.key: G
           ==
           ;dd: Jump to top · bottom
