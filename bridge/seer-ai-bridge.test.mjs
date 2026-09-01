@@ -20,6 +20,7 @@ import {
   parseEditResult,
   parseStatePlan,
   processContextSource,
+  recoverOrphanedContexts,
   reasoningEffort,
   parseClaudeAuthChallenge,
   parseCodexDeviceAuth,
@@ -444,6 +445,44 @@ test("context URL validation blocks local and private destinations", () => {
   assert.throws(() => validateContextUrl("http://localhost:8080/private"), /private hostnames/);
   assert.throws(() => validateContextUrl("http://192.168.1.4/private"), /Private network/);
   assert.throws(() => validateContextUrl("file:///tmp/notes.txt"), /Only HTTP and HTTPS/);
+});
+
+test("startup recovery signs the previous context worker", async () => {
+  const calls = [];
+  const secret = "context-bridge-secret-with-at-least-32-bytes";
+  const recovered = await recoverOrphanedContexts(
+    { workerId: "new-worker", bridgeSecret: secret },
+    "cookie",
+    [{
+      context_id: "ctx-orphan",
+      kind: "web",
+      status: "working",
+      active: true,
+      worker_id: "crashed-worker",
+    }],
+    {
+      callTool: async (_config, _cookie, name, args) => {
+        calls.push({ name, args });
+        return name === "seer/issue-bridge-nonce" ? { nonce: "recovery-nonce" } : {};
+      },
+    },
+  );
+  assert.equal(recovered, 1);
+  assert.deepEqual(calls.map(({ name }) => name), [
+    "seer/issue-bridge-nonce",
+    "seer/recover-context-source",
+  ]);
+  assert.equal(
+    calls[1].args.proof,
+    createBridgeProof(
+      secret,
+      "recover-context-source",
+      "ctx-orphan",
+      "new-worker",
+      "recovery-nonce",
+      ["crashed-worker"],
+    ),
+  );
 });
 
 test("web context ingestion signs claim and every persisted field", async () => {

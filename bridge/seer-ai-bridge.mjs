@@ -1049,6 +1049,35 @@ export async function processContextSource(config, cookie, job, dependencies = {
   }
 }
 
+export async function recoverOrphanedContexts(config, cookie, contexts, dependencies = {}) {
+  const call = dependencies.callTool || callTool;
+  let recovered = 0;
+  for (const source of contexts) {
+    if (!source?.active || source.kind !== "web" || source.status !== "working") continue;
+    const values = {
+      context_id: source.context_id,
+      worker_id: config.workerId,
+    };
+    await call(
+      config,
+      cookie,
+      "seer/recover-context-source",
+      await bridgeProofArgs(
+        config,
+        cookie,
+        call,
+        "recover-context-source",
+        values,
+        [source.worker_id || ""],
+        "context_id",
+      ),
+    );
+    recovered += 1;
+    console.log(`[seer-ai] recovered orphaned context ${source.context_id}`);
+  }
+  return recovered;
+}
+
 async function processQuestion(config, cookie, providers, job, allQuestions) {
   const provider = job.provider;
   const command = providers[provider];
@@ -1585,6 +1614,8 @@ async function main() {
   await refreshCatalog();
   const initialLoginPayload = await callTool(config, cookie, "seer/list-login-requests");
   await failOrphanedLogins(config, cookie, initialLoginPayload?.logins || []);
+  const initialContextPayload = await callTool(config, cookie, "seer/list-context-sources");
+  await recoverOrphanedContexts(config, cookie, initialContextPayload?.contexts || []);
   console.log(`[seer-ai] bridge ${config.workerId}: codex=${providers.codex ? "ready" : "unavailable"}, claude=${providers.claude ? "ready" : "unavailable"}, models=${profiles.length}`);
   if (once) {
     await poll(config, cookie, providers, commands, refreshCatalog);

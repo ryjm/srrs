@@ -118,6 +118,8 @@ without breaking the context snapshot selected by an already-queued request.
 Every bridge claim, completion, and failure requires a fresh nonce-bound HMAC
 proof covering the source ID, worker, nonce, and every mutable field. Gall
 verifies and consumes the nonce in the same event that changes context state.
+On startup, the paired bridge uses the same proof boundary to requeue any
+source left `%working` by a crash before normal polling resumes.
 
 ### Create cards from a source
 
@@ -138,7 +140,7 @@ The planning tools cannot approve a proposal. Seer applies an approval only afte
 
 ### MCP tools
 
-Seer publishes 34 tools:
+Seer publishes 35 tools:
 
 | Tool | Purpose |
 | --- | --- |
@@ -155,6 +157,7 @@ Seer publishes 34 tools:
 | `seer/register-assistant-model` | Registers one provider and model profile. |
 | `seer/list-context-sources` | Lists durable stack/card sources and pending web ingestion jobs. |
 | `seer/claim-context-source` | Claims one pending web source with a nonce-bound bridge proof. |
+| `seer/recover-context-source` | Requeues an orphaned working source with a proof covering its previous worker. |
 | `seer/finish-context-source` | Persists content only when the proof covers its complete label and text. |
 | `seer/fail-context-source` | Stores a retryable error only when the proof covers that exact error. |
 | `seer/list-card-questions` | Lists card questions, edit requests, and results. |

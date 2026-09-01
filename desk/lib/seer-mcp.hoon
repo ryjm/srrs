@@ -21,6 +21,7 @@
       register-assistant-model-tool
       list-context-sources-tool
       claim-context-source-tool
+      recover-context-source-tool
       finish-context-source-tool
       fail-context-source-tool
       list-card-questions-tool
@@ -1063,6 +1064,68 @@
       %-  pure:m
       !>  ^-  response:tool:mcp
       [%result %structured (context-write-result 'claimed' u.claimed)]
+  ==
+::
+++  recover-context-source-tool
+  ^-  tool:mcp
+  :*  'seer/recover-context-source'
+      '''
+      Requeue one working web context source after a bridge restart. A fresh
+      nonce-bound HMAC proof covers the previous worker recorded by Gall, so an
+      authenticated MCP client without the paired secret cannot steal a job.
+      '''
+      %-  my
+      :~  ['context_id' [%string 'Working Seer context-source ID.']]
+          ['worker_id' [%string 'Stable identifier for the recovering bridge process.']]
+          ['proof_nonce' [%string 'Fresh short-lived nonce issued by Seer.']]
+          ['proof' [%string 'Nonce-bound HMAC-SHA256 proof covering the previous worker.']]
+      ==
+      ~['context_id' 'worker_id' 'proof_nonce' 'proof']
+      ^-  thread-builder:tool:mcp
+      |=  args=(map name:parameter:tool:mcp argument:tool:mcp)
+      ^-  shed:khan
+      =/  m  (strand:spider ,vase)
+      ^-  form:m
+      =/  raw-id=(unit @t)  (string-arg args 'context_id')
+      =/  worker=(unit @t)  (string-arg args 'worker_id')
+      =/  nonce=(unit @t)  (string-arg args 'proof_nonce')
+      =/  raw-proof=(unit @t)  (string-arg args 'proof')
+      ?~  raw-id  (pure:m !>([%error 'missing context_id' ~]))
+      ?~  worker  (pure:m !>([%error 'missing worker_id' ~]))
+      ?~  nonce  (pure:m !>([%error 'missing proof_nonce' ~]))
+      ?~  raw-proof  (pure:m !>([%error 'missing proof' ~]))
+      ?.  (valid-slug u.raw-id)
+        (pure:m !>([%error 'invalid context_id' `(error-json 'invalid-context-id' u.raw-id)]))
+      =/  context-id=@tas  (@tas u.raw-id)
+      =/  proof=@  (slav %ux u.raw-proof)
+      ;<  snapshot=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  found=(unit context-source)
+        (~(get by contexts.snapshot) context-id)
+      ?~  found
+        (pure:m !>([%error 'context source not found' `(error-json 'context-not-found' u.raw-id)]))
+      ?:  =(%pending status.u.found)
+        (pure:m !>([%result %structured (context-write-result 'already-recovered' u.found)]))
+      ?.  ?&  active.u.found
+              =(%web kind.u.found)
+              =(%working status.u.found)
+          ==
+        (pure:m !>([%error 'context source is not working' `(error-json 'context-not-working' u.raw-id)]))
+      =/  act=action  [%recover-context-source context-id u.worker u.nonce proof]
+      ;<  ~  bind:m  (poke-our:io %seer %seer-action !>(act))
+      ;<  latest=ai-state  bind:m
+        (scry:io ai-state %gx /seer/ai-state/noun)
+      =/  recovered=(unit context-source)
+        (~(get by contexts.latest) context-id)
+      ?~  recovered
+        (pure:m !>([%error 'context source disappeared after recovery' `(error-json 'context-not-found' u.raw-id)]))
+      ?.  ?&  =(%pending status.u.recovered)
+              =(0 worker.u.recovered)
+          ==
+        (pure:m !>([%error 'context recovery proof rejected' `(error-json 'context-recovery-rejected' u.raw-id)]))
+      %-  pure:m
+      !>  ^-  response:tool:mcp
+      [%result %structured (context-write-result 'recovered' u.recovered)]
   ==
 ::
 ++  finish-context-source-tool

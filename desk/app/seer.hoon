@@ -1737,6 +1737,23 @@
     =.  updated-at.source  now.bol
     =.  contexts.state  (~(put by contexts.state) id.act source)
     [~ state]
+      %recover-context-source
+    =/  maybe-source  (~(get by contexts.state) id.act)
+    ?~  maybe-source  [~ state]
+    =/  source  u.maybe-source
+    ?.  ?&  active.source
+            =(%working status.source)
+            =(%web kind.source)
+        ==
+      [~ state]
+    ?.  (bridge-proof-valid %recover-context-source id.act worker.act ~[worker.source] nonce.act proof.act)  [~ state]
+    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    =.  status.source  %pending
+    =.  worker.source  ''
+    =.  error.source  ''
+    =.  updated-at.source  now.bol
+    =.  contexts.state  (~(put by contexts.state) id.act source)
+    [~ state]
       %finish-context-source
     =/  maybe-source  (~(get by contexts.state) id.act)
     ?~  maybe-source  [~ state]
