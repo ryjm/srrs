@@ -504,6 +504,9 @@
                .nav-link { align-items: center; border-bottom: 1px solid var(--line); color: var(--muted); display: flex; gap: .75rem; justify-content: space-between; padding: .8rem .75rem; text-decoration: none; }
                .nav-link:hover { background: var(--surface); color: var(--ink); }
                .nav-link.active { box-shadow: inset 2px 0 0 var(--ink); color: var(--ink); }
+               .nav-label { align-items: center; display: inline-flex; gap: .45rem; min-width: 0; }
+               .nav-key { background: transparent; border: 1px solid var(--line); border-radius: 3px; color: var(--soft); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .58rem; font-weight: 500; letter-spacing: .025em; line-height: 1; padding: .18rem .28rem; white-space: nowrap; }
+               .nav-link:hover .nav-key, .nav-link.active .nav-key { border-color: var(--line-strong); color: var(--muted); }
                .nav-count { color: var(--soft); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .72rem; }
                .sidebar-foot { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .7rem; margin-top: auto; padding: 1rem .75rem 0; }
                .workspace { min-width: 0; position: relative; }
@@ -793,6 +796,9 @@
                  .nav-link:last-child { border-right: 0; }
                  .nav-link.active { background: var(--surface); box-shadow: inset 0 2px 0 var(--ink); }
                  .nav-count { font-size: .62rem; line-height: 1; }
+                 .nav-label { gap: .3rem; }
+                 .nav-label > span { font-size: .88rem; }
+                 .nav-key { font-size: .5rem; padding: .15rem .22rem; }
                  .sidebar-foot { display: none; }
                  .workspace { min-height: 100dvh; }
                  .request-status { position: fixed; z-index: 40; }
@@ -916,28 +922,40 @@
                 =class         ?:(?=(%review -.page) "nav-link active" "nav-link")
                 =aria-current  ?:(?=(%review -.page) "page" "false")
                 =href          "/apps/seer/review"
-                ;span: Review
+                ;span.nav-label
+                  ;span: Review
+                  ;kbd.nav-key: g r
+                ==
                 ;span.nav-count: {<(lent reviews)>}
               ==
               ;a
                 =class         ?:(?=(%inbox -.page) "nav-link active" "nav-link")
                 =aria-current  ?:(?=(%inbox -.page) "page" "false")
                 =href          "/apps/seer/inbox"
-                ;span: Inbox
+                ;span.nav-label
+                  ;span: Inbox
+                  ;kbd.nav-key: g i
+                ==
                 ;span.nav-count: {<inbox-count>}
               ==
               ;a
                 =class         ?:(library-active "nav-link active" "nav-link")
                 =aria-current  ?:(library-active "page" "false")
                 =href          "/apps/seer/stacks"
-                ;span: Library
+                ;span.nav-label
+                  ;span: Library
+                  ;kbd.nav-key: g l
+                ==
                 ;span.nav-count: {<stack-count>}
               ==
               ;a
                 =class         ?:(?=(%subscriptions -.page) "nav-link active" "nav-link")
                 =aria-current  ?:(?=(%subscriptions -.page) "page" "false")
                 =href          "/apps/seer/subscriptions"
-                ;span: Shared
+                ;span.nav-label
+                  ;span: Shared
+                  ;kbd.nav-key: g s
+                ==
                 ;span.nav-count: {<subscription-count>}
               ==
             ==
