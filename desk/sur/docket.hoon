@@ -6,7 +6,7 @@
 +$  glob  (map path mime)
 ::
 +$  url   cord
-::  $glob-location: How to retrieve a glob
+::  $glob-location: how to retrieve a glob
 ::
 +$  glob-reference
   [hash=@uvH location=glob-location]
@@ -15,36 +15,36 @@
   $%  [%http =url]
       [%ames =ship]
   ==
-::  $href: Where a tile links to
+::  $href: where a tile links to
 ::
 +$  href
   $%  [%glob base=term =glob-reference]
       [%site =path]
   ==
-::  $chad: State of a docket
+::  $chad: state of a docket
 ::
 +$  chad
   $~  [%install ~]
-  $%  :: Done
+  $%  :: done
       [%glob =glob]
       [%site ~]
-      :: Waiting
+      :: waiting
       [%install ~]
       [%suspend glob=(unit glob)]
-      :: Error
+      :: error
       [%hung err=cord]
   ==
 ::
-::  $charge: A realized $docket
+::  $charge: a realized $docket
 ::
 +$  charge
   $:  =docket
       =chad
   ==
 ::
-::  $clause: A key and value, as part of a docket
+::  $clause: a key and value, as part of a docket
 ::
-::    Only used to parse $docket
+::    only used to parse $docket
 ::
 +$  clause
   $%  [%title title=@t]
@@ -60,7 +60,7 @@
       [%license license=cord]
   ==
 ::
-::  $docket: A description of JS bundles for a desk
+::  $docket: a description of js bundles for a desk
 ::
 +$  docket
   $:  %1

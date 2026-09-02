@@ -15,7 +15,7 @@
 ::    pages  is a (map term (page _dat cmd)), contains per-view frontend logic.
 ::    route  is a routing function, turning a url query into a $place.
 ::    adlib  gets called with the full request when no route is found.
-::    solve  is a function that applies a cmd resulting from a POST request.
+::    solve  is a function that applies a cmd resulting from a post request.
 ::
 ::    the library provides some default implementations for route and adlib,
 ::    which you can construct using +point and +fours respectively.
@@ -26,14 +26,14 @@
 ::    pages implement a bundle of view logic, each implementing a door
 ::    with three arms.
 ::
-::    +build  gets called for GET requests, producing a $reply to render.
-::    +argue  gets called for POST requests, turning it into a cmd.
-::    +final  gets called after POST requests, producing a $reply to render.
+::    +build  gets called for get requests, producing a $reply to render.
+::    +argue  gets called for post requests, turning it into a cmd.
+::    +final  gets called after post requests, producing a $reply to render.
 ::
 ::    for examples and a more detailed description of implementing a page,
 ::    see /lib/rudder/page-example.hoon
 ::
-::TODO
+::todo
 ::  - should rudder really be falling back to generic error messages when
 ::    calling +final after failure? what if apps/pages want to provide
 ::    their own generic error message?
@@ -156,7 +156,7 @@
       :_  dat
       =+  (purse url.request.order)
       =^  msg  args
-        ::NOTE  as set by %next replies
+        ::note  as set by %next replies
         ?~  msg=(get-header:http 'rmsg' args)  [~ args]
         [`[& u.msg] (delete-header:http 'rmsg' args)]
       %+  spout  id
@@ -262,7 +262,7 @@
   %-  ~(gas by *(map @t @t))
   (fall (rush body yquy:de-purl:html) ~)
 ::
-::NOTE  the below (and $query) are also available in /lib/server.hoon,
+::note  the below (and $query) are also available in /lib/server.hoon,
 ::      but we reimplement them here for independence's sake.
 ::
 ++  purse  ::  url cord to query

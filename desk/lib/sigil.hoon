@@ -13,7 +13,7 @@
 ::        icon    &
 ::      ==
 ::
-::NOTE  svg construction logic is coupled to the symbols definitions.
+::note  svg construction logic is coupled to the symbols definitions.
 ::      the symbols' elements assume they live in a space of 128x128.
 ::      what we do here is assume an svg _canvas_ of 128x128, draw the
 ::      symbols at their original sizes, and then scale them down to fit.
@@ -43,15 +43,15 @@
     ::
     =/  sire=@rd  (sun:rd size)
     =/  tr=tape
-      ::TODO  render transform inside +sigil:svg?
+      ::todo  render transform inside +sigil:svg?
       %+  transform:svg
         ?.  margin  ~
         =+  grid:pos
         `[(gird:pos x) (gird:pos y)]
       `span:pos
     ::
-    =/  sw=@rd  ::TODO
-      ?:  icon  .~0.8  ::TODO  scale with size?
+    =/  sw=@rd  ::todo
+      ?:  icon  .~0.8  ::todo  scale with size?
       (add:rd .~0.33 (div:rd sire .~128))
     ::
     %-  outer:svg
@@ -63,7 +63,7 @@
   |%
   ++  span  ::  symbol scale (relative to full canvas)
     ^-  @rd
-    ::TODO  accounting for margin here feels a bit ugly?
+    ::todo  accounting for margin here feels a bit ugly?
     ?+  (max grid)  !!
       %1  ?:(margin .~0.4 .~1)
       %2  ?:(margin .~0.4 .~0.5)
@@ -123,7 +123,7 @@
       =viewBox  "0 0 128 128"
       =version  "1.1"
       =xmlns  "http://www.w3.org/2000/svg"
-      ::TODO  additional attributes from config arg?
+      ::todo  additional attributes from config arg?
       ;rect
         =fill  bg
         =width  "128"
@@ -131,7 +131,7 @@
       ;+  inner
     ==
   ::
-  ::TODO  should it be possible to get these svg elements out of this lib?
+  ::todo  should it be possible to get these svg elements out of this lib?
   ++  sigil
     |=  [[tr=tape sw=@rd] symbols=(list manx)]
     ^-  manx
@@ -141,7 +141,7 @@
       =stroke-linecap  "square"
       =fill  fg
       =stroke  bg
-      ::NOTE  unfortunately, vector-effect cannot be inherited,
+      ::note  unfortunately, vector-effect cannot be inherited,
       ::      so it gets inlined in the symbol elements instead
       :: =vector-effect  "non-scaling-stroke"
       ;*  symbols
@@ -155,7 +155,7 @@
     |-
     ?~  noms  ~
     :_  $(noms t.noms, i +(i))
-    ::TODO  exclude if both 0
+    ::todo  exclude if both 0
     =+  (plan:pos i)
     ;g(transform (transform `[(sun:rd (mul x 128)) (sun:rd (mul y 128))] ~))
       ;*  =+  ((symbol i.noms) fg bg)
@@ -164,12 +164,12 @@
   ::
   ++  symbol  ~(got by sigil-symbols)
   ::
-  ++  transform  ::TODO  take manx instead so we can omit attr entirely?
+  ++  transform  ::todo  take manx instead so we can omit attr entirely?
     |=  [translate=(unit [x=@rd y=@rd]) scale=(unit @rd)]
     ^-  tape
     %-  zing
     ^-  (list tape)
-    ::TODO  make cleaner
+    ::todo  make cleaner
     =-  ?:  ?=(?(~ [* ~]) -)  -
         (join " " `(list tape)`-)
     ^-  (list tape)

@@ -7,7 +7,7 @@
 ::    shapes and default attributes sourced from:
 ::    https://github.com/urbit/sigil-js/blob/fdea06f/src/index.json
 ::
-::NOTE  to reduce svg size, we exclude certain common/shared attributes.
+::note  to reduce svg size, we exclude certain common/shared attributes.
 ::      we expect the /lib/sigil to wrap these elements in a <g> which sets
 ::      those attributes, letting them be inherited. they are as follows:
 ::        =fill    fg

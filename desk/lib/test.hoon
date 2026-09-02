@@ -73,7 +73,7 @@
   ==
 ::  $a-test-chain: a sequence of tests to be run
 ::
-::  NB: arms shouldn't start with `test-` so that `-test % ~` runs
+::  nb: arms shouldn't start with `test-` so that `-test % ~` runs
 ::
 +$  a-test-chain
   $_
@@ -97,7 +97,7 @@
 ::
 ++  category
   |=  [a=tape b=tang]  ^-  tang
-  ?:  =(~ b)  ~  :: test OK
+  ?:  =(~ b)  ~  :: test ok
   :-  leaf+"in: '{a}'"
   (turn b |=(c=tank rose+[~ "  " ~]^~[c]))
 --

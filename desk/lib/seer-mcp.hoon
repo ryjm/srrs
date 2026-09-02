@@ -1,9 +1,9 @@
 /-  mcp, spider, *seer
 /+  io=strandio
 ::
-::  Seer defines its MCP tools and prompt.  %mcp-server provides transport,
-::  authentication, discovery, and client compatibility.  Tool threads use
-::  public Gall pokes and scries to communicate with %seer.
+::  seer defines its mcp tools and prompt.  %mcp-server provides transport,
+::  authentication, discovery, and client compatibility.  tool threads use
+::  public gall pokes and scries to communicate with %seer.
 ::
 |%
 ++  tools
@@ -46,12 +46,11 @@
   ==
 ::
 ::
-::  Provider sign-in tools.  The ship only queues sign-in requests; the
-::  local bridge claims them, runs the provider CLI login on its own
-::  host, and reports the public half of the handshake back.  Planning
-::  clients cannot fabricate success: mutations require the claiming
-::  worker's ID, and the ship clears every code the moment a request
-::  settles.
+::  provider sign-in tools.  the ship queues sign-in requests; the local
+::  bridge claims them, runs the provider cli login on its own host, and
+::  reports the public half of the handshake back.  mutations require
+::  the claiming worker's id, and the ship clears every code the moment
+::  a request settles.
 ::
 ++  list-login-requests-tool
   ^-  tool:mcp

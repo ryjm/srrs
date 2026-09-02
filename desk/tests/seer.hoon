@@ -1,12 +1,12 @@
-::  Behavioral tests for the %seer agent.
+::  behavioral tests for the %seer agent.
 ::
-::  These drive the real agent:gall value built from /app/seer with a
-::  fixed bowl, so they cover observable contracts: the versioned-state
-::  migration chain, SM-2 review scheduling, the bridge HMAC proof
-::  boundary (pinned to the cross-language fixture in
-::  bridge/seer-ai-bridge.test.mjs), and change-operation validation.
+::  each test builds the real agent from /app/seer and drives it with a
+::  fixed bowl through on-load, on-poke, and on-peek.  covered: the
+::  versioned-state migration chain, sm-2 review scheduling, the bridge
+::  hmac proof boundary (same fixture as bridge/seer-ai-bridge.test.mjs),
+::  and change-operation validation.
 ::
-::  Run on a ship with the desk installed:
+::  run on a ship with the desk installed:
 ::    -test /=seer=/tests ~
 ::
 /-  *seer
@@ -56,7 +56,7 @@
   =/  res  (on-peek:core /x/ai-state)
   ?>  ?=([~ ~ *] res)
   (need ((soft ai-state) q.q.u.u.res))
-::  +make-proof: the bridge's canonical HMAC construction
+::  +make-proof: the bridge's canonical hmac construction
 ::
 ++  make-proof
   |=  [secret=@t action=@tas id=@tas worker=@t nonce=@t fields=(list @t)]
@@ -66,15 +66,15 @@
   =/  payload=@t
     (crip (zing (turn parts |=(part=@t "{<(met 3 part)>}:{(trip part)}"))))
   (hmac-sha256t:hmac:crypto secret payload)
-::  the exact proof the node bridge produces for this tuple
-::  (bridge/seer-ai-bridge.test.mjs: cross-language HMAC fixture)
+::  the proof the node bridge produces for this tuple
+::  (bridge/seer-ai-bridge.test.mjs, cross-language hmac fixture)
 ::
 ++  fixture-proof
   0x302.62aa.d179.84e6.9883.62ca.1c52.ce9e.4977.c0f7.2cc6.f465.a62f.e29c.46d2.e798
 ::
-::  every legacy state version must land on the current head, and a
-::  marker value must survive to prove the migration branch ran rather
-::  than the fresh-install fallback.
+::  loads %12 and %13 states into the current head.  the probe login
+::  checks that the conversion ran; a fresh install starts with empty
+::  logins, so its survival is the discriminator.
 ::
 ++  test-state-migration
   ^-  tang
@@ -105,7 +105,7 @@
     !>((~(has by (peek-logins resaved)) %probe))
   ==
 ::
-::  SM-2: box walks the fixed intervals on %good and resets on %again.
+::  sm-2: box walks the fixed intervals on %good and resets on %again.
 ::
 ++  test-sm2-scheduling
   ^-  tang
@@ -131,8 +131,8 @@
     (expect-eq !>(~s5) !>(`@dr`interval.l3))
   ==
 ::
-::  the agent must accept exactly the proof bytes the node bridge
-::  computes, and reject a corrupted proof without advancing state.
+::  the login lifecycle verifies the hmac fixture from the node bridge.
+::  a corrupted proof is a no-op: the request stays %working.
 ::
 ++  test-bridge-proof-fixture
   ^-  tang
@@ -172,7 +172,7 @@
     (expect-eq !>('ABCD-EFGH') !>(user-code.after-fix))
   ==
 ::
-::  library change plans only accept well-shaped operations.
+::  operation staging validates shape before storing a plan step.
 ::
 ++  test-change-operation-validation
   ^-  tang

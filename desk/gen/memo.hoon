@@ -1,6 +1,6 @@
-::  Tell app to hook into memo apps
+::  tell app to hook into memo apps
 ::
-::  For apps that use lib/memo, :app +memo toggles memo hook.
+::  for apps that use lib/memo, :app +memo toggles memo hook.
 ::
 :-  %say
 |=  [* arg=?(~ [%bowl ~]) ~]

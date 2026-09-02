@@ -156,9 +156,9 @@
       [%refresh-context-source id=@tas]
   ==
 ::
-::  AI capture sessions live on the ship, not in any one model's context.
-::  Codex and Claude can therefore hand the same learning session back and
-::  forth.  Drafts remain proposals until a person approves them in Seer.
+::  ai capture sessions live on the ship.  codex and claude can hand the
+::  same learning session back and forth, and drafts remain proposals
+::  until a person approves them in seer.
 ::
 +$  proposal
   $:  id=@tas
@@ -201,9 +201,9 @@
 ::
 +$  omp-role  $?(%smol %default %slow)
 ::
-::  OMP-style profiles keep the human choice (role), exact provider/model
-::  selector, and local execution adapter together. The bridge only registers
-::  profiles backed by a credential it can actually use on this machine.
+::  omp-style profiles keep the human choice (role), exact provider and
+::  model selector, and local execution adapter together.  the bridge
+::  registers profiles backed by a credential it can use on this machine.
 ::
 +$  assistant-model
   $:  id=@tas
@@ -223,11 +223,11 @@
 ::
 +$  context-status  $?(%pending %working %ready %failed)
 ::
-::  Remote clay sharing: a shared file is grown into the gall publication
-::  namespace (public to any ship that knows the path); the manifest lists
-::  every shared entry and regrows on each change.  Revisions are tracked
-::  because fine-protocol reads need concrete cases and culls need them.
-::
+::  remote clay sharing.  shared paths are listed in shared-context and
+::  served over one-shot subscriptions: /shared-context gives the
+::  manifest, /shared-context/file/[pax] gives a fresh read of a listed
+::  file to any ship that asks.  rev counters remain from the earlier
+::  remote-scry design and are unused by the watch transport.
 +$  shared-entry     [rev=@ud label=@t mark=@tas size=@ud]
 +$  manifest-entry   [pax=path label=@t mark=@tas size=@ud]
 +$  remote-manifest  [rev=@ud at=@da entries=(list manifest-entry)]
@@ -252,8 +252,8 @@
 ::
 +$  question-status  $?(%pending %working %answered %failed)
 ::
-::  Durable question jobs snapshot the card so answers remain auditable even
-::  if the source stack changes while a local model provider is working.
+::  durable question jobs snapshot the card so answers remain auditable
+::  even if the source stack changes while a provider is working.
 ::
 +$  card-question
   $:  id=@tas
@@ -280,9 +280,9 @@
 ::
 +$  change-status  $?(%pending %working %ready %applied %rejected %failed)
 ::
-::  A reviewed capability language for prompt-driven changes.  Original
-::  values are snapshots used to reject stale plans before they can overwrite
-::  a newer human edit.
+::  a reviewed capability language for prompt-driven changes.  original
+::  values are snapshots used to reject stale plans before they can
+::  overwrite a newer human edit.
 ::
 +$  state-operation-kind
   $?(%create-stack %rename-stack %delete-stack %create-card %edit-card %delete-card %queue-card)
@@ -314,12 +314,12 @@
       updated-at=@da
   ==
 ::
-::  Provider sign-in runs on the bridge host, never on the ship.  A
-::  login-request only carries the public half of the handshake: the
-::  verification URL and user code the person must visit, and (for
-::  paste-back flows) the one-time authorization code they hand back.
-::  Codes are cleared from current state the moment a request settles;
-::  Seer never stores provider credentials.
+::  provider sign-in runs on the bridge host.  a login-request carries
+::  the public half of the handshake: the verification url and user code
+::  the person must visit, and (for paste-back flows) the one-time
+::  authorization code they hand back.  codes are cleared from current
+::  state the moment a request settles; provider credentials stay in the
+::  codex and claude keychains on the bridge host.
 ::
 +$  login-status  $?(%pending %working %challenge %done %failed)
 ::

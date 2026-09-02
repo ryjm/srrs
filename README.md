@@ -114,10 +114,10 @@ by default, and each source can be excluded for that individual request.
 
 The browser accepts four source kinds:
 
-- **Note** — pasted facts, constraints, examples, or background.
-- **Ship file** — a text-compatible file from any desk on this ship, or a file another ship has shared. A lazy Clay browser fills the path; it works without JavaScript.
-- **Local file** — a browser-selected text file up to 128 KB.
-- **Web page** — a public HTTP or HTTPS page fetched by the paired bridge.
+- **Note**: pasted facts, constraints, examples, or background.
+- **Ship file**: a text-compatible file from any desk on this ship, or a file another ship has shared. A lazy Clay browser fills the path; it works without JavaScript.
+- **Local file**: a browser-selected text file up to 128 KB.
+- **Web page**: a public HTTP or HTTPS page fetched by the paired bridge.
 
 Notes, local files, and Clay files are stored immediately. Web sources enter a
 durable queue; the bridge rejects private-network destinations, follows only
@@ -137,10 +137,11 @@ Sharing a desk-first path such as `/base/doc/notes/md` lists the file for
 remote readers; any ship can then attach it with a qualified locator such as
 `/~sampel-palnet/base/doc/notes/md`. The reader's source starts `%pending`,
 the publisher serves a fresh read of the file over a one-shot subscription,
-and the source becomes `%ready` — or `%failed` with a reason when the path is
-not shared, the reply times out, or the file exceeds 128 KB. Shared reads are
-public: any ship that asks receives a listed file. Unshare a path to stop
-serving it; snapshots already fetched by other ships remain on those ships.
+and the source becomes `%ready`. It becomes `%failed` with a reason when the
+path is not shared, the reply times out, or the file exceeds 128 KB. Shared
+reads are public: any ship that asks receives a listed file. Unshare a path
+to stop serving it; snapshots already fetched by other ships remain on those
+ships.
 The Ship file picker can also list another ship's shared files: enter the
 ship name, wait for its manifest, and select an entry to fill the path.
 Recent picks appear as one-click chips above the browser.
@@ -160,7 +161,7 @@ Use this workflow:
 
 Approval creates the card and adds it to the review queue. The card retains its capture, source, reason, creator, and approval time.
 
-The planning tools cannot approve a proposal. Seer applies an approval only after a person selects it in the browser.
+Only a person in the browser can approve a proposal.
 
 ### MCP tools
 
@@ -272,7 +273,7 @@ Approval fails if the target changed. A failed approval does not change the libr
 
 A request for **Seer itself** produces an implementation brief. The brief covers the interface, state, actions, MCP contract, migration, security, tests, and acceptance criteria.
 
-The request cannot generate or apply a desk patch. A developer must inspect the repository and implement the brief.
+The brief is documentation for a developer, who inspects the repository and implements it by hand.
 
 ## Card assistant
 
@@ -354,11 +355,12 @@ Copy the output into the local ship Dojo and the bridge configuration:
 
 Set the same value as `bridgeSecret` in `~/.config/seer/ai-bridge.json`, or
 export it as `SEER_BRIDGE_SECRET`. The secret is separate from the ship MCP
-cookie and never crosses MCP. Before each protected mutation, Seer issues a
-short-lived nonce; the bridge sends an HMAC-SHA256 proof covering the action,
-request, worker, nonce, and every mutable field. Seer atomically consumes valid
-nonces and rejects expired or replayed proofs. General login listings never
-return paste-back codes; the signed one-shot consume tool reads and clears one.
+cookie and stays between the local Dojo and the bridge configuration. Before
+each protected mutation, Seer issues a short-lived nonce; the bridge sends an
+HMAC-SHA256 proof covering the action, request, worker, nonce, and every
+mutable field. Seer atomically consumes valid nonces and rejects expired or
+replayed proofs. Paste-back codes are readable once, through the signed
+one-shot consume tool; general login listings omit them.
 Repeat the local Dojo poke with a new value to rotate the secret and clear
 outstanding nonces.
 

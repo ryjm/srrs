@@ -257,7 +257,7 @@
         (cold %& (jest '%.n'))
       ==
     ++  ship  ;~(pfix sig fed:ag)
-    ++  path  ;~(pfix fas ;~(plug urs:ab (easy ~)))  ::NOTE  short only, tmp
+    ++  path  ;~(pfix fas ;~(plug urs:ab (easy ~)))  ::note  short only, tmp
     ++  file-path  ;~(pfix fas (more fas (cook crip (star ;~(less fas prn)))))
     ::  +mang: un/managed indicator prefix
     ::
@@ -501,7 +501,7 @@
   :-  (tufa (scag end `(list @)`txt))
   $(txt (slag ?:(nex +(end) end) `tape`txt))
 ::
-::NOTE  anything that uses this breaks moons support, because moons don't sync
+::note  anything that uses this breaks moons support, because moons don't sync
 ::      full app state rn
 ++  scry-for
   |*  [=mold app=term =path]

@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// check-ship-alignment.mjs — bridge/ship drift canary.
+// check-ship-alignment.mjs: bridge/ship drift canary.
 //
 // Verifies a live ship serves every MCP tool the bridge requires
 // (tools/list vs REQUIRED_SEER_TOOLS) and that a read tool answers
 // (tools/call seer/list-stacks). Run this after `|commit %seer` and a
-// definitions reimport (mcp/import-mcp-tools), BEFORE pushing a release —
-// unit tests mock the ship boundary; this is the only integration check
-// of the desk/%mcp/bridge composition.
+// definitions reimport (mcp/import-mcp-tools), before pushing a release.
+// Unit tests mock the ship boundary; this is the integration check of
+// the desk/%mcp/bridge composition.
 //
 // Usage: node bridge/check-ship-alignment.mjs
 // Config: ~/.config/seer/ai-bridge.json (or $SEER_BRIDGE_CONFIG) supplies

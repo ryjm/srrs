@@ -581,7 +581,7 @@
 ::  +stack-emit: handles state updates for the given stack
 ::
 ++  stack-emit
-  :: The door shares one stack across its action arms.
+  :: the door shares one stack across its action arms.
   ::
   |_  =stack
   ::
@@ -776,7 +776,7 @@
   ^-  (quip card _state)
   ?+  request-line
     (respond-payload eyre-id not-found:gen)
-  ::  Canonical browser routes.
+  ::  canonical browser routes.
   ::
       [[~ [%apps %seer ~]] ~]
     (respond-page eyre-id [%review ~] ~)
@@ -802,7 +802,7 @@
     (respond-page eyre-id [%stack-browse owner name (fall browse '') (fall pick '') (fall remote '')] ~)
       [[~ [%apps %seer %clay-browse ~]] *]
     (respond-clay-browse eyre-id args.request-line)
-  ::  Preserve the old JSON endpoints for CLI and external integrations.
+  ::  preserve the old json endpoints for cli and external integrations.
   ::
       [[[~ %json] [%seer %update-review ~]] ~]
     %+  respond-payload  eyre-id
@@ -823,7 +823,7 @@
     (status-to-json learn.item)
       [[[~ %json] [%seer %stacks ~]] ~]
     (respond-payload eyre-id (json-response:gen (state-to-json state)))
-  ::  Legacy links now land on the repaired UI.
+  ::  legacy links now land on the repaired ui.
   ::
       [[~ [%seer ~]] ~]
     (respond-payload eyre-id (redirect:gen '/apps/seer/review'))

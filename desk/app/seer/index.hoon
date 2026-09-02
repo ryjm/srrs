@@ -1,8 +1,8 @@
 /-  *seer
 ::
-::  Seer's browser UI is deliberately server-rendered.  HTMX is the only
-::  client-side runtime: links and forms ask the agent for fresh HTML and
-::  replace #seer-app.  Everything still works as ordinary HTML without it.
+::  seer's browser ui is deliberately server-rendered.  htmx is the only
+::  client-side runtime: links and forms ask the agent for fresh html and
+::  replace #seer-app.  everything still works as ordinary html without it.
 ::
 |%
 +$  page
@@ -2287,7 +2287,7 @@
       ;summary.context-summary
         ;span.context-summary-copy
           ;span.context-title: Shared with other ships
-          ;span.context-purpose: Files any ship can read over remote scry.
+          ;span.context-purpose: Files any ship can read.
         ==
         ;span.context-count: {<count>} shared
       ==
