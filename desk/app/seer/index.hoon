@@ -11,6 +11,83 @@
       [%stacks ~]
       [%subscriptions ~]
       [%stack owner=@p name=@tas]
+      [%stack-browse owner=@p name=@tas browse=@t pick=@t]
+  ==
+::
++$  picker-data
+  $%  [%desks desks=(list @tas)]
+      [%level base=tape up=tape entries=(list [name=@ta dir=? fil=?])]
+  ==
+::
+++  clay-frag-url
+  |=  [loc=tape ret=tape]
+  ^-  tape
+  %+  weld  "/apps/seer/clay-browse?path={loc}"
+  ?:(=("" ret) "" "&return={ret}")
+::
+++  clay-page-url
+  |=  [ret=tape key=tape loc=tape]
+  ^-  tape
+  "{ret}?{key}={loc}"
+::
+++  clay-dir-link
+  |=  [ret=tape loc=tape label=tape]
+  ^-  manx
+  =/  frag=tape  (clay-frag-url loc ret)
+  =/  href=tape  ?:(=("" ret) frag (clay-page-url ret "browse" loc))
+  ;a.clay-dir
+    =href       href
+    =hx-get     frag
+    =hx-target  "closest .clay-browse"
+    =hx-swap    "outerHTML"
+    ; {label}
+  ==
+::
+++  clay-browse-desks
+  |=  [ret=tape our=@p desks=(list @tas)]
+  ^-  manx
+  ;ul.clay-browse
+    ;*  %+  turn  desks
+        |=  dek=@tas
+        ^-  manx
+        =/  loc=tape  "/{(trip (scot %p our))}/{(trip dek)}"
+        ;li
+          ;+  (clay-dir-link ret loc "{(trip dek)}/")
+        ==
+  ==
+::
+++  clay-browse-level
+  |=  [ret=tape base=tape up=tape entries=(list [name=@ta dir=? fil=?])]
+  ^-  manx
+  =/  up-loc=tape  ?:(=("" up) "/" up)
+  =/  rows=marl
+    %-  zing
+    %+  turn  entries
+    |=  [name=@ta dir=? fil=?]
+    ^-  marl
+    =/  child=tape  "{base}/{(trip name)}"
+    =/  dir-row=marl
+      ?.  dir  ~
+      :_  ~
+      ;li
+        ;+  (clay-dir-link ret child "{(trip name)}/")
+      ==
+    =/  fil-row=marl
+      ?.  fil  ~
+      =/  pick-href=tape
+        ?:  =("" ret)  "#"
+        (clay-page-url ret "pick" child)
+      :_  ~
+      ;li
+        ;a.clay-file(href pick-href, data-locator child): {(trip name)}
+      ==
+    (weld dir-row fil-row)
+  ;ul.clay-browse
+    =data-clay-base  base
+    ;li
+      ;+  (clay-dir-link ret up-loc "../")
+    ==
+    ;*  rows
   ==
 ::
 ++  render
@@ -27,6 +104,8 @@
           reviews=(list review)
           =page
           notice=(unit @t)
+          picker=(unit picker-data)
+          shared=(map path shared-entry)
       ==
   ^-  manx
   =/  stack-count=@ud  (lent ~(tap by stacks))
@@ -399,6 +478,18 @@
                     if (summary) { focusTarget(summary); }
                     var b = e.target && e.target.closest ? e.target.closest("[data-help-open]") : null;
                     if (b) { help(true); }
+                    var pick = e.target && e.target.closest ? e.target.closest("a.clay-file") : null;
+                    if (pick) {
+                      var pickForm = pick.closest("[data-context-form]");
+                      if (pickForm) {
+                        e.preventDefault();
+                        var locator = pickForm.querySelector('[data-context-kind="clay"] input[name="locator"]');
+                        if (locator) { locator.value = pick.getAttribute("data-locator") || ""; }
+                        var kindSelect = pickForm.querySelector("[data-context-type]");
+                        if (kindSelect) { kindSelect.value = "clay"; }
+                        syncContextForm(pickForm);
+                      }
+                    }
                   });
                   document.addEventListener("change", function (e) {
                     if (e.target && e.target.matches && e.target.matches("[data-context-type]")) {
@@ -1039,6 +1130,14 @@
                .context-fields textarea { min-height: 6rem; }
                .context-file-input { border: 1px dashed var(--line-strong); border-radius: 3px; display: grid; gap: .45rem; padding: .75rem; }
                .context-file-input input[type="file"] { border: 0; min-height: 0; padding: 0; }
+               .clay-picker { font-size: .82rem; margin-top: .2rem; }
+               .clay-browse { border-left: 1px solid var(--line); list-style: none; margin: .3rem 0 0; padding: 0 0 0 .8rem; }
+               .clay-browse li { margin: .12rem 0; }
+               .clay-browse a { text-decoration: none; }
+               .clay-browse a:hover { text-decoration: underline; }
+               a.clay-dir { color: var(--ink); font-weight: 600; }
+               a.clay-file { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .78rem; }
+               a.clay-open { color: var(--ink); font-weight: 650; }
                .context-file-input input[type="file"]::file-selector-button { background: var(--surface-2); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); cursor: pointer; font: inherit; margin-right: .6rem; padding: .45rem .6rem; }
                [data-context-file-status] { color: var(--muted); font-size: .72rem; line-height: 1.4; min-height: 1rem; }
                .context-picker { border: 0; border-top: 1px solid var(--line); display: grid; gap: .55rem; margin: 0; min-width: 0; padding: .75rem 0 0; }
@@ -1146,6 +1245,7 @@
       %stacks         stacks-page
       %subscriptions  subscriptions-page
       %stack          (stack-page owner.page name.page)
+      %stack-browse   (stack-page owner.page name.page)
     ==
   ::
   ++  inbox-page
@@ -2171,11 +2271,63 @@
       (item-row owner name item-name item)
     ==
   ::
+  ++  shared-clay-panel
+    |=  [owner=@p stack-name=@tas]
+    ^-  manx
+    =/  rows=(list [pax=path entry=shared-entry])  ~(tap by shared)
+    =/  count=@ud  (lent rows)
+    ;details.context-panel.shared-panel
+      ;summary.context-summary
+        ;span.context-summary-copy
+          ;span.context-title: Shared with other ships
+          ;span.context-purpose: Files any ship can read over remote scry.
+        ==
+        ;span.context-count: {<count>} shared
+      ==
+      ;div.context-body
+        ;+  ?~  rows
+              ;p.context-empty: Nothing shared yet. Share a desk-first path like /base/doc/notes/md.
+            ;ul.clay-browse
+              ;*  %+  turn  rows
+                  |=  [pax=path entry=shared-entry]
+                  ^-  manx
+                  ;li
+                    ;span.clay-file: {(trip label.entry)}
+                    ;form.inline
+                      =method   "post"
+                      =action   "/apps/seer/actions/unshare-clay-context"
+                      =hx-post  "/apps/seer/actions/unshare-clay-context"
+                      ;input(type "hidden", name "owner", value (scow %p owner));
+                      ;input(type "hidden", name "stack", value (tas-tape stack-name));
+                      ;input(type "hidden", name "path", value (spud pax));
+                      ;button.secondary(type "submit"): Unshare
+                    ==
+                  ==
+            ==
+        ;form.context-form
+          =method   "post"
+          =action   "/apps/seer/actions/share-clay-context"
+          =hx-post  "/apps/seer/actions/share-clay-context"
+          ;input(type "hidden", name "owner", value (scow %p owner));
+          ;input(type "hidden", name "stack", value (tas-tape stack-name));
+          ;label
+            ;span: desk-first path
+            ;input(name "path", maxlength "2048", placeholder "/base/doc/notes/md", autocomplete "off", autocapitalize "none", spellcheck "false");
+          ==
+          ;button(type "submit"): Share publicly
+        ==
+      ==
+    ==
+  ::
   ++  stack-editor
     |=  [owner=@p name=@tas has-cards=?]
     ^-  manx
     ;div.editor-column
       ;+  (context-panel owner name ~)
+      ;+
+      ?.  =(owner our)
+        ;div.hidden;
+      (shared-clay-panel owner name)
       ;+
       ?.  =(owner our)
         ;div.hidden;
@@ -2458,8 +2610,19 @@
     |=  [owner=@p stack-name=@tas card=(unit @tas)]
     ^-  manx
     =/  card-value=tape  ?~(card "" (tas-tape u.card))
-    ;details.context-add
-      ;summary: Add source
+    =/  clay-active=?
+      ?&  ?=(%stack-browse -.page)
+          ?=(~ card)
+          =(owner owner.page)
+          =(stack-name name.page)
+      ==
+    =/  pick-value=tape
+      ?:(&(clay-active ?=(%stack-browse -.page)) (trip pick.page) "")
+    =/  page-base=tape
+      "/apps/seer/stack/{(trip (scot %p owner))}/{(tas-tape stack-name)}"
+    =/  clay-example=tape
+      "/{(trip (scot %p our))}/base/gen/hood/hi/hoon"
+    =/  form-body=manx
       ;form.context-form
         =data-context-form  ""
         =method             "post"
@@ -2475,7 +2638,9 @@
               =name               "kind"
               =data-context-type  ""
               ;option(value "note"): Note
-              ;option(value "clay"): Ship file
+              ;+  ?.  clay-active
+                    ;option(value "clay"): Ship file
+                  ;option(value "clay", selected ""): Ship file
               ;option(value "file"): Local file
               ;option(value "web"): Web page
             ==
@@ -2488,17 +2653,30 @@
         ;div.context-fields(data-context-kind "note")
           ;label
             ;span: context
-            ;textarea(name "content", required "", maxlength "131072", placeholder "Paste the facts, constraints, examples, or background this assistant should carry.");
+            ;textarea(name "content", maxlength "131072", placeholder "Paste the facts, constraints, examples, or background this assistant should carry.");
           ==
         ==
         ;div.context-fields
           =data-context-kind  "clay"
-          =hidden             ""
           ;label
-            ;span: mounted Clay path
-            ;input(name "locator", required "", disabled "", maxlength "2048", placeholder "/doc/project/md", autocomplete "off", autocapitalize "none", spellcheck "false");
+            ;span: ship file path
+            ;input(name "locator", maxlength "2048", value pick-value, placeholder clay-example, autocomplete "off", autocapitalize "none", spellcheck "false");
           ==
-          ;p.muted: Reads a text-compatible file from this ship's current desk.
+          ;div.clay-picker
+            ;+  ?:  &(clay-active ?=(^ picker))
+                  ?-  -.u.picker
+                    %desks  (clay-browse-desks page-base our desks.u.picker)
+                    %level  (clay-browse-level page-base base.u.picker up.u.picker entries.u.picker)
+                  ==
+                ;a.clay-dir.clay-open
+                  =href       (clay-page-url page-base "browse" "/")
+                  =hx-get     (clay-frag-url "/" page-base)
+                  =hx-target  "closest .clay-picker"
+                  =hx-swap    "innerHTML"
+                  ; Browse ship files
+                ==
+          ==
+          ;p.muted: Attach a text file from any desk on this ship.
         ==
         ;div.context-fields
           =data-context-kind  "file"
@@ -2514,20 +2692,31 @@
             ==
             ;span(data-context-file-status "", aria-live "polite");
           ==
+          ;noscript
+            ;p.muted: Local file upload needs the inline script. Use Note or Ship file instead.
+          ==
           ;input(type "hidden", name "locator", disabled "", data-context-file-locator "");
           ;textarea(name "content", hidden "", disabled "", data-context-file-content "");
         ==
         ;div.context-fields
           =data-context-kind  "web"
-          =hidden             ""
           ;label
             ;span: public URL
-            ;input(type "url", name "locator", required "", disabled "", maxlength "2048", placeholder "https://example.com/reference");
+            ;input(type "url", name "web-locator", maxlength "2048", placeholder "https://example.com/reference");
           ==
           ;p.muted: The paired bridge fetches readable text and stores the snapshot on this ship.
         ==
         ;button(type "submit", data-context-submit ""): Add note
       ==
+    ?:  clay-active
+      ;details.context-add
+        =open  ""
+        ;summary: Add source
+        ;+  form-body
+      ==
+    ;details.context-add
+      ;summary: Add source
+      ;+  form-body
     ==
   ::
   ++  question-panel
