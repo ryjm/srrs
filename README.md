@@ -115,7 +115,7 @@ by default, and each source can be excluded for that individual request.
 The browser accepts four source kinds:
 
 - **Note**: pasted facts, constraints, examples, or background.
-- **Ship file**: a text-compatible file from any desk on this ship, or a file another ship has shared. Pick a desk from the dropdown, load its file list, and type to fuzzy-filter it; results rank as you type with no extra requests. Choosing a file fills the path. The same form works without JavaScript through a server-side filter.
+- **Ship file**: a text-compatible file or directory from any desk on this ship, or a file another ship has shared. The picker loads the selected desk's file list on its own; type to fuzzy-filter, and results rank as you type with no extra requests. Directory entries appear above files: attaching one stores every text file beneath it, each section prefixed with `=== /its/path`, under the same 128 KB cap. Directories from other ships are not supported. The same form works without JavaScript through a Load files button and a server-side filter.
 - **Local file**: a browser-selected text file up to 128 KB.
 - **Web page**: a public HTTP or HTTPS page fetched by the paired bridge.
 

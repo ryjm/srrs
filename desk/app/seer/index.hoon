@@ -22,6 +22,21 @@
   |=  [our=@p ret=tape dek=@tas total=@ud hits=(list path)]
   ^-  manx
   =/  shown=(list path)  (scag 200 hits)
+  ::  directories implied by the matching files: every proper prefix
+  ::  of a hit (mark segment dropped).  picking one attaches every
+  ::  text file beneath it.
+  =/  dirs=(list path)
+    %+  scag  50
+    %+  sort
+      %~  tap  in
+      %+  roll  hits
+      |=  [pax=path acc=(set path)]
+      =/  stem=path  (snip `path`pax)
+      =/  k=@ud  1
+      |-  ^-  (set path)
+      ?:  (gte k (lent stem))  acc
+      $(acc (~(put in acc) (scag k stem)), k +(k))
+    aor
   ;ul.clay-results
     ;li.clay-results-meta
       ; showing {<(lent shown)>} of {<(lent hits)>} matches · {<total>} files in {(trip dek)}
@@ -29,6 +44,17 @@
     ;+  ?^  hits  ;span.hidden;
         ;li.clay-results-meta
           ; no files match
+        ==
+    ;*  %+  turn  dirs
+        |=  dir=path
+        ^-  manx
+        =/  loc=tape
+          "/{(trip (scot %p our))}/{(trip dek)}{(spud dir)}"
+        =/  pick-href=tape
+          ?:  =("" ret)  "#"
+          "{ret}?pick={loc}"
+        ;li
+          ;a.clay-file.clay-dir(href pick-href, data-locator loc, hx-boost "false"): {(spud dir)}/
         ==
     ;*  %+  turn  shown
         |=  pax=path
@@ -348,14 +374,14 @@
                     var scored = rows.map(function (li) {
                       var a = li.querySelector("a.clay-file");
                       var loc = a ? (a.getAttribute("data-locator") || "") : "";
-                      return [q ? fuzzyScore(q, loc) : 0, li];
+                      return [q ? fuzzyScore(q, loc) : 0, loc.length, li];
                     });
-                    scored.sort(function (x, y) { return y[0] - x[0]; });
+                    scored.sort(function (x, y) { return (y[0] - x[0]) || (x[1] - y[1]); });
                     var shown = 0;
                     scored.forEach(function (p) {
                       var vis = p[0] >= 0 && shown < 100;
-                      p[1].hidden = !vis;
-                      if (vis) { shown += 1; list.appendChild(p[1]); }
+                      p[2].hidden = !vis;
+                      if (vis) { shown += 1; list.appendChild(p[2]); }
                     });
                     var meta = list.querySelector(".clay-results-meta");
                     if (meta && q) {
@@ -497,16 +523,40 @@
                       fuzzFilter(e.target);
                     }
                   });
+                  function maybeAutoLoad(scope) {
+                    if (!scope) { return; }
+                    var picker = scope.querySelector("[data-clay-picker]");
+                    if (!picker || picker.hidden) { return; }
+                    var form = picker.querySelector("form.clay-search");
+                    var desk = form && form.querySelector('select[name="desk"]');
+                    var box = picker.querySelector("#clay-results-box") || picker.querySelector("[id^=clay-results]");
+                    if (!form || !desk || !desk.value) { return; }
+                    if (box && box.querySelector("a.clay-file")) { return; }
+                    if (form.dataset.loading) { return; }
+                    form.dataset.loading = "1";
+                    form.requestSubmit();
+                  }
+                  document.addEventListener("toggle", function (e) {
+                    if (e.target && e.target.matches && e.target.matches("details.context-add") && e.target.open) {
+                      maybeAutoLoad(e.target);
+                    }
+                  }, true);
                   document.addEventListener("htmx:afterSwap", function (e) {
                     if (e.target && e.target.id === "clay-results-box") {
                       var picker = e.target.closest(".clay-picker");
+                      var form = picker && picker.querySelector("form.clay-search");
+                      if (form) { delete form.dataset.loading; }
                       var q = picker && picker.querySelector('.clay-search input[name="q"]');
                       if (q && q.value.trim()) { fuzzFilter(q); }
                     }
                   });
                   document.addEventListener("change", function (e) {
                     if (e.target && e.target.matches && e.target.matches("[data-context-type]")) {
-                      syncContextForm(e.target.closest("[data-context-form]"));
+                      var host = e.target.closest("[data-context-form]");
+                      syncContextForm(host);
+                      if (e.target.value === "clay") {
+                        maybeAutoLoad(e.target.closest("details.context-add"));
+                      }
                     }
                     if (e.target && e.target.matches && e.target.matches("[data-context-file]")) {
                       loadContextFile(e.target);
@@ -1153,6 +1203,7 @@
                .clay-results a { text-decoration: none; }
                .clay-results a:hover { text-decoration: underline; }
                .clay-results-meta { color: var(--muted); font-size: .72rem; }
+               a.clay-file.clay-dir { color: var(--ink); font-weight: 600; }
                #clay-results-box { max-height: 16rem; overflow-y: auto; }
                .clay-search { align-items: end; display: flex; flex-wrap: wrap; gap: .55rem; }
                .clay-search label { display: grid; gap: .2rem; }
@@ -2667,6 +2718,7 @@
         =hx-target  "#clay-results-box"
         =hx-swap    "innerHTML"
         =hx-select  "ul.clay-results"
+        =hx-trigger  "submit, change from:find select"
         ;input(type "hidden", name "return", value page-base);
         ;label
           ;span: desk
@@ -2684,7 +2736,9 @@
           ;span: search
           ;input(name "q", value q-val, placeholder "type to filter", autocomplete "off", autocapitalize "none", spellcheck "false");
         ==
-        ;button.secondary(type "submit"): Load files
+        ;noscript
+          ;button.secondary(type "submit"): Load files
+        ==
       ==
       ;div#clay-results-box
         ;+  ?~  picker  ;span.hidden;

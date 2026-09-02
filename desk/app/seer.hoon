@@ -1022,6 +1022,13 @@
     ?:  &(=(%clay kind) ?=(~ clay-loc))
       (respond-page eyre-id [%stack owner stack-name] `'Use a Clay path like /doc/notes/md or /~ship/desk/doc/notes/md.')
     =/  foreign-add=?  &(?=(^ clay-loc) !=(our.bol who.u.clay-loc))
+    ?:  ?&  ?=(^ clay-loc)
+            !=(our.bol who.u.clay-loc)
+            ?|  ?=(~ rest.u.clay-loc)
+                !(~(has in clay-text-marks) (rear rest.u.clay-loc))
+            ==
+        ==
+      (respond-page eyre-id [%stack owner stack-name] `'Directories from other ships are not supported. Pick a specific file.')
     =/  maybe-content=(unit @t)
       ?:  foreign-add  `''
       ?:  =(%clay kind)
@@ -1549,6 +1556,22 @@
   ?:  =(our.bol who.u.parsed)  ~
   parsed
 ::
+::  +clay-file-text: read one clay file as text.
+::
+++  clay-file-text
+  |=  pax=path
+  ^-  @t
+  =/  value  .^(noun %cx pax)
+  =/  maybe-lines=(unit wain)
+    ?@(value `(to-wain:format value) ((soft wain) value))
+  ?~  maybe-lines  !!
+  =/  lines=wall
+    (turn u.maybe-lines |=(line=cord (trip line)))
+  (crip (zing (join "\0a" lines)))
+::  +read-clay-context: resolve a clay locator to text.  a locator that
+::  names a file reads that file.  a locator that names a directory
+::  concatenates every text-mark file beneath it with path headers.
+::
 ++  read-clay-context
   |=  raw=@t
   ^-  @t
@@ -1558,14 +1581,25 @@
   =/  pax=path
     [(scot %p who.u.parsed) dek.u.parsed (scot %da now.bol) rest.u.parsed]
   =/  archive=arch  .^(arch %cy pax)
-  ?~  fil.archive  !!
-  =/  value  .^(noun %cx pax)
-  =/  maybe-lines=(unit wain)
-    ?@(value `(to-wain:format value) ((soft wain) value))
-  ?~  maybe-lines  !!
-  =/  lines=wall
-    (turn u.maybe-lines |=(line=cord (trip line)))
-  (crip (zing (join "\0a" lines)))
+  ?^  fil.archive
+    (clay-file-text pax)
+  =/  base=path
+    [(scot %p who.u.parsed) dek.u.parsed (scot %da now.bol) ~]
+  =/  all=(list path)  .^((list path) %ct base)
+  =/  prefix=path  rest.u.parsed
+  =/  under=(list path)
+    %+  skim  all
+    |=  f=path
+    ?&  ?=(^ f)
+        (~(has in clay-text-marks) (rear `path`f))
+        =(prefix (scag (lent prefix) `path`f))
+    ==
+  ?~  under  !!
+  =/  pieces=wall
+    %+  turn  (sort under aor)
+    |=  f=path
+    "=== {(spud f)}\0a{(trip (clay-file-text (weld base `path`f)))}"
+  (crip (zing (join "\0a\0a" pieces)))
 ::
 ++  local-stack-title
   |=  =stack
