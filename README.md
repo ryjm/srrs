@@ -67,6 +67,15 @@ Commit the revision:
 
 Gall reloads an installed `%seer` agent. For the first installation, run `|install our %seer` after the commit.
 
+Run the desk tests from the Dojo. They drive the real agent through
+`on-load`, `on-poke`, and `on-peek`: the state-migration chain, SM-2
+scheduling, change-operation validation, and the bridge HMAC proof
+boundary pinned to the same fixture as `bridge/seer-ai-bridge.test.mjs`:
+
+```hoon
+-test /=seer=/tests ~
+```
+
 ## Web architecture
 
 - `desk/app/seer/index.hoon` renders complete pages and HTMX fragments.
