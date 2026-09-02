@@ -282,7 +282,7 @@ async function callTool(config, cookie, name, toolArgs = {}) {
   return parseMcpResponse(text);
 }
 
-const REQUIRED_SEER_TOOLS = [
+export const REQUIRED_SEER_TOOLS = [
   "seer/answer-card-question", "seer/apply-card-edit", "seer/claim-card-question",
   "seer/claim-change", "seer/claim-context-source", "seer/claim-login",
   "seer/clear-assistant-models", "seer/consume-login-code", "seer/fail-card-question",

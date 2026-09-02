@@ -4,6 +4,8 @@ After=network-online.target
 
 [Service]
 Type=simple
+WorkingDirectory=/absolute/path/to/srrs
+EnvironmentFile=-%h/.config/seer/ai-bridge.env
 ExecStart=/usr/bin/env node /absolute/path/to/srrs/bridge/seer-ai-bridge.mjs
 Restart=on-failure
 RestartSec=3

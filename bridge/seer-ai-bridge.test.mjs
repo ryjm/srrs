@@ -35,6 +35,7 @@ import {
   stripAnsi,
   validateContextUrl,
 } from "./seer-ai-bridge.mjs";
+import { diffTools } from "./check-ship-alignment.mjs";
 
 test("extractMcpCookie selects the matching MCP server", () => {
   const toml = `
@@ -805,4 +806,12 @@ test("isSchemaDriftError matches ship nest-fail output and ignores ordinary erro
   assert.equal(isSchemaDriftError(new Error("Unknown tool: seer/claim-context-source")), true);
   assert.equal(isSchemaDriftError(new Error("MCP HTTP 502: relay hiccup")), false);
   assert.equal(isSchemaDriftError(new Error("fetch failed: ECONNREFUSED")), false);
+});
+
+test("diffTools reports required tools the ship does not serve, in required order", () => {
+  const required = ["seer/claim-login", "seer/list-stacks", "seer/state-context"];
+  assert.deepEqual(diffTools(["seer/list-stacks"], required), ["seer/claim-login", "seer/state-context"]);
+  assert.deepEqual(diffTools(["seer/state-context", "seer/list-stacks", "seer/claim-login", "mcp/extra"], required), []);
+  assert.deepEqual(diffTools([], required), required);
+  assert.deepEqual(diffTools(["seer/other"], []), []);
 });
