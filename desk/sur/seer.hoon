@@ -150,6 +150,8 @@
       [%retry-login id=@tas]
       [%cancel-login id=@tas]
       [%consume-login-code id=@tas worker=@t nonce=@t proof=@]
+      [%share-clay-context pax=path]
+      [%unshare-clay-context pax=path]
   ==
 ::
 ::  AI capture sessions live on the ship, not in any one model's context.
@@ -218,6 +220,16 @@
 +$  context-kind  $?(%note %clay %file %web)
 ::
 +$  context-status  $?(%pending %working %ready %failed)
+::
+::  Remote clay sharing: a shared file is grown into the gall publication
+::  namespace (public to any ship that knows the path); the manifest lists
+::  every shared entry and regrows on each change.  Revisions are tracked
+::  because fine-protocol reads need concrete cases and culls need them.
+::
++$  shared-entry     [rev=@ud label=@t mark=@tas size=@ud]
++$  manifest-entry   [pax=path label=@t mark=@tas size=@ud]
++$  remote-manifest  [rev=@ud at=@da entries=(list manifest-entry)]
++$  keen-track       [who=@p pax=path at=@da]
 ::
 +$  context-source
   $:  id=@tas

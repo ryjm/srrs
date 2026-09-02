@@ -74,7 +74,7 @@ Gall reloads an installed `%seer` agent. For the first installation, run `|insta
 - GET routes render the review queue, library, shared stacks, and stack details.
 - POST routes send typed `%seer-action` values and then render the changed view.
 - `hx-boost`, `hx-target`, `hx-select`, and `hx-swap` replace the `#seer-app` fragment.
-- Each route also returns usable HTML when JavaScript is unavailable. Adding a non-Note context source is the exception: those forms need the inline script.
+- Each route also returns usable HTML when JavaScript is unavailable. The one exception is the local-file context source, which needs the inline script to read the file.
 - The shared app shell adds Vim-style navigation: `j`/`k` move between targets and wrap through stack cards, `J`/`K` and `d`/`u` scroll, `gg`/`G` jump, `gr`/`gi`/`gl`/`gs` change sections, `za`/`zo`/`zc`/`zR`/`zM` control disclosures, `i` enters a focused form, `ga` opens the assistant, and `?` opens the shortcut guide.
 - Review adds `space` to flip, `1`–`4` to grade, a session progress bar, and disclosure state that survives fragment swaps.
 
@@ -106,7 +106,7 @@ by default, and each source can be excluded for that individual request.
 The browser accepts four source kinds:
 
 - **Note** — pasted facts, constraints, examples, or background.
-- **Ship file** — a text-compatible file at a mounted Clay path.
+- **Ship file** — a text-compatible file from any desk on this ship, or a file another ship has shared. A lazy Clay browser fills the path; it works without JavaScript.
 - **Local file** — a browser-selected text file up to 128 KB.
 - **Web page** — a public HTTP or HTTPS page fetched by the paired bridge.
 
@@ -120,6 +120,18 @@ proof covering the source ID, worker, nonce, and every mutable field. Gall
 verifies and consumes the nonce in the same event that changes context state.
 On startup, the paired bridge uses the same proof boundary to requeue any
 source left `%working` by a crash before normal polling resumes.
+
+### Share ship files with other ships
+
+A stack page owned by this ship shows a **Shared with other ships** panel.
+Sharing a desk-first path such as `/base/doc/notes/md` lists the file for
+remote readers; any ship can then attach it with a qualified locator such as
+`/~sampel-palnet/base/doc/notes/md`. The reader's source starts `%pending`,
+the publisher serves a fresh read of the file over a one-shot subscription,
+and the source becomes `%ready` — or `%failed` with a reason when the path is
+not shared, the reply times out, or the file exceeds 128 KB. Shared reads are
+public: any ship that asks receives a listed file. Unshare a path to stop
+serving it; snapshots already fetched by other ships remain on those ships.
 
 ### Create cards from a source
 
@@ -346,7 +358,12 @@ node bridge/seer-ai-bridge.mjs
 
 The bridge reads the Cookie header from `~/.codex/config.toml` by default. You can also set `SEER_MCP_COOKIE`.
 
-Use `bridge/seer-ai-bridge.service` to run the bridge as a user systemd service.
+Run `bridge/install-bridge.sh` to render `bridge/seer-ai-bridge.service` with
+this checkout's absolute path and install it to
+`~/.config/systemd/user/seer-ai-bridge.service`, then run
+`systemctl --user enable --now seer-ai-bridge`. Put `SEER_BRIDGE_SECRET` and
+`SEER_MCP_COOKIE` in `~/.config/seer/ai-bridge.env` (loaded via `EnvironmentFile=`)
+rather than editing the unit.
 
 Run the bridge tests:
 
