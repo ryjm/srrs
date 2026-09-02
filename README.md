@@ -132,6 +132,9 @@ and the source becomes `%ready` — or `%failed` with a reason when the path is
 not shared, the reply times out, or the file exceeds 128 KB. Shared reads are
 public: any ship that asks receives a listed file. Unshare a path to stop
 serving it; snapshots already fetched by other ships remain on those ships.
+The Ship file picker can also list another ship's shared files: enter the
+ship name, wait for its manifest, and select an entry to fill the path.
+Recent picks appear as one-click chips above the browser.
 
 ### Create cards from a source
 

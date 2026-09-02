@@ -152,6 +152,7 @@
       [%consume-login-code id=@tas worker=@t nonce=@t proof=@]
       [%share-clay-context pax=path]
       [%unshare-clay-context pax=path]
+      [%fetch-remote-manifest who=@p]
   ==
 ::
 ::  AI capture sessions live on the ship, not in any one model's context.

@@ -11,7 +11,7 @@
       [%stacks ~]
       [%subscriptions ~]
       [%stack owner=@p name=@tas]
-      [%stack-browse owner=@p name=@tas browse=@t pick=@t]
+      [%stack-browse owner=@p name=@tas browse=@t pick=@t remote=@t]
   ==
 ::
 +$  picker-data
@@ -106,6 +106,8 @@
           notice=(unit @t)
           picker=(unit picker-data)
           shared=(map path shared-entry)
+          remotes=(map @p remote-manifest)
+          recents=(list @t)
       ==
   ^-  manx
   =/  stack-count=@ud  (lent ~(tap by stacks))
@@ -1131,6 +1133,9 @@
                .context-file-input { border: 1px dashed var(--line-strong); border-radius: 3px; display: grid; gap: .45rem; padding: .75rem; }
                .context-file-input input[type="file"] { border: 0; min-height: 0; padding: 0; }
                .clay-picker { font-size: .82rem; margin-top: .2rem; }
+               .clay-recents { display: flex; flex-wrap: wrap; gap: .35rem .7rem; margin: .3rem 0; }
+               .clay-remote { border-top: 1px dashed var(--line); margin-top: .6rem; padding-top: .6rem; }
+               .clay-remote-loading p { margin: .3rem 0; }
                .clay-browse { border-left: 1px solid var(--line); list-style: none; margin: .3rem 0 0; padding: 0 0 0 .8rem; }
                .clay-browse li { margin: .12rem 0; }
                .clay-browse a { text-decoration: none; }
@@ -2606,6 +2611,59 @@
       ==
     ==
   ::
+  ++  remote-clay-panel
+    |=  [clay-active=? page-base=tape owner=@p stack-name=@tas]
+    ^-  manx
+    =/  remote-value=tape
+      ?:(&(clay-active ?=(%stack-browse -.page)) (trip remote.page) "")
+    =/  rship=(unit @p)
+      ?:  =("" remote-value)  ~
+      (slaw %p (crip remote-value))
+    ;div.clay-remote
+      ;form.inline
+        =method   "post"
+        =action   "/apps/seer/actions/browse-remote-manifest"
+        =hx-post  "/apps/seer/actions/browse-remote-manifest"
+        ;input(type "hidden", name "owner", value (scow %p owner));
+        ;input(type "hidden", name "stack", value (tas-tape stack-name));
+        ;label
+          ;span: another ship's shared files
+          ;input(name "ship", value remote-value, placeholder "~sampel-palnet", autocomplete "off", autocapitalize "none", spellcheck "false");
+        ==
+        ;button.secondary(type "submit"): Browse ship
+      ==
+      ;+  ?~  rship  ;span.hidden;
+          =/  entry  (~(get by remotes) u.rship)
+          =/  poll-url=tape  "{page-base}?remote={remote-value}"
+          ?:  ?|  ?=(~ entry)
+                  &(=(0 rev.u.entry) =(*@da at.u.entry))
+              ==
+            ;p.muted: {remote-value} shares nothing there, or it could not be reached. Try again in a moment.
+          ?:  =(0 rev.u.entry)
+            ;div.clay-remote-loading
+              =hx-get      poll-url
+              =hx-trigger  "every 2s"
+              =hx-target   "#seer-app"
+              =hx-select   "#seer-app"
+              =hx-swap     "outerHTML"
+              ;p.muted
+                ; Asking {remote-value} for its shared files...
+                ;a(href poll-url): Check again
+              ==
+            ==
+          ?~  entries.u.entry
+            ;p.muted: {remote-value} shares nothing right now.
+          ;ul.clay-browse
+            ;*  %+  turn  entries.u.entry
+                |=  [pax=path label=@t mark=@tas size=@ud]
+                ^-  manx
+                =/  loc=tape  "/{remote-value}{(spud pax)}"
+                ;li
+                  ;a.clay-file(href "{page-base}?pick={loc}", data-locator loc): {(trip label)}
+                ==
+          ==
+    ==
+  ::
   ++  context-source-form
     |=  [owner=@p stack-name=@tas card=(unit @tas)]
     ^-  manx
@@ -2676,7 +2734,16 @@
                   ; Browse ship files
                 ==
           ==
+          ;+  ?~  recents  ;span.hidden;
+              ;div.clay-recents
+                ;*  %+  turn  recents
+                    |=  loc=@t
+                    ^-  manx
+                    ;a.clay-file(href "{page-base}?pick={(trip loc)}", data-locator (trip loc)): {(trip loc)}
+              ==
           ;p.muted: Attach a text file from any desk on this ship.
+          ;+  ?^  card  ;span.hidden;
+              (remote-clay-panel clay-active page-base owner stack-name)
         ==
         ;div.context-fields
           =data-context-kind  "file"

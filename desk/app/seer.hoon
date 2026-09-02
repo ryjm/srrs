@@ -259,6 +259,11 @@
     |^  ^-  (quip card _this)
     ?+    -.sign  (on-agent:def wire sign)
         %watch-ack
+      ?:  ?=([%shared-manifest @ ~] wire)
+        ?~  p.sign  [~ this]
+        =^  cards  state
+          (fail-remote-manifest:sc (slav %p i.t.wire))
+        [cards this]
       ?.  ?=([%shared-fetch @ ~] wire)  (on-agent:def wire sign)
       ?~  p.sign  [~ this]
       =^  cards  state
@@ -269,6 +274,10 @@
         =^  cards  state
           (fail-shared-fetch:sc i.t.wire 'The ship disconnected before replying.')
         [cards this]
+      ?:  ?=([%shared-manifest @ ~] wire)
+        =^  cards  state
+          (fail-remote-manifest:sc (slav %p i.t.wire))
+        [cards this]
       :_  this
       ?+  wire  ~
         [%primary @ ~]  ~[[%pass /seer-primary %agent [our.bol %seer] %watch /seer-primary]]
@@ -277,6 +286,10 @@
       ?+    wire  (on-agent:def wire sign)
           [%shared-fetch @ ~]
         =^  cards  state  (take-shared-fetch:sc i.t.wire cage.sign)
+        [cards this]
+          [%shared-manifest @ ~]
+        =^  cards  state
+          (take-remote-manifest:sc (slav %p i.t.wire) cage.sign)
         [cards this]
           [%seer-primary ~]
         [~ this]
@@ -311,6 +324,7 @@
         [%import @ @ ~]             (peer-stack:sc i.t.t.wire)
         [%read %paths ~]            [~ state]
         [%shared-timeout @ ~]     (shared-fetch-timeout:sc i.t.wire)
+        [%shared-manifest-timeout @ ~]  (remote-manifest-timeout:sc (slav %p i.t.wire))
       ==
     [cards this]
   ::
@@ -728,9 +742,10 @@
     =/  name   (slav %tas i.t.t.t.t.site.request-line)
     =/  browse  (get-arg args.request-line 'browse')
     =/  pick    (get-arg args.request-line 'pick')
-    ?:  &(?=(~ browse) ?=(~ pick))
+    =/  remote  (get-arg args.request-line 'remote')
+    ?:  &(?=(~ browse) ?=(~ pick) ?=(~ remote))
       (respond-page eyre-id [%stack owner name] ~)
-    (respond-page eyre-id [%stack-browse owner name (fall browse '') (fall pick '')] ~)
+    (respond-page eyre-id [%stack-browse owner name (fall browse '') (fall pick '') (fall remote '')] ~)
       [[~ [%apps %seer %clay-browse ~]] *]
     (respond-clay-browse eyre-id args.request-line)
   ::  Preserve the old JSON endpoints for CLI and external integrations.
@@ -1008,6 +1023,22 @@
       `'Web source queued again.'
     ==
   ::
+  ::
+      [[~ [%apps %seer %actions %browse-remote-manifest ~]] ~]
+    =/  owner       (slav %p (form-got fields 'owner'))
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    =/  ship-raw    (form-got fields 'ship')
+    =/  who=(unit @p)  (slaw %p ship-raw)
+    ?~  who
+      (respond-page eyre-id [%stack owner stack-name] `'Enter a ship name like ~sampel-palnet.')
+    ?:  =(our.bol u.who)
+      (respond-page eyre-id [%stack owner stack-name] `'That is this ship. Use the browser above for local files.')
+    %:  apply-web-action
+      eyre-id
+      [%fetch-remote-manifest u.who]
+      [%stack-browse owner stack-name '' '' (scot %p u.who)]
+      ~
+    ==
       [[~ [%apps %seer %actions %share-clay-context ~]] ~]
     =/  owner       (slav %p (form-got fields 'owner'))
     =/  stack-name  (slav %tas (form-got fields 'stack'))
@@ -1273,7 +1304,7 @@
     ?:  =('' browse.page)  ~
     (clay-level-data browse.page '')
   %-  manx-response:gen
-  (render:index our.bol stacks.state stack-subs.state captures.state questions.state contexts.state question-contexts.state models.state changes.state logins.state all-reviews page notice picker shared-context.state)
+  (render:index our.bol stacks.state stack-subs.state captures.state questions.state contexts.state question-contexts.state models.state changes.state logins.state all-reviews page notice picker shared-context.state remote-manifests.state recent-clay.state)
 ::
 ++  get-arg
   |=  [args=(list [k=@t v=@t]) key=@t]
@@ -1898,6 +1929,9 @@
           now.bol
       ==
     =.  contexts.state  (~(put by contexts.state) id.act source)
+    =?  recent-clay.state  =(%clay kind.act)
+      %+  scag  8
+      `(list @t)`[locator.act (skip recent-clay.state |=(l=@t =(l locator.act)))]
     =/  foreign  (foreign-clay-locator kind.act locator.act)
     ?~  foreign  [~ state]
     =.  outstanding-keens.state
@@ -2015,6 +2049,9 @@
         ==
         [%pass [%shared-timeout id.act ~] %arvo %b %wait (add now.bol ~m2)]
     ==
+      %fetch-remote-manifest
+    ?.  =(our.bol src.bol)  [~ state]
+    (fetch-remote-manifest who.act)
       %share-clay-context
     ?.  =(our.bol src.bol)  [~ state]
     ?.  ?=([@ @ @ *] pax.act)  [~ state]
@@ -2595,6 +2632,53 @@
   ^-  (quip card _state)
   ?.  (~(has by outstanding-keens.state) id)  [~ state]
   (fail-shared-fetch id 'Timed out waiting for that ship to reply.')
+::
+++  fetch-remote-manifest
+  |=  who=@p
+  ^-  (quip card _state)
+  =/  existing  (~(get by remote-manifests.state) who)
+  ?:  ?&  ?=(^ existing)
+          =(0 rev.u.existing)
+          !=(*@da at.u.existing)
+          (lth now.bol (add at.u.existing ~s45))
+      ==
+    [~ state]
+  =.  remote-manifests.state
+    (~(put by remote-manifests.state) who [0 now.bol ~])
+  :_  state
+  :~  :*  %pass  [%shared-manifest (scot %p who) ~]  %agent  [who %seer]
+          %watch  /shared-context
+      ==
+      [%pass [%shared-manifest-timeout (scot %p who) ~] %arvo %b %wait (add now.bol ~s45)]
+  ==
+::
+++  fail-remote-manifest
+  |=  who=@p
+  ^-  (quip card _state)
+  =/  existing  (~(get by remote-manifests.state) who)
+  ?.  ?&  ?=(^ existing)
+          =(0 rev.u.existing)
+          !=(*@da at.u.existing)
+      ==
+    [~ state]
+  =.  remote-manifests.state
+    (~(put by remote-manifests.state) who [0 *@da ~])
+  [~ state]
+::
+++  take-remote-manifest
+  |=  [who=@p =cage]
+  ^-  (quip card _state)
+  =/  payload  ((soft ,[%0 entries=(list manifest-entry)]) q.q.cage)
+  ?~  payload  (fail-remote-manifest who)
+  =.  remote-manifests.state
+    %+  ~(put by remote-manifests.state)  who
+    [1 now.bol (scag 500 entries.u.payload)]
+  [~ state]
+::
+++  remote-manifest-timeout
+  |=  who=@p
+  ^-  (quip card _state)
+  (fail-remote-manifest who)
 ::
 ++  peer-seertile
   |=  wir=wire
