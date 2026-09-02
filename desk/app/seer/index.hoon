@@ -11,85 +11,37 @@
       [%stacks ~]
       [%subscriptions ~]
       [%stack owner=@p name=@tas]
-      [%stack-browse owner=@p name=@tas browse=@t pick=@t remote=@t]
+      [%stack-browse owner=@p name=@tas desk=@t q=@t pick=@t remote=@t]
   ==
 ::
 +$  picker-data
-  $%  [%desks desks=(list @tas)]
-      [%level base=tape up=tape entries=(list [name=@ta dir=? fil=?])]
-  ==
+  [%files dek=@tas total=@ud files=(list path)]
 ::
-++  clay-frag-url
-  |=  [loc=tape ret=tape]
-  ^-  tape
-  %+  weld  "/apps/seer/clay-browse?path={loc}"
-  ?:(=("" ret) "" "&return={ret}")
 ::
-++  clay-page-url
-  |=  [ret=tape key=tape loc=tape]
-  ^-  tape
-  "{ret}?{key}={loc}"
-::
-++  clay-dir-link
-  |=  [ret=tape loc=tape label=tape]
+++  clay-results
+  |=  [our=@p ret=tape dek=@tas total=@ud hits=(list path)]
   ^-  manx
-  =/  frag=tape  (clay-frag-url loc ret)
-  =/  href=tape  ?:(=("" ret) frag (clay-page-url ret "browse" loc))
-  ;a.clay-dir
-    =href       href
-    =hx-get     frag
-    =hx-target  "closest .clay-browse"
-    =hx-swap    "outerHTML"
-    ; {label}
-  ==
-::
-++  clay-browse-desks
-  |=  [ret=tape our=@p desks=(list @tas)]
-  ^-  manx
-  ;ul.clay-browse
-    ;*  %+  turn  desks
-        |=  dek=@tas
+  =/  shown=(list path)  (scag 200 hits)
+  ;ul.clay-results
+    ;li.clay-results-meta
+      ; showing {<(lent shown)>} of {<(lent hits)>} matches · {<total>} files in {(trip dek)}
+    ==
+    ;+  ?^  hits  ;span.hidden;
+        ;li.clay-results-meta
+          ; no files match
+        ==
+    ;*  %+  turn  shown
+        |=  pax=path
         ^-  manx
-        =/  loc=tape  "/{(trip (scot %p our))}/{(trip dek)}"
+        =/  loc=tape
+          "/{(trip (scot %p our))}/{(trip dek)}{(spud pax)}"
+        =/  pick-href=tape
+          ?:  =("" ret)  "#"
+          "{ret}?pick={loc}"
         ;li
-          ;+  (clay-dir-link ret loc "{(trip dek)}/")
+          ;a.clay-file(href pick-href, data-locator loc, hx-boost "false"): {(spud pax)}
         ==
   ==
-::
-++  clay-browse-level
-  |=  [ret=tape base=tape up=tape entries=(list [name=@ta dir=? fil=?])]
-  ^-  manx
-  =/  up-loc=tape  ?:(=("" up) "/" up)
-  =/  rows=marl
-    %-  zing
-    %+  turn  entries
-    |=  [name=@ta dir=? fil=?]
-    ^-  marl
-    =/  child=tape  "{base}/{(trip name)}"
-    =/  dir-row=marl
-      ?.  dir  ~
-      :_  ~
-      ;li
-        ;+  (clay-dir-link ret child "{(trip name)}/")
-      ==
-    =/  fil-row=marl
-      ?.  fil  ~
-      =/  pick-href=tape
-        ?:  =("" ret)  "#"
-        (clay-page-url ret "pick" child)
-      :_  ~
-      ;li
-        ;a.clay-file(href pick-href, data-locator child): {(trip name)}
-      ==
-    (weld dir-row fil-row)
-  ;ul.clay-browse
-    =data-clay-base  base
-    ;li
-      ;+  (clay-dir-link ret up-loc "../")
-    ==
-    ;*  rows
-  ==
-::
 ++  render
   |=  $:  our=@p
           stacks=(map @tas stack)
@@ -109,6 +61,7 @@
           remotes=(map @p remote-manifest)
           recents=(list @t)
           stale=(map @tas ?(%stale %gone))
+          desks=(list @tas)
       ==
   ^-  manx
   =/  stack-count=@ud  (lent ~(tap by stacks))
@@ -370,6 +323,45 @@
                     if (key === "R") { setAllFolds(true); return; }
                     if (key === "M") { setAllFolds(false); }
                   }
+                  function fuzzyScore(n, h) {
+                    n = n.toLowerCase(); h = h.toLowerCase();
+                    var s = 0, prev = -2, hi = 0;
+                    for (var i = 0; i < n.length; i++) {
+                      var idx = h.indexOf(n[i], hi);
+                      if (idx < 0) { return -1; }
+                      s += 1;
+                      if (idx === prev + 1) { s += 2; }
+                      if (idx === 0 || h[idx - 1] === "/") { s += 3; }
+                      prev = idx; hi = idx + 1;
+                    }
+                    return s;
+                  }
+                  function fuzzFilter(input) {
+                    var box = input.closest(".clay-picker");
+                    if (!box) { return; }
+                    var list = box.querySelector(".clay-results");
+                    if (!list) { return; }
+                    var q = input.value.trim();
+                    var rows = Array.prototype.slice.call(list.querySelectorAll("li")).filter(function (li) {
+                      return !li.classList.contains("clay-results-meta");
+                    });
+                    var scored = rows.map(function (li) {
+                      var a = li.querySelector("a.clay-file");
+                      var loc = a ? (a.getAttribute("data-locator") || "") : "";
+                      return [q ? fuzzyScore(q, loc) : 0, li];
+                    });
+                    scored.sort(function (x, y) { return y[0] - x[0]; });
+                    var shown = 0;
+                    scored.forEach(function (p) {
+                      var vis = p[0] >= 0 && shown < 100;
+                      p[1].hidden = !vis;
+                      if (vis) { shown += 1; list.appendChild(p[1]); }
+                    });
+                    var meta = list.querySelector(".clay-results-meta");
+                    if (meta && q) {
+                      meta.textContent = shown + " of " + rows.length + " loaded files match";
+                    }
+                  }
                   function contextFormStatus(form, message, state) {
                     var status = form.querySelector("[data-context-file-status]");
                     if (!status) { return; }
@@ -394,6 +386,11 @@
                       button.textContent = labels[kind] || "Add context";
                       var content = form.querySelector("[data-context-file-content]");
                       button.disabled = kind === "file" && !(content && content.value);
+                    }
+                    var pickerHost = form.closest("details.context-add");
+                    if (pickerHost) {
+                      var pickerBlock = pickerHost.querySelector("[data-clay-picker]");
+                      if (pickerBlock) { pickerBlock.hidden = kind !== "clay"; }
                     }
                   }
                   function syncContextForms() {
@@ -483,7 +480,8 @@
                     if (b) { help(true); }
                     var pick = e.target && e.target.closest ? e.target.closest("a.clay-file") : null;
                     if (pick) {
-                      var pickForm = pick.closest("[data-context-form]");
+                      var pickScope = pick.closest("details.context-add") || document;
+                      var pickForm = pickScope.querySelector("[data-context-form]");
                       if (pickForm) {
                         e.preventDefault();
                         var locator = pickForm.querySelector('[data-context-kind="clay"] input[name="locator"]');
@@ -492,6 +490,18 @@
                         if (kindSelect) { kindSelect.value = "clay"; }
                         syncContextForm(pickForm);
                       }
+                    }
+                  });
+                  document.addEventListener("input", function (e) {
+                    if (e.target && e.target.matches && e.target.matches('.clay-search input[name="q"]')) {
+                      fuzzFilter(e.target);
+                    }
+                  });
+                  document.addEventListener("htmx:afterSwap", function (e) {
+                    if (e.target && e.target.id === "clay-results-box") {
+                      var picker = e.target.closest(".clay-picker");
+                      var q = picker && picker.querySelector('.clay-search input[name="q"]');
+                      if (q && q.value.trim()) { fuzzFilter(q); }
                     }
                   });
                   document.addEventListener("change", function (e) {
@@ -1138,13 +1148,15 @@
                .clay-remote { border-top: 1px dashed var(--line); margin-top: .6rem; padding-top: .6rem; }
                .context-stale { color: var(--muted); display: block; font-size: .72rem; font-style: italic; margin-top: .15rem; }
                .clay-remote-loading p { margin: .3rem 0; }
-               .clay-browse { border-left: 1px solid var(--line); list-style: none; margin: .3rem 0 0; padding: 0 0 0 .8rem; }
-               .clay-browse li { margin: .12rem 0; }
-               .clay-browse a { text-decoration: none; }
-               .clay-browse a:hover { text-decoration: underline; }
-               a.clay-dir { color: var(--ink); font-weight: 600; }
+               .clay-results { list-style: none; margin: .3rem 0 0; padding: 0; }
+               .clay-results li { margin: .12rem 0; }
+               .clay-results a { text-decoration: none; }
+               .clay-results a:hover { text-decoration: underline; }
+               .clay-results-meta { color: var(--muted); font-size: .72rem; }
+               #clay-results-box { max-height: 16rem; overflow-y: auto; }
+               .clay-search { align-items: end; display: flex; flex-wrap: wrap; gap: .55rem; }
+               .clay-search label { display: grid; gap: .2rem; }
                a.clay-file { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; font-size: .78rem; }
-               a.clay-open { color: var(--ink); font-weight: 650; }
                .context-file-input input[type="file"]::file-selector-button { background: var(--surface-2); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); cursor: pointer; font: inherit; margin-right: .6rem; padding: .45rem .6rem; }
                [data-context-file-status] { color: var(--muted); font-size: .72rem; line-height: 1.4; min-height: 1rem; }
                .context-picker { border: 0; border-top: 1px solid var(--line); display: grid; gap: .55rem; margin: 0; min-width: 0; padding: .75rem 0 0; }
@@ -2629,6 +2641,58 @@
       ==
     ==
   ::
+  ++  clay-picker-block
+    |=  [card=(unit @tas) clay-active=? page-base=tape owner=@p stack-name=@tas]
+    ^-  manx
+    ?^  card  ;span.hidden;
+    =/  sel-desk=@t
+      =/  from-page=@t
+        ?:(?=(%stack-browse -.page) desk.page '')
+      ?.  =('' from-page)  from-page
+      ?~  recents  ''
+      =/  segs=(unit path)
+        %+  rush  i.recents
+        ;~(pfix fas (more fas (cook crip (star ;~(less fas prn)))))
+      ?~  segs  ''
+      ?.  ?=([@ @ *] u.segs)  ''
+      `@t`i.t.u.segs
+    =/  q-val=tape
+      ?:(?=(%stack-browse -.page) (trip q.page) "")
+    ;div.clay-picker
+      =data-clay-picker  ""
+      ;form.clay-search
+        =method     "get"
+        =action     page-base
+        =hx-get     "/apps/seer/clay-browse"
+        =hx-target  "#clay-results-box"
+        =hx-swap    "innerHTML"
+        =hx-select  "ul.clay-results"
+        ;input(type "hidden", name "return", value page-base);
+        ;label
+          ;span: desk
+          ;select(name "desk")
+            ;option(value ""): choose a desk
+            ;*  %+  turn  desks
+                |=  dek=@tas
+                ^-  manx
+                ?:  =(sel-desk dek)
+                  ;option(value (trip dek), selected ""): {(trip dek)}
+                ;option(value (trip dek)): {(trip dek)}
+          ==
+        ==
+        ;label
+          ;span: search
+          ;input(name "q", value q-val, placeholder "type to filter", autocomplete "off", autocapitalize "none", spellcheck "false");
+        ==
+        ;button.secondary(type "submit"): Load files
+      ==
+      ;div#clay-results-box
+        ;+  ?~  picker  ;span.hidden;
+            (clay-results our page-base [dek total files]:u.picker)
+      ==
+      ;+  (remote-clay-panel clay-active page-base owner stack-name)
+    ==
+  ::
   ++  remote-clay-panel
     |=  [clay-active=? page-base=tape owner=@p stack-name=@tas]
     ^-  manx
@@ -2677,7 +2741,7 @@
                 ^-  manx
                 =/  loc=tape  "/{remote-value}{(spud pax)}"
                 ;li
-                  ;a.clay-file(href "{page-base}?pick={loc}", data-locator loc): {(trip label)}
+                  ;a.clay-file(href "{page-base}?pick={loc}", data-locator loc, hx-boost "false"): {(trip label)}
                 ==
           ==
     ==
@@ -2738,30 +2802,14 @@
             ;span: ship file path
             ;input(name "locator", maxlength "2048", value pick-value, placeholder clay-example, autocomplete "off", autocapitalize "none", spellcheck "false");
           ==
-          ;div.clay-picker
-            ;+  ?:  &(clay-active ?=(^ picker))
-                  ?-  -.u.picker
-                    %desks  (clay-browse-desks page-base our desks.u.picker)
-                    %level  (clay-browse-level page-base base.u.picker up.u.picker entries.u.picker)
-                  ==
-                ;a.clay-dir.clay-open
-                  =href       (clay-page-url page-base "browse" "/")
-                  =hx-get     (clay-frag-url "/" page-base)
-                  =hx-target  "closest .clay-picker"
-                  =hx-swap    "innerHTML"
-                  ; Browse ship files
-                ==
-          ==
           ;+  ?~  recents  ;span.hidden;
               ;div.clay-recents
                 ;*  %+  turn  recents
                     |=  loc=@t
                     ^-  manx
-                    ;a.clay-file(href "{page-base}?pick={(trip loc)}", data-locator (trip loc)): {(trip loc)}
+                    ;a.clay-file(href "{page-base}?pick={(trip loc)}", data-locator (trip loc), hx-boost "false"): {(trip loc)}
               ==
           ;p.muted: Attach a text file from any desk on this ship.
-          ;+  ?^  card  ;span.hidden;
-              (remote-clay-panel clay-active page-base owner stack-name)
         ==
         ;div.context-fields
           =data-context-kind  "file"
@@ -2798,10 +2846,12 @@
         =open  ""
         ;summary: Add source
         ;+  form-body
+        ;+  (clay-picker-block card clay-active page-base owner stack-name)
       ==
     ;details.context-add
       ;summary: Add source
       ;+  form-body
+      ;+  (clay-picker-block card clay-active page-base owner stack-name)
     ==
   ::
   ++  question-panel
