@@ -1,6 +1,6 @@
 # Seer
 
-Seer is a spaced-repetition application for Urbit. It stores local stacks, pulls snapshots of stacks shared by other ships, and copies them into local stacks.
+Seer is a spaced-repetition application for Urbit. It stores local stacks, subscribes to stacks on other ships with live updates, and copies shared stacks into local ones.
 
 The browser interface uses server-rendered Hoon and HTMX 2.0.2. Seer has no React build, JavaScript bundle, or client-side state store. The review page adds one inline script for keyboard review and session progress; every action still works without it.
 

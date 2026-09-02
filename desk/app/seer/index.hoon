@@ -108,6 +108,7 @@
           shared=(map path shared-entry)
           remotes=(map @p remote-manifest)
           recents=(list @t)
+          stale=(map @tas ?(%stale %gone))
       ==
   ^-  manx
   =/  stack-count=@ud  (lent ~(tap by stacks))
@@ -1135,6 +1136,7 @@
                .clay-picker { font-size: .82rem; margin-top: .2rem; }
                .clay-recents { display: flex; flex-wrap: wrap; gap: .35rem .7rem; margin: .3rem 0; }
                .clay-remote { border-top: 1px dashed var(--line); margin-top: .6rem; padding-top: .6rem; }
+               .context-stale { color: var(--muted); display: block; font-size: .72rem; font-style: italic; margin-top: .15rem; }
                .clay-remote-loading p { margin: .3rem 0; }
                .clay-browse { border-left: 1px solid var(--line); list-style: none; margin: .3rem 0 0; padding: 0 0 0 .8rem; }
                .clay-browse li { margin: .12rem 0; }
@@ -2579,6 +2581,11 @@
           =data-status  (trip status.source)
           ;span: {(context-status-name status.source)}
         ==
+        ;+  =/  badge  (~(get by stale) context-id)
+            ?~  badge  ;span.hidden;
+            ?:  =(%gone u.badge)
+              ;span.context-stale(data-stale "gone"): source file removed · snapshot kept
+            ;span.context-stale(data-stale "stale"): desk updated · refresh to re-read
         ;+
         ?:  ?&  =(%failed status.source)
                 !=(0 (met 3 error.source))
@@ -2587,18 +2594,29 @@
         ;span.hidden;
       ==
       ;div.context-source-actions
-        ;+
-        ?:  =(%failed status.source)
-          ;form.inline
-            =method   "post"
-            =action   "/apps/seer/actions/retry-context-source"
-            =hx-post  "/apps/seer/actions/retry-context-source"
-            ;input(type "hidden", name "context-id", value (tas-tape context-id));
-            ;input(type "hidden", name "owner", value (scow %p owner.source));
-            ;input(type "hidden", name "stack", value (tas-tape stack.source));
-            ;button.secondary(type "submit"): Retry
-          ==
-        ;span.hidden;
+        ;+  ?.  =(%failed status.source)  ;span.hidden;
+            ;form.inline
+              =method   "post"
+              =action   "/apps/seer/actions/retry-context-source"
+              =hx-post  "/apps/seer/actions/retry-context-source"
+              ;input(type "hidden", name "context-id", value (tas-tape context-id));
+              ;input(type "hidden", name "owner", value (scow %p owner.source));
+              ;input(type "hidden", name "stack", value (tas-tape stack.source));
+              ;button.secondary(type "submit"): Retry
+            ==
+        ;+  ?.  ?&  =(%clay kind.source)
+                    !=(%pending status.source)
+                ==
+              ;span.hidden;
+            ;form.inline
+              =method   "post"
+              =action   "/apps/seer/actions/refresh-context-source"
+              =hx-post  "/apps/seer/actions/refresh-context-source"
+              ;input(type "hidden", name "context-id", value (tas-tape context-id));
+              ;input(type "hidden", name "owner", value (scow %p owner.source));
+              ;input(type "hidden", name "stack", value (tas-tape stack.source));
+              ;button.secondary(type "submit"): Refresh
+            ==
         ;form.inline(hx-confirm "Remove this source from future prompts?")
           =method     "post"
           =action     "/apps/seer/actions/remove-context-source"

@@ -153,6 +153,7 @@
       [%share-clay-context pax=path]
       [%unshare-clay-context pax=path]
       [%fetch-remote-manifest who=@p]
+      [%refresh-context-source id=@tas]
   ==
 ::
 ::  AI capture sessions live on the ship, not in any one model's context.

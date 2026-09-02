@@ -19,6 +19,7 @@
       [%11 state-ten]
       [%12 state-eleven]
       [%13 state-twelve]
+      [%14 state-thirteen]
   ==
 ::
 +$  state-zero
@@ -156,6 +157,27 @@
       remote-manifests=(map @p remote-manifest)
       recent-clay=(list @t)
   ==
++$  state-thirteen
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+      bridge-secret=@t
+      bridge-nonces=(map @t @da)
+      contexts=(map @tas context-source)
+      question-contexts=(map @tas (list @tas))
+      shared-context=(map path shared-entry)
+      shared-manifest-rev=@ud
+      outstanding-keens=(map @tas keen-track)
+      remote-manifests=(map @p remote-manifest)
+      recent-clay=(list @t)
+      context-revs=(map @tas @ud)
+  ==
 +$  card-question-five
   $:  id=@tas
       owner=@p
@@ -197,7 +219,7 @@
 ::
 --
 ::
-=|  [%13 state-twelve]
+=|  [%14 state-thirteen]
 =*  state  -
 ^-  agent:gall
 =<
@@ -264,6 +286,8 @@
         =^  cards  state
           (fail-remote-manifest:sc (slav %p i.t.wire))
         [cards this]
+      ?:  ?=([%import @ @ ~] wire)
+        [~ this]
       ?.  ?=([%shared-fetch @ ~] wire)  (on-agent:def wire sign)
       ?~  p.sign  [~ this]
       =^  cards  state
@@ -278,6 +302,12 @@
         =^  cards  state
           (fail-remote-manifest:sc (slav %p i.t.wire))
         [cards this]
+      ?:  ?=([%import @ @ ~] wire)
+        =/  who   (slav %p i.t.wire)
+        =/  name  i.t.t.wire
+        ?.  (~(has by stack-subs.state) [who name])  [~ this]
+        :_  this
+        [%pass wire %agent [who %seer] %watch /stack/[name]]~
       :_  this
       ?+  wire  ~
         [%primary @ ~]  ~[[%pass /seer-primary %agent [our.bol %seer] %watch /seer-primary]]
@@ -297,7 +327,13 @@
         =/  name  i.t.t.wire
         ?+  p.cage.sign  ~|([%seer-cli-bad-sub-mark wire p.cage.sign] !!)
             %seer-primary-delta
-          [~ this]
+          =^  cards  state
+            %:  apply-remote-delta:sc
+              (slav %p i.t.wire)
+              name
+              !<(primary-delta q.cage.sign)
+            ==
+          [cards this]
             %seer-stack
           =/  =stack  !<(stack q.cage.sign)
           =^  cards  state  (handle-import-stack:sc stack)
@@ -364,14 +400,14 @@
           |=  old-stack=stack-1
           ^-  stack
           (convert-stack-1-2 old-stack)
-        [%13 new-stacks ~ new-stack-subs ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~]
+        [%14 new-stacks ~ new-stack-subs ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~]
       ==
     %2
-      [~ this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [~ this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %3
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %4
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %5
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -396,7 +432,7 @@
             ''
             updated-at.old
         ==
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %6
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
@@ -421,20 +457,22 @@
             result-back.old
             updated-at.old
         ==
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %7
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %8
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state ~ '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %9
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %10
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~ ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
     %11
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state ~ ~ ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state ~ ~ ~ 0 ~ ~ ~ ~])]
     %12
-      [init-cards this(state [%13 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state contexts.p.old-state question-contexts.p.old-state ~ 0 ~ ~ ~])]
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state contexts.p.old-state question-contexts.p.old-state ~ 0 ~ ~ ~ ~])]
     %13
+      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state contexts.p.old-state question-contexts.p.old-state shared-context.p.old-state shared-manifest-rev.p.old-state outstanding-keens.p.old-state remote-manifests.p.old-state recent-clay.p.old-state ~])]
+    %14
       [init-cards this(state p.old-state)]
     ==
     ++  legacy-model
@@ -504,8 +542,22 @@
 ::
 ++  emit-primary
   |=  del=primary-delta
-  %-  emit
-  [%give %fact ~[/seer-primary] %seer-primary-delta !>(del)]
+  =/  target=(unit @tas)
+    ?+  del  ~
+      [%add-item * * *]           ?:(=(our.bol who.del) `stack.del ~)
+      [%add-review-item * * *]    ?:(=(our.bol who.del) `stack.del ~)
+      [%delete-item * * *]        ?:(=(our.bol who.del) `stack.del ~)
+      [%delete-review-item * * *]  ?:(=(our.bol who.del) `stack.del ~)
+      [%update-stack * *]         ?:(=(our.bol who.del) `name.data.del ~)
+      [%delete-stack * *]         ?:(=(our.bol who.del) `stack.del ~)
+    ==
+  %-  emil
+  %-  zing
+  :~  ~[[%give %fact ~[/seer-primary] %seer-primary-delta !>(del)]]
+    ::
+      ?~  target  ~
+      ~[[%give %fact ~[/stack/[u.target]] %seer-primary-delta !>(del)]]
+  ==
 ::
 ++  emit-action
   |=  =action
@@ -560,6 +612,8 @@
   ++  delete-stack
     |=  owner=@p
     ^+  this
+    =?  ..emit  !=(our.bol owner)
+      (emit [%pass /import/(scot %p owner)/[name.stack] %agent [owner %seer] %leave ~])
     =.  ..emit
       %.  [%delete-stack owner name.stack]
       %=  emit-primary
@@ -1023,6 +1077,17 @@
       `'Web source queued again.'
     ==
   ::
+      [[~ [%apps %seer %actions %refresh-context-source ~]] ~]
+    =/  context-id  (slav %tas (form-got fields 'context-id'))
+    =/  owner       (slav %p (form-got fields 'owner'))
+    =/  stack-name  (slav %tas (form-got fields 'stack'))
+    %:  apply-web-action
+      eyre-id
+      [%refresh-context-source context-id]
+      [%stack owner stack-name]
+      `'Refreshing from the source file.'
+    ==
+  ::
   ::
       [[~ [%apps %seer %actions %browse-remote-manifest ~]] ~]
     =/  owner       (slav %p (form-got fields 'owner'))
@@ -1304,7 +1369,10 @@
     ?:  =('' browse.page)  ~
     (clay-level-data browse.page '')
   %-  manx-response:gen
-  (render:index our.bol stacks.state stack-subs.state captures.state questions.state contexts.state question-contexts.state models.state changes.state logins.state all-reviews page notice picker shared-context.state remote-manifests.state recent-clay.state)
+  =/  stale=(map @tas ?(%stale %gone))
+    ?.  ?=(?(%stack %stack-browse) -.page)  ~
+    clay-source-stale
+  (render:index our.bol stacks.state stack-subs.state captures.state questions.state contexts.state question-contexts.state models.state changes.state logins.state all-reviews page notice picker shared-context.state remote-manifests.state recent-clay.state stale)
 ::
 ++  get-arg
   |=  [args=(list [k=@t v=@t]) key=@t]
@@ -1333,6 +1401,44 @@
   |=  [pax=path entry=shared-entry]
   ^-  manifest-entry
   [pax label.entry mark.entry size.entry]
+::
+++  clay-desk-rev
+  |=  dek=@tas
+  ^-  @ud
+  =/  res=(each * tang)
+    %-  mule
+    |.(.^(* %cw [(scot %p our.bol) dek (scot %da now.bol) ~]))
+  ?:  ?=(%| -.res)  0
+  =/  c  ((soft ,[ud=@ud da=@da]) p.res)
+  ?~(c 0 ud.u.c)
+::
+++  clay-source-stale
+  ^-  (map @tas ?(%stale %gone))
+  =|  out=(map @tas ?(%stale %gone))
+  =|  revs=(map @tas @ud)
+  =/  rows  ~(tap by contexts.state)
+  |-
+  ?~  rows  out
+  =/  [id=@tas src=context-source]  i.rows
+  ?.  &(active.src =(%clay kind.src))
+    $(rows t.rows)
+  =/  parsed  (parse-clay-locator locator.src)
+  ?:  |(?=(~ parsed) !=(our.bol who.u.parsed))
+    $(rows t.rows)
+  =/  captured  (~(get by context-revs.state) id)
+  ?~  captured  $(rows t.rows)
+  =/  pax=path
+    [(scot %p our.bol) dek.u.parsed (scot %da now.bol) rest.u.parsed]
+  =/  ark=(each arch tang)  (mule |.(.^(arch %cy pax)))
+  ?:  |(?=(%| -.ark) ?=(~ fil.p.ark))
+    $(rows t.rows, out (~(put by out) id %gone))
+  =/  cur=@ud
+    ?^  hav=(~(get by revs) dek.u.parsed)  u.hav
+    (clay-desk-rev dek.u.parsed)
+  =.  revs  (~(put by revs) dek.u.parsed cur)
+  ?:  (gth cur u.captured)
+    $(rows t.rows, out (~(put by out) id %stale))
+  $(rows t.rows)
 ::
 ++  clay-desks
   ^-  (list @tas)
@@ -1932,6 +2038,13 @@
     =?  recent-clay.state  =(%clay kind.act)
       %+  scag  8
       `(list @t)`[locator.act (skip recent-clay.state |=(l=@t =(l locator.act)))]
+    =?  context-revs.state
+        ?&  =(%clay kind.act)
+            ?=(~ (foreign-clay-locator kind.act locator.act))
+        ==
+      =/  parsed  (parse-clay-locator locator.act)
+      ?~  parsed  context-revs.state
+      (~(put by context-revs.state) id.act (clay-desk-rev dek.u.parsed))
     =/  foreign  (foreign-clay-locator kind.act locator.act)
     ?~  foreign  [~ state]
     =.  outstanding-keens.state
@@ -2022,6 +2135,43 @@
     =.  error.source  error.act
     =.  updated-at.source  now.bol
     =.  contexts.state  (~(put by contexts.state) id.act source)
+    [~ state]
+      %refresh-context-source
+    =/  maybe-source  (~(get by contexts.state) id.act)
+    ?~  maybe-source  [~ state]
+    =/  source  u.maybe-source
+    ?.  ?&  active.source
+            =(%clay kind.source)
+            !=(%pending status.source)
+        ==
+      [~ state]
+    =/  foreign  (foreign-clay-locator kind.source locator.source)
+    ?^  foreign
+      =.  status.source  %pending
+      =.  error.source  ''
+      =.  updated-at.source  now.bol
+      =.  contexts.state  (~(put by contexts.state) id.act source)
+      =.  outstanding-keens.state
+        %+  ~(put by outstanding-keens.state)  id.act
+        [who.u.foreign [dek.u.foreign rest.u.foreign] now.bol]
+      :_  state
+      :~  :*  %pass  [%shared-fetch id.act ~]  %agent  [who.u.foreign %seer]
+              %watch  [%shared-context %file dek.u.foreign rest.u.foreign]
+          ==
+          [%pass [%shared-timeout id.act ~] %arvo %b %wait (add now.bol ~m2)]
+      ==
+    =/  parsed  (parse-clay-locator locator.source)
+    ?~  parsed  [~ state]
+    =/  loaded=(each @t tang)  (mule |.((read-clay-context locator.source)))
+    ?:  ?=(%| -.loaded)  [~ state]
+    ?:  |(=(0 (met 3 p.loaded)) (gth (met 3 p.loaded) 131.072))  [~ state]
+    =.  content.source  p.loaded
+    =.  status.source  %ready
+    =.  error.source  ''
+    =.  updated-at.source  now.bol
+    =.  contexts.state  (~(put by contexts.state) id.act source)
+    =.  context-revs.state
+      (~(put by context-revs.state) id.act (clay-desk-rev dek.u.parsed))
     [~ state]
       %retry-context-source
     =/  maybe-source  (~(get by contexts.state) id.act)
@@ -2699,9 +2849,24 @@
   ^-  (quip card _state)
   =/  =stack  (~(got by stacks.state) stack-name)
   :_  state
-  :~
-      [%give %fact ~ %seer-stack !>(stack)]
-      [%give %kick ~ ~]
+  [%give %fact ~ %seer-stack !>(stack)]~
+::
+++  apply-remote-delta
+  |=  [who=@p name=@tas del=primary-delta]
+  ^-  (quip card _state)
+  =/  key  [who name]
+  ?.  (~(has by stack-subs.state) key)  [~ state]
+  ?+  del  [~ state]
+      [%update-stack * *]
+    ?.  &(=(who who.del) =(name name.data.del))  [~ state]
+    =.  stack-subs.state  (~(put by stack-subs.state) key data.del)
+    [~ state]
+  ::
+      [%delete-stack * *]
+    ?.  &(=(who who.del) =(name stack.del))  [~ state]
+    =.  stack-subs.state  (~(del by stack-subs.state) key)
+    :_  state
+    [%pass /import/(scot %p who)/[name] %agent [who %seer] %leave ~]~
   ==
 ::
 ++  our-beak  /(scot %p our.bol)/[q.byk.bol]/(scot %da now.bol)
@@ -2734,7 +2899,7 @@
       ~&  >  state+(state-to-json state)
       [~ state]
         %clear-state
-      [~ *[%13 state-twelve]]
+      [~ *[%14 state-thirteen]]
         [%set-bridge-capability @]
       =/  token=@t  +.a
       =.  bridge-secret.state  token
