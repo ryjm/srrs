@@ -1790,7 +1790,7 @@
       ?:  connected
         (login-connected-card provider label)
       ?:  =(%failed status.req)
-        (login-status-card label req return (trip message.req))
+        (login-failed-card label req return (trip message.req))
       (login-start-card provider label return)
         %pending
       (login-status-card label req return "Waiting for the local bridge to claim this sign-in.")
@@ -1859,6 +1859,32 @@
     ;article.panel
       ;h3: {label}
       ;p.muted: {message}
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/cancel-login"
+        =hx-post  "/apps/seer/actions/cancel-login"
+        =hx-swap  "outerHTML"
+        ;input(type "hidden", name "login-id", value (trip id.req));
+        ;input(type "hidden", name "return", value (trip return));
+        ;button.secondary(type "submit"): Cancel
+      ==
+    ==
+  ::
+  ++  login-failed-card
+    |=  [label=tape req=login-request return=@t message=tape]
+    ^-  manx
+    ;article.panel
+      ;h3: {label}
+      ;p.muted: {message}
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/retry-login"
+        =hx-post  "/apps/seer/actions/retry-login"
+        =hx-swap  "outerHTML"
+        ;input(type "hidden", name "login-id", value (trip id.req));
+        ;input(type "hidden", name "return", value (trip return));
+        ;button(type "submit"): Try again
+      ==
       ;form
         =method   "post"
         =action   "/apps/seer/actions/cancel-login"
