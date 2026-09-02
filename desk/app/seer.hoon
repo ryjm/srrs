@@ -225,8 +225,8 @@
     =^  cards  state
       ?+  path  (on-watch:def path)
         [%seertile *]       (peer-seertile:sc t.path)
-        [%seer-primary *]   ~&  >>  "on-watch primary: {<path>}"  [~ state]
-        [%http-response *]  ~&  >>  "on-watch HTTP response: {<path>}"  [~ state]
+        [%seer-primary *]   [~ state]
+        [%http-response *]  [~ state]
         [%stack @ ~]  (peer-stack:sc i.t.path)
       ==
     [cards this]
@@ -236,7 +236,6 @@
     |^  ^-  (quip card _this)
     ?+    -.sign  (on-agent:def wire sign)
         %kick
-      ~&  >>  "on-agent kick"
       :_  this
       ?+  wire  ~
         [%primary @ ~]  ~[[%pass /seer-primary %agent [our.bol %seer] %watch /seer-primary]]
@@ -244,16 +243,11 @@
         %fact
       ?+    wire  (on-agent:def wire sign)
           [%seer-primary ~]
-            ~&  >>  seer-primary+p.cage.sign
-            =/  del  !<(primary-delta q.cage.sign)
-            ~&  >>  del+del
-            :_  this
-            ~
+        [~ this]
           [%import @ @ ~]
         =/  name  i.t.t.wire
         ?+  p.cage.sign  ~|([%seer-cli-bad-sub-mark wire p.cage.sign] !!)
             %seer-primary-delta
-          ~&  >>  primary+p.cage.sign
           [~ this]
             %seer-stack
           =/  =stack  !<(stack q.cage.sign)
@@ -457,7 +451,6 @@
 ::
 ++  emit-primary
   |=  del=primary-delta
-  ~&  emit-primary+del
   %-  emit
   [%give %fact ~[/seer-primary] %seer-primary-delta !>(del)]
 ::
@@ -651,7 +644,6 @@
 ++  poke-sign-arvo
   |=  =sign-arvo
   ^-  (quip card _state)
-  ~&  arvo+sign-arvo
   [~ state]
 ::
 ++  poke-handle-http-request
@@ -1466,7 +1458,6 @@
     %~  add-item  stack-emit  u.pub
     ::
       %delete-stack
-    ~&  delete-stack+act
     =/  stack-to-delete
       ?:  =(our.bol who.act)
         (~(got by stacks) stak.act)
@@ -1474,7 +1465,6 @@
     =<  abet
     (~(delete-stack stack-emit stack-to-delete) who.act)
       %delete-item
-    ~&  delete-item+act
     =.  provenance.state
       (~(del by provenance.state) [stak.act item.act])
     =<  abet
@@ -1498,7 +1488,6 @@
     (~(review-stack stack-emit stack) who.act)
     ::
       %edit-item
-    ~&  edit-item+act
     =/  stack  (~(got by stacks) stak.act)
     =/  item=item  (~(got by items.stack) name.act)
     =/  front-matter=(map knot cord)
@@ -1515,7 +1504,6 @@
     %.  item(content new-content)
     %~  edit-item  stack-emit  stack
       %schedule-item
-    ~&  schedule-item+act
     [~ state]
       %raise-item
     =/  stack  (~(got by stacks) stak.act)
@@ -1530,7 +1518,6 @@
     =.  ..emit  ~(update-owner stack-emit their-stack)
     ~(add-stack stack-emit stak:emit)
       %answered-item
-    ~&  >  answered-item+act
     =/  is-owner=?  =(our.bol owner.act)
     =/  stk=stack
     ?:  is-owner
@@ -2538,21 +2525,16 @@
     |=  [stack-name=@tas =tape]
     |^  (rust tape parser)
     ++  parser
-      ~&  >  %parsing
       %+  more  ;~(pose (just `@`10) (just `@`13))
       %+  cook
         |=  a=wall
         ^-  (unit (pair @tas item))
-        ~&  >  [%parsing a]
         ?.  ?=([* * *] a)  ~
         =/  front  (crip i.a)
         =/  back  (crip i.t.a)
         =/  uid
           %-  string-to-symbol
           "{<(sham %seer our.bol front eny.bol)>}"
-        ~&  >  [%parsing front]
-        ~&  >  [%parsing back]
-        ~&  >  [%parsing uid]
         :-  ~
         :-  uid
         %-  create-item
@@ -2567,8 +2549,6 @@
             `@t`front
             `@t`back
          ==
-         ~&  >  [%parsing act]
-         ~&  >  [%parsing `$>(%new-item action)`act]
          `$>(%new-item action)`act
       (most (just `@`9) (star prn))
     --
