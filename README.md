@@ -2,7 +2,7 @@
 
 Seer is a spaced-repetition application for Urbit. It stores local stacks, subscribes to stacks on other ships with live updates, and copies shared stacks into local ones.
 
-The browser interface uses server-rendered Hoon and HTMX 2.0.2. Seer has no React build, JavaScript bundle, or client-side state store. The review page adds one inline script for keyboard review and session progress; every action still works without it.
+The browser interface uses server-rendered Hoon and HTMX 2.0.2, vendored into the desk and served by the agent itself; pages load with no external requests. Seer has no React build, JavaScript bundle, or client-side state store. The review page adds one inline script for keyboard review and session progress; every action still works without it.
 
 ## Compatibility
 
@@ -115,7 +115,7 @@ by default, and each source can be excluded for that individual request.
 The browser accepts four source kinds:
 
 - **Note**: pasted facts, constraints, examples, or background.
-- **Ship file**: a text-compatible file from any desk on this ship, or a file another ship has shared. A lazy Clay browser fills the path; it works without JavaScript.
+- **Ship file**: a text-compatible file from any desk on this ship, or a file another ship has shared. Pick a desk from the dropdown, load its file list, and type to fuzzy-filter it; results rank as you type with no extra requests. Choosing a file fills the path. The same form works without JavaScript through a server-side filter.
 - **Local file**: a browser-selected text file up to 128 KB.
 - **Web page**: a public HTTP or HTTPS page fetched by the paired bridge.
 
@@ -144,7 +144,7 @@ to stop serving it; snapshots already fetched by other ships remain on those
 ships.
 The Ship file picker can also list another ship's shared files: enter the
 ship name, wait for its manifest, and select an entry to fill the path.
-Recent picks appear as one-click chips above the browser.
+Recent picks appear as one-click chips above the file search.
 
 ### Create cards from a source
 
