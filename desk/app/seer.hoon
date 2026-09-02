@@ -2,6 +2,9 @@
 /+  *server, *seer, *seer-json, *seer-mcp, default-agent, verb, dbug, agentio
 /=  index  /app/seer/index
 /*  seer-tile  %png  /lib/web/seer-tile/png
+::  htmx 2.0.2 dist/htmx.min.js, pinned from unpkg;
+::  sha256 e1746d9759ec0d43c5c284452333a310bb5fd7285ebac4b2dc9bf44d72b5a887
+/*  htmx-src  %js  /lib/web/htmx-min/js
 ::
 |%
 +$  versioned-state
@@ -787,6 +790,9 @@
       [[[~ %png] [%apps %seer %tile ~]] ~]
     %+  respond-payload  eyre-id
     (png-response:gen (as-octs:mimes:html seer-tile))
+      [[[~ %js] [%apps %seer %htmx-min ~]] ~]
+    %+  respond-payload  eyre-id
+    (js-response:gen (as-octs:mimes:html htmx-src))
       [[~ [%apps %seer %stacks ~]] ~]
     (respond-page eyre-id [%stacks ~] ~)
       [[~ [%apps %seer %subscriptions ~]] ~]
@@ -794,12 +800,13 @@
       [[~ [%apps %seer %stack @t @t ~]] *]
     =/  owner  (slav %p i.t.t.t.site.request-line)
     =/  name   (slav %tas i.t.t.t.t.site.request-line)
-    =/  browse  (get-arg args.request-line 'browse')
+    =/  dsk     (get-arg args.request-line 'desk')
+    =/  qry     (get-arg args.request-line 'q')
     =/  pick    (get-arg args.request-line 'pick')
     =/  remote  (get-arg args.request-line 'remote')
-    ?:  &(?=(~ browse) ?=(~ pick) ?=(~ remote))
+    ?:  &(?=(~ dsk) ?=(~ qry) ?=(~ pick) ?=(~ remote))
       (respond-page eyre-id [%stack owner name] ~)
-    (respond-page eyre-id [%stack-browse owner name (fall browse '') (fall pick '') (fall remote '')] ~)
+    (respond-page eyre-id [%stack-browse owner name (fall dsk '') (fall qry '') (fall pick '') (fall remote '')] ~)
       [[~ [%apps %seer %clay-browse ~]] *]
     (respond-clay-browse eyre-id args.request-line)
   ::  preserve the old json endpoints for cli and external integrations.
@@ -1101,7 +1108,7 @@
     %:  apply-web-action
       eyre-id
       [%fetch-remote-manifest u.who]
-      [%stack-browse owner stack-name '' '' (scot %p u.who)]
+      [%stack-browse owner stack-name '' '' '' (scot %p u.who)]
       ~
     ==
       [[~ [%apps %seer %actions %share-clay-context ~]] ~]
@@ -1366,13 +1373,19 @@
   ^-  simple-payload:http
   =/  picker=(unit picker-data:index)
     ?.  ?=(%stack-browse -.page)  ~
-    ?:  =('' browse.page)  ~
-    (clay-level-data browse.page '')
+    ?:  =('' desk.page)  ~
+    =/  dek=(unit @tas)  (slaw %tas desk.page)
+    ?~  dek  ~
+    ?.  (~(has in (silt clay-desks)) u.dek)  ~
+    =/  walked  (walk-clay-desk u.dek)
+    `[%files u.dek total.walked (filter-clay-paths q.page files.walked)]
+  =/  desks=(list @tas)
+    ?:(?=(?(%stack %stack-browse) -.page) clay-desks ~)
   %-  manx-response:gen
   =/  stale=(map @tas ?(%stale %gone))
     ?.  ?=(?(%stack %stack-browse) -.page)  ~
     clay-source-stale
-  (render:index our.bol stacks.state stack-subs.state captures.state questions.state contexts.state question-contexts.state models.state changes.state logins.state all-reviews page notice picker shared-context.state remote-manifests.state recent-clay.state stale)
+  (render:index our.bol stacks.state stack-subs.state captures.state questions.state contexts.state question-contexts.state models.state changes.state logins.state all-reviews page notice picker shared-context.state remote-manifests.state recent-clay.state stale desks)
 ::
 ++  get-arg
   |=  [args=(list [k=@t v=@t]) key=@t]
@@ -1446,59 +1459,58 @@
     ~(tap in .^((set desk) %cd [(scot %p our.bol) '' (scot %da now.bol) ~]))
   aor
 ::
-++  clay-level-data
-  |=  [loc=@t filter=@t]
-  ^-  (unit picker-data:index)
-  ?:  |(=('' loc) =('/' loc))
-    `[%desks clay-desks]
-  =/  parsed  (parse-clay-locator loc)
-  ?:  |(?=(~ parsed) !=(our.bol who.u.parsed))  ~
-  ?.  (~(has in (silt clay-desks)) dek.u.parsed)  ~
-  =/  base=path
-    [(scot %p our.bol) dek.u.parsed (scot %da now.bol) rest.u.parsed]
-  =/  ark=(each arch tang)  (mule |.(.^(arch %cy base)))
-  ?:  ?=(%| -.ark)  ~
-  =/  kids=(list @ta)
-    (sort (turn ~(tap by dir.p.ark) head) aor)
-  =.  kids
-    ?:  =('' filter)  kids
-    %+  skim  kids
-    |=  k=@ta
-    =((end [3 (met 3 filter)] k) filter)
-  =/  entries=(list [name=@ta dir=? fil=?])
-    %+  murn  (scag 500 kids)
-    |=  k=@ta
-    ^-  (unit [@ta ? ?])
-    =/  kark  .^(arch %cy (snoc base k))
-    =/  is-dir=?   !=(~ dir.kark)
-    =/  is-fil=?   &(?=(^ fil.kark) (~(has in clay-text-marks) k))
-    ?:  |(is-dir is-fil)  `[k is-dir is-fil]
-    ~
-  =/  base-loc=tape
-    %-  zing
-    :-  "/{(trip (scot %p who.u.parsed))}/{(trip dek.u.parsed)}"
-    (turn rest.u.parsed |=(k=@ta "/{(trip k)}"))
-  =/  up-loc=tape
-    ?~  rest.u.parsed  ""
-    %-  zing
-    :-  "/{(trip (scot %p who.u.parsed))}/{(trip dek.u.parsed)}"
-    (turn (snip `path`rest.u.parsed) |=(k=@ta "/{(trip k)}"))
-  `[%level base-loc up-loc entries]
+::  +walk-clay-desk: every text-compatible file in a desk, from a
+::  single %ct scry.  total counts matches past the collection cap.
+::
+++  walk-clay-desk
+  |=  dek=@tas
+  ^-  [total=@ud files=(list path)]
+  =/  base=path  [(scot %p our.bol) dek (scot %da now.bol) ~]
+  =/  all=(each (list path) tang)
+    (mule |.(.^((list path) %ct base)))
+  ?:  ?=(%| -.all)  [0 ~]
+  =/  hits=(list path)
+    %+  skim  p.all
+    |=  pax=path
+    ?&  ?=(^ pax)
+        (~(has in clay-text-marks) (rear `path`pax))
+    ==
+  [(lent hits) (scag 2.000 (sort hits aor))]
+::
+++  subseq-match
+  |=  [needle=tape hay=tape]
+  ^-  ?
+  ?~  needle  %.y
+  ?~  hay  %.n
+  ?:  =(i.needle i.hay)
+    $(needle t.needle, hay t.hay)
+  $(hay t.hay)
+::
+++  filter-clay-paths
+  |=  [q=@t files=(list path)]
+  ^-  (list path)
+  ?:  =('' q)  files
+  =/  needle=tape  (cass (trip q))
+  %+  skim  files
+  |=  pax=path
+  (subseq-match needle (cass (spud pax)))
 ::
 ++  respond-clay-browse
   |=  [eyre-id=@ta args=(list [k=@t v=@t])]
   ^-  (quip card _state)
-  =/  loc=@t     (fall (get-arg args 'path') '')
-  =/  filter=@t  (fall (get-arg args 'filter') '')
-  =/  ret=tape   (trip (fall (get-arg args 'return') ''))
-  =/  dat=(unit picker-data:index)  (clay-level-data loc filter)
-  ?~  dat  (respond-payload eyre-id not-found:gen)
+  =/  dek-arg  (get-arg args 'desk')
+  ?~  dek-arg  (respond-payload eyre-id not-found:gen)
+  =/  q=@t      (fall (get-arg args 'q') '')
+  =/  ret=tape  (trip (fall (get-arg args 'return') ''))
+  =/  dek=(unit @tas)  (slaw %tas u.dek-arg)
+  ?~  dek  (respond-payload eyre-id not-found:gen)
+  ?.  (~(has in (silt clay-desks)) u.dek)
+    (respond-payload eyre-id not-found:gen)
+  =/  walked  (walk-clay-desk u.dek)
+  =/  hits  (filter-clay-paths q files.walked)
   %+  respond-payload  eyre-id
   %-  manx-response:gen
-  ?-  -.u.dat
-    %desks  (clay-browse-desks:index ret our.bol desks.u.dat)
-    %level  (clay-browse-level:index ret base.u.dat up.u.dat entries.u.dat)
-  ==
+  (clay-results:index our.bol ret u.dek total.walked hits)
 ::
 ++  form-got
   |=  [fields=(map @t @t) key=@t]

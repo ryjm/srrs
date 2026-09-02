@@ -109,7 +109,7 @@
         ;meta(name "theme-color", content "#111110", media "(prefers-color-scheme: dark)");
         ;link(rel "icon", type "image/png", href "/apps/seer/tile.png");
         ;title: Seer
-        ;script(src "https://unpkg.com/htmx.org@2.0.2");
+        ;script(src "/apps/seer/htmx-min.js");
         ;script:'''
                 (function () {
                   "use strict";
