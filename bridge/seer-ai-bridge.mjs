@@ -282,6 +282,61 @@ async function callTool(config, cookie, name, toolArgs = {}) {
   return parseMcpResponse(text);
 }
 
+const REQUIRED_SEER_TOOLS = [
+  "seer/answer-card-question", "seer/apply-card-edit", "seer/claim-card-question",
+  "seer/claim-change", "seer/claim-context-source", "seer/claim-login",
+  "seer/clear-assistant-models", "seer/consume-login-code", "seer/fail-card-question",
+  "seer/fail-change", "seer/fail-context-source", "seer/fail-login",
+  "seer/finish-change", "seer/finish-context-source", "seer/finish-login",
+  "seer/issue-bridge-nonce", "seer/list-card-questions", "seer/list-change-requests",
+  "seer/list-context-sources", "seer/list-login-requests", "seer/post-login-challenge",
+  "seer/recover-context-source", "seer/register-assistant-model",
+  "seer/stage-change-operation", "seer/state-context",
+];
+
+async function listServedToolNames(config, cookie) {
+  const response = await fetch(config.mcpUrl, {
+    signal: AbortSignal.timeout(config.mcpTimeoutMs || 30_000),
+    method: "POST",
+    headers: {
+      "Accept": "application/json, text/event-stream",
+      "Content-Type": "application/json",
+      "Cookie": cookie,
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: rpcId++, method: "tools/list" }),
+  });
+  const text = await response.text();
+  if (!response.ok) throw new Error(`MCP HTTP ${response.status}: ${text.slice(0, 300)}`);
+  const parsed = JSON.parse(text);
+  if (parsed.error) throw new Error(`MCP error: ${JSON.stringify(parsed.error).slice(0, 300)}`);
+  return (parsed.result?.tools || []).map((tool) => tool.name);
+}
+
+export async function reimportDefinitions(config, cookie, dependencies = {}) {
+  const call = dependencies.callTool || callTool;
+  await call(config, cookie, "mcp/import-mcp-tools", { desk: "seer" });
+  await call(config, cookie, "mcp/import-mcp-prompts", { desk: "seer" });
+}
+
+export async function ensureToolCoverage(config, cookie, dependencies = {}) {
+  const listTools = dependencies.listServedToolNames || listServedToolNames;
+  const served = await listTools(config, cookie);
+  const missing = REQUIRED_SEER_TOOLS.filter((name) => !served.includes(name));
+  if (!missing.length) return [];
+  console.log(`[seer-ai] importing Seer MCP definitions: ${missing.length} tools missing (${missing.slice(0, 3).join(", ")}${missing.length > 3 ? ", ..." : ""})`);
+  await reimportDefinitions(config, cookie, dependencies);
+  const after = await listTools(config, cookie);
+  const still = REQUIRED_SEER_TOOLS.filter((name) => !after.includes(name));
+  if (still.length) {
+    console.error(`[seer-ai] tools still missing after import; install the %seer and %mcp desks: ${still.join(", ")}`);
+  }
+  return missing;
+}
+
+export function isSchemaDriftError(error) {
+  return /nest-fail|poke-fail|unknown tool|tool not found/i.test(String(error?.message || error));
+}
+
 async function discoverModelProfiles(providers, config) {
   const profiles = [];
   if (providers.codex) {
@@ -969,16 +1024,17 @@ async function askClaude(command, prompt, config, job) {
   return parseClaudeResult(stdout);
 }
 
-function safeError(error, provider) {
+function redactError(error) {
   const text = String(error?.message || error).replace(/urbauth-[^\s=]+=[^\s]+/g, "<redacted>");
-  const last = text.split("\n").filter(Boolean).at(-1)?.slice(0, 500) || "unknown error";
-  return `${provider === "claude" ? "Claude Code" : "Codex"} request failed: ${last}`;
+  return text.split("\n").filter(Boolean).at(-1)?.slice(0, 500) || "unknown error";
+}
+
+function safeError(error, provider) {
+  return `${provider === "claude" ? "Claude Code" : "Codex"} request failed: ${redactError(error)}`;
 }
 
 function safeContextError(error) {
-  const text = String(error?.message || error).replace(/urbauth-[^\s=]+=[^\s]+/g, "<redacted>");
-  const last = text.split("\n").filter(Boolean).at(-1)?.slice(0, 500) || "unknown error";
-  return `Source fetch failed: ${last}`;
+  return `Source fetch failed: ${redactError(error)}`;
 }
 
 export async function processContextSource(config, cookie, job, dependencies = {}) {
@@ -1561,6 +1617,14 @@ function installShutdownHandlers() {
   process.once("SIGINT", shutdown);
 }
 
+async function guarded(label, run) {
+  try {
+    await run();
+  } catch (error) {
+    console.error(`[seer-ai] ${label} failed: ${redactError(error)}`);
+  }
+}
+
 async function poll(config, cookie, providers, commands, refreshCatalog) {
   const [contextPayload, questionPayload, changePayload, loginPayload] = await Promise.all([
     callTool(config, cookie, "seer/list-context-sources"),
@@ -1571,13 +1635,19 @@ async function poll(config, cookie, providers, commands, refreshCatalog) {
   const contextSources = contextPayload?.contexts || [];
   const pendingContexts = contextSources.filter((source) => source.active
     && source.kind === "web" && source.status === "pending");
-  for (const source of pendingContexts) await processContextSource(config, cookie, source);
+  for (const source of pendingContexts) {
+    await guarded(`context ${source.context_id}`, () => processContextSource(config, cookie, source));
+  }
   const questions = questionPayload?.questions || [];
   const pending = questions.filter((job) => job.status === "pending");
-  for (const job of pending) await processQuestion(config, cookie, providers, job, questions);
+  for (const job of pending) {
+    await guarded(`question ${job.question_id}`, () => processQuestion(config, cookie, providers, job, questions));
+  }
   const changes = changePayload?.changes || [];
   const pendingChanges = changes.filter((job) => job.status === "pending");
-  for (const job of pendingChanges) await processChange(config, cookie, providers, job);
+  for (const job of pendingChanges) {
+    await guarded(`change ${job.change_id}`, () => processChange(config, cookie, providers, job));
+  }
   const logins = loginPayload?.logins || [];
   reconcileActiveLogins(logins);
   const pendingLogins = logins.filter((job) => job.status === "pending");
@@ -1599,8 +1669,9 @@ async function main() {
   const config = await loadConfig();
   const cookie = await resolveCookie(config);
   let commands = await resolveProviderCommands(config);
-  let providers;
-  let profiles;
+  let providers = {};
+  let profiles = [];
+  let nextDriftReimport = 0;
   let nextCatalogRefresh = Date.now() + config.catalogRefreshMs;
   const refreshCatalog = async () => {
     commands = await resolveProviderCommands(config);
@@ -1611,11 +1682,16 @@ async function main() {
     console.log(`[seer-ai] refreshed OMP catalog: codex=${providers.codex ? "ready" : "unavailable"}, claude=${providers.claude ? "ready" : "unavailable"}, models=${profiles.length}`);
   };
 
-  await refreshCatalog();
-  const initialLoginPayload = await callTool(config, cookie, "seer/list-login-requests");
-  await failOrphanedLogins(config, cookie, initialLoginPayload?.logins || []);
-  const initialContextPayload = await callTool(config, cookie, "seer/list-context-sources");
-  await recoverOrphanedContexts(config, cookie, initialContextPayload?.contexts || []);
+  await guarded("tool coverage check", () => ensureToolCoverage(config, cookie));
+  await guarded("initial catalog refresh", refreshCatalog);
+  await guarded("orphaned login recovery", async () => {
+    const initialLoginPayload = await callTool(config, cookie, "seer/list-login-requests");
+    await failOrphanedLogins(config, cookie, initialLoginPayload?.logins || []);
+  });
+  await guarded("orphaned context recovery", async () => {
+    const initialContextPayload = await callTool(config, cookie, "seer/list-context-sources");
+    await recoverOrphanedContexts(config, cookie, initialContextPayload?.contexts || []);
+  });
   console.log(`[seer-ai] bridge ${config.workerId}: codex=${providers.codex ? "ready" : "unavailable"}, claude=${providers.claude ? "ready" : "unavailable"}, models=${profiles.length}`);
   if (once) {
     await poll(config, cookie, providers, commands, refreshCatalog);
@@ -1627,7 +1703,12 @@ async function main() {
       if (Date.now() >= nextCatalogRefresh) await refreshCatalog();
       await poll(config, cookie, providers, commands, refreshCatalog);
     } catch (error) {
-      console.error(`[seer-ai] poll failed: ${safeError(error, "codex")}`);
+      console.error(`[seer-ai] poll failed: ${redactError(error)}`);
+      if (isSchemaDriftError(error) && Date.now() >= nextDriftReimport) {
+        nextDriftReimport = Date.now() + 600_000;
+        console.log("[seer-ai] schema drift detected; reimporting Seer MCP definitions");
+        await guarded("drift reimport", () => reimportDefinitions(config, cookie));
+      }
       if (Date.now() >= nextCatalogRefresh) nextCatalogRefresh = Date.now() + 30_000;
     }
     await sleep(config.pollIntervalMs);
@@ -1639,7 +1720,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(async (error) => {
     stopActiveLogins("SIGTERM");
     await drainActiveLogins();
-    console.error(`[seer-ai] fatal: ${safeError(error, "codex")}`);
+    console.error(`[seer-ai] fatal: ${redactError(error)}`);
     process.exitCode = 1;
   });
 }

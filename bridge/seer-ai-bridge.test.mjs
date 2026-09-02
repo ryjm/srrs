@@ -8,6 +8,8 @@ import {
   createBridgeProof,
   buildTutorPrompt,
   buildContextBlock,
+  ensureToolCoverage,
+  isSchemaDriftError,
   drainActiveLogins,
   claudeProfiles,
   codexProfilesFromCatalog,
@@ -750,4 +752,57 @@ test("OMP roles select progressively deeper provider effort", () => {
   assert.equal(reasoningEffort("smol"), "low");
   assert.equal(reasoningEffort("default"), "medium");
   assert.equal(reasoningEffort("slow"), "high");
+});
+
+test("ensureToolCoverage imports definitions when required tools are missing", async () => {
+  const served = [["seer/list-stacks", "seer/list-card-questions"], []];
+  let listCalls = 0;
+  const calls = [];
+  const missing = await ensureToolCoverage({ mcpUrl: "http://ship/mcp" }, "cookie", {
+    listServedToolNames: async () => served[listCalls++],
+    callTool: async (_config, _cookie, name, args) => {
+      calls.push([name, args]);
+      return {};
+    },
+  });
+  assert.ok(missing.includes("seer/claim-context-source"));
+  assert.deepEqual(calls, [
+    ["mcp/import-mcp-tools", { desk: "seer" }],
+    ["mcp/import-mcp-prompts", { desk: "seer" }],
+  ]);
+  assert.equal(listCalls, 2);
+});
+
+test("ensureToolCoverage does not import when every required tool is served", async () => {
+  const allTools = [
+    "seer/answer-card-question", "seer/apply-card-edit", "seer/claim-card-question",
+    "seer/claim-change", "seer/claim-context-source", "seer/claim-login",
+    "seer/clear-assistant-models", "seer/consume-login-code", "seer/fail-card-question",
+    "seer/fail-change", "seer/fail-context-source", "seer/fail-login",
+    "seer/finish-change", "seer/finish-context-source", "seer/finish-login",
+    "seer/issue-bridge-nonce", "seer/list-card-questions", "seer/list-change-requests",
+    "seer/list-context-sources", "seer/list-login-requests", "seer/post-login-challenge",
+    "seer/recover-context-source", "seer/register-assistant-model",
+    "seer/stage-change-operation", "seer/state-context",
+  ];
+  const calls = [];
+  const missing = await ensureToolCoverage({ mcpUrl: "http://ship/mcp" }, "cookie", {
+    listServedToolNames: async () => allTools,
+    callTool: async (_config, _cookie, name) => {
+      calls.push(name);
+      return {};
+    },
+  });
+  assert.deepEqual(missing, []);
+  assert.deepEqual(calls, []);
+});
+
+test("isSchemaDriftError matches ship nest-fail output and ignores ordinary errors", () => {
+  const shipError = new Error(
+    "MCP tool seer/answer-card-question failed: poke-failnest-fail- have[ %ask-card  id=@tas ]- need?( [ %add-context-source ] )",
+  );
+  assert.equal(isSchemaDriftError(shipError), true);
+  assert.equal(isSchemaDriftError(new Error("Unknown tool: seer/claim-context-source")), true);
+  assert.equal(isSchemaDriftError(new Error("MCP HTTP 502: relay hiccup")), false);
+  assert.equal(isSchemaDriftError(new Error("fetch failed: ECONNREFUSED")), false);
 });
