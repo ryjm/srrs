@@ -1,6 +1,6 @@
 # Seer
 
-Seer is a spaced-repetition application for Urbit. It stores local stacks, subscribes to remote stacks, and copies shared stacks.
+Seer is a spaced-repetition application for Urbit. It stores local stacks, pulls snapshots of stacks shared by other ships, and copies them into local stacks.
 
 The browser interface uses server-rendered Hoon and HTMX 2.0.2. Seer has no React build, JavaScript bundle, or client-side state store. The review page adds one inline script for keyboard review and session progress; every action still works without it.
 
@@ -74,7 +74,7 @@ Gall reloads an installed `%seer` agent. For the first installation, run `|insta
 - GET routes render the review queue, library, shared stacks, and stack details.
 - POST routes send typed `%seer-action` values and then render the changed view.
 - `hx-boost`, `hx-target`, `hx-select`, and `hx-swap` replace the `#seer-app` fragment.
-- Each route also returns usable HTML when JavaScript is unavailable.
+- Each route also returns usable HTML when JavaScript is unavailable. Adding a non-Note context source is the exception: those forms need the inline script.
 - The shared app shell adds Vim-style navigation: `j`/`k` move between targets and wrap through stack cards, `J`/`K` and `d`/`u` scroll, `gg`/`G` jump, `gr`/`gi`/`gl`/`gs` change sections, `za`/`zo`/`zc`/`zR`/`zM` control disclosures, `i` enters a focused form, `ga` opens the assistant, and `?` opens the shortcut guide.
 - Review adds `space` to flip, `1`–`4` to grade, a session progress bar, and disclosure state that survives fragment swaps.
 
