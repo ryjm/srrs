@@ -170,7 +170,7 @@
       [%refresh-context-source id=@tas]
   ==
 ::
-::  ai capture sessions live on the ship.  codex and claude can hand the
+::  ai capture sessions live on the ship. codex and claude can hand the
 ::  same learning session back and forth, and drafts remain proposals
 ::  until a person approves them in seer.
 ::
@@ -216,7 +216,7 @@
 +$  omp-role  $?(%smol %default %slow)
 ::
 ::  omp-style profiles keep the human choice (role), exact provider and
-::  model selector, and local execution adapter together.  the bridge
+::  model selector, and local execution adapter together. the bridge
 ::  registers profiles backed by a credential it can use on this machine.
 ::
 +$  assistant-model
@@ -237,10 +237,10 @@
 ::
 +$  context-status  $?(%pending %working %ready %failed)
 ::
-::  remote clay sharing.  shared paths are listed in shared-context and
+::  remote clay sharing. shared paths are listed in shared-context and
 ::  served over one-shot subscriptions: /shared-context gives the
 ::  manifest, /shared-context/file/[pax] gives a fresh read of a listed
-::  file to any ship that asks.  rev counters remain from the earlier
+::  file to any ship that asks. rev counters remain from the earlier
 ::  remote-scry design and are unused by the watch transport.
 ::
 +$  shared-entry     [rev=@ud label=@t mark=@tas size=@ud]
@@ -295,7 +295,7 @@
 ::
 +$  change-status  $?(%pending %working %ready %applied %rejected %failed)
 ::
-::  a reviewed capability language for prompt-driven changes.  original
+::  a reviewed capability language for prompt-driven changes. original
 ::  values are snapshots used to reject stale plans before they can
 ::  overwrite a newer human edit.
 ::
@@ -336,10 +336,10 @@
       updated-at=@da
   ==
 ::
-::  provider sign-in runs on the bridge host.  a login-request carries
+::  provider sign-in runs on the bridge host. a login-request carries
 ::  the public half of the handshake: the verification url and user code
 ::  the person must visit, and (for paste-back flows) the one-time
-::  authorization code they hand back.  codes are cleared from current
+::  authorization code they hand back. codes are cleared from current
 ::  state the moment a request settles; provider credentials stay in the
 ::  codex and claude keychains on the bridge host.
 ::

@@ -2001,7 +2001,7 @@
   (sort ~(tap in all) aor)
 ::
 ::  +walk-clay-desk: every text-compatible file in a desk, from a
-::  single %ct scry.  total counts matches past the collection cap.
+::  single %ct scry. total counts matches past the collection cap.
 ::
 ++  walk-clay-desk
   |=  dek=@tas
@@ -2104,7 +2104,7 @@
   (crip (zing (join "\0a" lines)))
 ::
 ::  +clay-collection-files: every text-mark file under a locator's
-::  prefix, sorted.  an empty prefix names the whole desk.
+::  prefix, sorted. an empty prefix names the whole desk.
 ::
 ++  clay-collection-files
   |=  [dek=@tas prefix=path]
@@ -2119,7 +2119,7 @@
         =(prefix (scag (lent prefix) `path`f))
     ==
   aor
-::  +clay-manifest-text: a listing of a collection's files.  the header
+::  +clay-manifest-text: a listing of a collection's files. the header
 ::  names the collection so a model reads the shape without the bodies;
 ::  attaching an individual file inlines it as its own source.
 ::
@@ -2156,8 +2156,8 @@
   ?:  (gth grown 131.072)  ~
   $(rest t.rest, pieces [piece pieces], bytes grown)
 ::
-::  +read-clay-context: resolve a clay locator to text.  a locator that
-::  names a file reads that file.  a locator that names a directory or a
+::  +read-clay-context: resolve a clay locator to text. a locator that
+::  names a file reads that file. a locator that names a directory or a
 ::  whole desk concatenates every text-mark file beneath it, and falls
 ::  back to a listing when those bodies pass the context cap.
 ::
@@ -3347,7 +3347,7 @@
     [~ state]
       %request-login
     ::  the ship never runs a provider login itself; it only queues the
-    ::  request for the local bridge.  one live request per provider.
+    ::  request for the local bridge. one live request per provider.
     ::
     =/  existing=(list [@tas login-request])
       %+  skim  ~(tap by logins.state)

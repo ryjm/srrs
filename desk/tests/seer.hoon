@@ -1,7 +1,7 @@
 ::  behavioral tests for the %seer agent.
 ::
 ::  each test builds the real agent from /app/seer and drives it with a
-::  fixed bowl through on-load, on-poke, and on-peek.  covered: the
+::  fixed bowl through on-load, on-poke, and on-peek. covered: the
 ::  versioned-state migration chain, sm-2 review scheduling, the bridge
 ::  hmac proof boundary (same fixture as bridge/seer-ai-bridge.test.mjs),
 ::  and change-operation validation.
@@ -80,7 +80,7 @@
   =/  low   0x4977.c0f7.2cc6.f465.a62f.e29c.46d2.e798
   (add (lsh [2 32] high) low)
 ::
-::  loads %12 and %13 states into the current head.  the probe login
+::  loads %12 and %13 states into the current head. the probe login
 ::  checks that the conversion ran; a fresh install starts with empty
 ::  logins, so its survival is the discriminator.
 ::

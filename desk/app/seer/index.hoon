@@ -1,8 +1,8 @@
 /-  *seer
 ::
-::  seer's browser ui is deliberately server-rendered.  htmx is the only
+::  seer's browser ui is deliberately server-rendered. htmx is the only
 ::  client-side runtime: links and forms ask the agent for fresh html and
-::  replace #seer-app.  everything still works as ordinary html without it.
+::  replace #seer-app. everything still works as ordinary html without it.
 ::
 |%
 +$  page
@@ -22,7 +22,7 @@
   ^-  manx
   =/  shown=(list path)  (scag 200 hits)
   ::  directories implied by the matching files: every proper prefix
-  ::  of a hit (mark segment dropped).  picking one attaches every
+  ::  of a hit (mark segment dropped). picking one attaches every
   ::  text file beneath it.
   ::
   =/  dirs=(list path)
@@ -4379,7 +4379,7 @@
       ==
     ==
   ::
-  ::  +manifest-members: the paths a listing source names.  a listing
+  ::  +manifest-members: the paths a listing source names. a listing
   ::  carries no file bodies, so each path is offered for attachment.
   ::
   ++  manifest-members

@@ -1,6 +1,6 @@
 ::
 ::  the structural subset of the mcp types that a third-party desk needs
-::  in order to publish tools through /x/mcp/tools.  %mcp-server imports
+::  in order to publish tools through /x/mcp/tools. %mcp-server imports
 ::  these values by noun, so seer keeps no runtime dependency on the %mcp
 ::  desk and remains independently installable.
 ::
