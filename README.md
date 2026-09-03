@@ -115,9 +115,21 @@ by default, and each source can be excluded for that individual request.
 The browser accepts four source kinds:
 
 - **Note**: pasted facts, constraints, examples, or background.
-- **Ship file**: a text-compatible file or directory from any desk on this ship, or a file another ship has shared. The picker loads the selected desk's file list on its own; type to fuzzy-filter, and results rank as you type with no extra requests. Directory entries appear above files: attaching one stores every text file beneath it, each section prefixed with `=== /its/path`, under the same 128 KB cap. Directories from other ships are not supported. The same form works without JavaScript through a Load files button and a server-side filter.
+- **Ship file**: a text-compatible file, directory, or whole desk from any desk on this ship, or a file another ship has shared. The picker loads the selected desk's file list on its own; type to fuzzy-filter, and results rank as you type with no extra requests. The first result attaches the whole desk; directory entries appear above files.
 - **Local file**: a browser-selected text file up to 128 KB.
 - **Web page**: a public HTTP or HTTPS page fetched by the paired bridge.
+
+A directory attaches every text file beneath it, each section prefixed with
+`=== /its/path`. When those bodies pass the 128 KB cap - always the case for a
+whole desk - the source attaches as a **listing** instead: a header, then one
+path per line, so a prompt sees the desk's shape without its bytes. A listing
+source lists its files in the context panel, and the `+` beside a path attaches
+that file as its own source, with its own refresh, staleness badge, and remove
+control. Refreshing a listing re-reads the desk. Directories and desks from
+other ships are not supported. The whole form works without JavaScript through
+a Load files button and a server-side filter.
+
+The `×` beside a source removes it from future prompts.
 
 Notes, local files, and Clay files are stored immediately. Web sources enter a
 durable queue; the bridge rejects private-network destinations, follows only

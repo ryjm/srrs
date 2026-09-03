@@ -1977,7 +1977,14 @@
         rest.u.parsed
     ==
   =/  ark=(each arch tang)  (mule |.(.^(arch %cy pax)))
-  ?:  |(?=(%| -.ark) ?=(~ fil.p.ark))
+  ::  a collection has no file at its own node, so it counts as gone
+  ::  only when the node holds neither a file nor children.
+  ::
+  ?:  ?|  ?=(%| -.ark)
+          ?&  ?=(~ fil.p.ark)
+              =(~ dir.p.ark)
+          ==
+      ==
     $(rows t.rows, out (~(put by out) id %gone))
   =/  cur=@ud
     ?^  hav=(~(get by revs) dek.u.parsed)  u.hav
@@ -2095,9 +2102,64 @@
   =/  lines=wall
     (turn u.maybe-lines |=(line=cord (trip line)))
   (crip (zing (join "\0a" lines)))
+::
+::  +clay-collection-files: every text-mark file under a locator's
+::  prefix, sorted.  an empty prefix names the whole desk.
+::
+++  clay-collection-files
+  |=  [dek=@tas prefix=path]
+  ^-  (list path)
+  =/  base=path  [(scot %p our.bol) dek (scot %da now.bol) ~]
+  =/  all=(list path)  .^((list path) %ct base)
+  %+  sort
+    %+  skim  all
+    |=  f=path
+    ?&  ?=(^ f)
+        (~(has in clay-text-marks) (rear `path`f))
+        =(prefix (scag (lent prefix) `path`f))
+    ==
+  aor
+::  +clay-manifest-text: a listing of a collection's files.  the header
+::  names the collection so a model reads the shape without the bodies;
+::  attaching an individual file inlines it as its own source.
+::
+++  clay-manifest-text
+  |=  [locator=@t files=(list path) shown=(list path)]
+  ^-  @t
+  =/  head=tape
+    ?:  =((lent files) (lent shown))
+      "=== listing {(trip locator)} · {<(lent files)>} files"
+    %+  weld  "=== listing {(trip locator)} · "
+    "{<(lent shown)>} of {<(lent files)>} files"
+  =/  note=tape
+    "::  bodies are not inlined; attach a path to read one"
+  =/  rows=(list tape)
+    %+  weld  ~[head note]
+    (turn shown |=(f=path (spud f)))
+  (crip (zing (join "\0a" rows)))
+::
+::  +clay-collection-text: every file under the prefix, concatenated
+::  with path headers, or ~ when the total passes the context cap.
+::
+++  clay-collection-text
+  |=  [base=path files=(list path)]
+  ^-  (unit @t)
+  =|  pieces=wall
+  =|  bytes=@ud
+  =/  rest=(list path)  files
+  |-  ^-  (unit @t)
+  ?~  rest
+    `(crip (zing (join "\0a\0a" (flop pieces))))
+  =/  body=@t  (clay-file-text (weld base `path`i.rest))
+  =/  piece=tape  "=== {(spud i.rest)}\0a{(trip body)}"
+  =/  grown=@ud  (add bytes (add 2 (lent piece)))
+  ?:  (gth grown 131.072)  ~
+  $(rest t.rest, pieces [piece pieces], bytes grown)
+::
 ::  +read-clay-context: resolve a clay locator to text.  a locator that
-::  names a file reads that file.  a locator that names a directory
-::  concatenates every text-mark file beneath it with path headers.
+::  names a file reads that file.  a locator that names a directory or a
+::  whole desk concatenates every text-mark file beneath it, and falls
+::  back to a listing when those bodies pass the context cap.
 ::
 ++  read-clay-context
   |=  raw=@t
@@ -2116,21 +2178,21 @@
     (clay-file-text pax)
   =/  base=path
     [(scot %p who.u.parsed) dek.u.parsed (scot %da now.bol) ~]
-  =/  all=(list path)  .^((list path) %ct base)
-  =/  prefix=path  rest.u.parsed
-  =/  under=(list path)
-    %+  skim  all
-    |=  f=path
-    ?&  ?=(^ f)
-        (~(has in clay-text-marks) (rear `path`f))
-        =(prefix (scag (lent prefix) `path`f))
-    ==
-  ?~  under  !!
-  =/  pieces=wall
-    %+  turn  (sort under aor)
-    |=  f=path
-    "=== {(spud f)}\0a{(trip (clay-file-text (weld base `path`f)))}"
-  (crip (zing (join "\0a\0a" pieces)))
+  =/  found=(list path)
+    (clay-collection-files dek.u.parsed rest.u.parsed)
+  ?~  found  !!
+  ::  widen the list type again: +scag and +join are wet gates and cast
+  ::  their product to the sample they were handed.
+  ::
+  =/  files=(list path)  found
+  =/  shown=(list path)  (scag 2.000 files)
+  ::  a whole desk is always a listing: real desks run megabytes.
+  ::
+  ?~  rest.u.parsed
+    (clay-manifest-text raw files shown)
+  =/  inlined=(unit @t)  (clay-collection-text base files)
+  ?^  inlined  u.inlined
+  (clay-manifest-text raw files shown)
 ::
 ++  local-stack-title
   |=  =stack

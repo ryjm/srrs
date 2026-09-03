@@ -46,6 +46,20 @@
     ;li.clay-results-meta
       ; {meta}
     ==
+    ;+  ?~  hits  ;span.hidden;
+        =/  desk-loc=tape
+          "/{(trip (scot %p our))}/{(trip dek)}"
+        =/  desk-href=tape
+          ?:  =("" ret)  "#"
+          "{ret}?pick={desk-loc}"
+        ;li
+          ;a.clay-file.clay-dir
+            =href          desk-href
+            =data-locator  desk-loc
+            =hx-boost      "false"
+            ;+  ;/  "whole desk · {<total>} files as a listing"
+          ==
+        ==
     ;+  ?^  hits  ;span.hidden;
         ;li.clay-results-meta
           ; no files match
@@ -2445,6 +2459,69 @@
                  min-height: 2rem;
                  padding: .35rem .55rem;
                }
+               .icon-button {
+                 align-items: center;
+                 background: var(--surface-2);
+                 border: 1px solid var(--line);
+                 border-radius: 3px;
+                 color: var(--muted);
+                 cursor: pointer;
+                 display: inline-flex;
+                 font: inherit;
+                 font-size: .9rem;
+                 justify-content: center;
+                 line-height: 1;
+                 min-height: 2rem;
+                 min-width: 2rem;
+                 padding: 0;
+               }
+               .icon-button:hover {
+                 border-color: var(--danger);
+                 color: var(--danger);
+               }
+               .icon-button:focus-visible {
+                 outline: 2px solid var(--danger);
+                 outline-offset: 1px;
+               }
+               .context-members {
+                 border-top: 1px dashed var(--line);
+                 margin-top: .5rem;
+                 padding-top: .45rem;
+               }
+               .context-members-summary {
+                 color: var(--muted);
+                 cursor: pointer;
+                 font-size: .72rem;
+                 list-style: none;
+               }
+               .context-members-summary:hover {
+                 color: var(--ink);
+               }
+               .context-member-list {
+                 display: grid;
+                 gap: .2rem;
+                 margin-top: .45rem;
+                 max-height: 14rem;
+                 overflow-y: auto;
+               }
+               .context-member {
+                 align-items: center;
+                 display: flex;
+                 gap: .5rem;
+                 justify-content: space-between;
+                 min-width: 0;
+               }
+               .context-member-path {
+                 color: var(--muted);
+                 font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                 font-size: .72rem;
+                 overflow-wrap: anywhere;
+               }
+               .context-member-on {
+                 color: var(--ok);
+                 flex: none;
+                 font-size: .66rem;
+               }
                .context-empty {
                  color: var(--muted);
                  font-size: .78rem;
@@ -4192,6 +4269,12 @@
         "local file, or web page."
       ==
     =/  source-word=tape  ?:(=(count 1) "source" "sources")
+    =/  attached=(set @t)
+      %-  silt
+      %+  turn  rows
+      |=  [context-id=@tas source=context-source]
+      ^-  @t
+      locator.source
     :~
       ;summary.context-summary
         ;span.context-summary-copy
@@ -4208,19 +4291,22 @@
           ;*
           %+  turn  rows
           |=  [context-id=@tas source=context-source]
-          (context-source-row context-id source)
+          (context-source-row context-id source attached)
         ==
         ;+  (context-source-form owner stack-name card)
       ==
     ==
   ::
   ++  context-source-row
-    |=  [context-id=@tas source=context-source]
+    |=  [context-id=@tas source=context-source attached=(set @t)]
     ^-  manx
+    =/  members=(list @t)  (manifest-members content.source)
     =/  context-tape=tape  (tas-tape context-id)
     =/  stack-tape=tape  (tas-tape stack.source)
     =/  gone-copy=tape  "source file removed · snapshot kept"
     =/  stale-copy=tape  "desk updated · refresh to re-read"
+    =/  remove-confirm=tape  "Remove this source from future prompts?"
+    =/  remove-label=tape  "Remove {(trip label.source)}"
     ;article.context-source
       ;div.context-source-copy
         ;div.context-source-head
@@ -4248,6 +4334,8 @@
             ;+  ;/  (trip error.source)
           ==
         ;span.hidden;
+        ;+  ?~  members  ;span.hidden;
+            (member-list source attached members)
       ==
       ;div.context-source-actions
         ;+  ?.  =(%failed status.source)  ;span.hidden;
@@ -4273,16 +4361,82 @@
               ;input(type "hidden", name "stack", value stack-tape);
               ;button.secondary(type "submit"): Refresh
             ==
-        ;form.inline(hx-confirm "Remove this source from future prompts?")
-          =method     "post"
-          =action     "/apps/seer/actions/remove-context-source"
-          =hx-post    "/apps/seer/actions/remove-context-source"
-          ;input(type "hidden", name "context-id", value (tas-tape context-id));
+        ;form.inline
+          =hx-confirm  remove-confirm
+          =method      "post"
+          =action      "/apps/seer/actions/remove-context-source"
+          =hx-post     "/apps/seer/actions/remove-context-source"
+          ;input(type "hidden", name "context-id", value context-tape);
           ;input(type "hidden", name "owner", value (scow %p owner.source));
-          ;input(type "hidden", name "stack", value (tas-tape stack.source));
-          ;button.linkish(type "submit"): Remove
+          ;input(type "hidden", name "stack", value stack-tape);
+          ;button.icon-button
+            =type        "submit"
+            =title       "Remove this source"
+            =aria-label  remove-label
+            ;+  ;/  "×"
+          ==
         ==
       ==
+    ==
+  ::
+  ::  +manifest-members: the paths a listing source names.  a listing
+  ::  carries no file bodies, so each path is offered for attachment.
+  ::
+  ++  manifest-members
+    |=  content=@t
+    ^-  (list @t)
+    =/  lines=(list @t)  (to-wain:format content)
+    ?~  lines  ~
+    ?.  =('=== listing ' (end [3 12] i.lines))  ~
+    %+  skim  t.lines
+    |=  line=@t
+    =('/' (end 3 line))
+  ::
+  ++  member-list
+    |=  [source=context-source attached=(set @t) members=(list @t)]
+    ^-  manx
+    =/  total=@ud  (lent members)
+    =/  shown=(list @t)  (scag 200 `(list @t)`members)
+    =/  summary-copy=tape
+      ?:  =(total (lent shown))
+        "{<total>} files · attach the ones you need"
+      "{<(lent shown)>} of {<total>} files · attach the ones you need"
+    ;details.context-members
+      ;summary.context-members-summary
+        ;+  ;/  summary-copy
+      ==
+      ;div.context-member-list
+        ;*  %+  turn  shown
+            |=  member=@t
+            (member-row source attached member)
+      ==
+    ==
+  ::
+  ++  member-row
+    |=  [source=context-source attached=(set @t) member=@t]
+    ^-  manx
+    =/  loc=@t  (cat 3 locator.source member)
+    =/  card-value=tape  ?~(card.source "" (tas-tape u.card.source))
+    ;div.context-member
+      ;span.context-member-path: {(trip member)}
+      ;+  ?:  (~(has in attached) loc)
+            ;span.context-member-on: attached
+          ;form.inline
+            =method   "post"
+            =action   "/apps/seer/actions/add-context-source"
+            =hx-post  "/apps/seer/actions/add-context-source"
+            ;input(type "hidden", name "owner", value (scow %p owner.source));
+            ;input(type "hidden", name "stack", value (tas-tape stack.source));
+            ;input(type "hidden", name "card", value card-value);
+            ;input(type "hidden", name "kind", value "clay");
+            ;input(type "hidden", name "locator", value (trip loc));
+            ;button.icon-button
+              =type        "submit"
+              =title       "Attach this file"
+              =aria-label  "Attach {(trip member)}"
+              ;+  ;/  "+"
+            ==
+          ==
     ==
   ::
   ++  clay-picker-block
