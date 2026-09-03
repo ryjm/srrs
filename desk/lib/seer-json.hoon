@@ -166,24 +166,31 @@
   ::
   ++  recall-grade
     %-  su
-    ;~(pose (jest %again) (jest %hard) (jest %good) (jest %easy))
+    ;~  pose
+      (jest %again)
+      (jest %hard)
+      (jest %good)
+      (jest %easy)
+    ==
   ::
   ++  edit-config
     %-  su
     ;~(pose (jest %item) (jest %all) (jest %none))
   ::
   ++  perm-config
-      %-  ot
-      :~  :-  %read
-          %-  ot
-          :~  mod+(su ;~(pose (jest %black) (jest %white)))
-              who+whoms
-          ==
-          :-  %write
-          %-  ot
-          :~  mod+(su ;~(pose (jest %black) (jest %white)))
-              who+whoms
-      ==  ==
+    %-  ot
+    :~  :-  %read
+        %-  ot
+        :~  mod+(su ;~(pose (jest %black) (jest %white)))
+            who+whoms
+        ==
+        :-  %write
+        %-  ot
+        :~  mod+(su ;~(pose (jest %black) (jest %white)))
+            who+whoms
+        ==
+    ==
+  ::
   ++  item
     |=  jon=json
     ~!  jon+jon
@@ -325,52 +332,46 @@
   ^-  json
   %-  pairs:enjs:format
   :~  info+(stack-build-to-json info.stack)
-  ::
-    :+  %review-items
-      %o
-    %+  roll  ~(tap in ~(key by review-items.stack))
-    |=  [item=@tas out=(map @t json)]
-    =/  item-build  (~(got by review-items.stack) item)
-    %+  ~(put by out)
-      item
-    (item-to-json item-build)
-    :+  %items
-      %o
-    %+  roll  ~(tap in ~(key by items.stack))
-    |=  [item=@tas out=(map @t json)]
-    =/  item-build  (~(got by items.stack) item)
-    %+  ~(put by out)
-      item
-    (item-to-json item-build)
-  ::
-    :-  %contributors
-    %-  pairs:enjs:format
-    :~  mod+s+mod.contributors.stack
-        :+  %who
-          %a
-        %+  turn  ~(tap in who.contributors.stack)
-        |=  who=@p
-        (ship:enjs:format who)
-    ==
-  ::
-    :+  %subscribers
-      %a
-    %+  turn  ~(tap in subscribers.stack)
-    |=  who=@p
-    ^-  json
-    (ship:enjs:format who)
-  ::
-    [%last-update (time:enjs:format last-update.stack)]
+      ::
+      :+  %review-items  %o
+      %+  roll  ~(tap in ~(key by review-items.stack))
+      |=  [item=@tas out=(map @t json)]
+      =/  item-build  (~(got by review-items.stack) item)
+      %+  ~(put by out)  item
+      (item-to-json item-build)
+      :+  %items  %o
+      %+  roll  ~(tap in ~(key by items.stack))
+      |=  [item=@tas out=(map @t json)]
+      =/  item-build  (~(got by items.stack) item)
+      %+  ~(put by out)  item
+      (item-to-json item-build)
+      ::
+      :-  %contributors
+      %-  pairs:enjs:format
+      :~  mod+s+mod.contributors.stack
+          :+  %who  %a
+          %+  turn  ~(tap in who.contributors.stack)
+          |=  who=@p
+          (ship:enjs:format who)
+      ==
+      ::
+      :+  %subscribers  %a
+      %+  turn  ~(tap in subscribers.stack)
+      |=  who=@p
+      ^-  json
+      (ship:enjs:format who)
+      ::
+      [%last-update (time:enjs:format last-update.stack)]
   ==
 ::
 ++  review-to-json
   |=  =review
   ^-  json
   %-  pairs:enjs:format
-    :~  who+s+(scot %p who.review)
-        stack+s+stack.review
-        item+s+item.review
-    ==
+  :~  who+s+(scot %p who.review)
+      stack+s+stack.review
+      item+s+item.review
+  ==
 ::
 ++  content-full-json
   |=  [content-name=@tas =content]
@@ -421,8 +422,8 @@
   ==
 ::
 ++  maybe
-      |*  [unit=(unit) enjs=$-(* json)]
-      ^-  json
-      ?~  unit  ~
-      (enjs u.unit)
+  |*  [unit=(unit) enjs=$-(* json)]
+  ^-  json
+  ?~  unit  ~
+  (enjs u.unit)
 --

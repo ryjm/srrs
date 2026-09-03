@@ -1,10 +1,8 @@
+::  /hoon/info/seer/mar
 ::
-::::  /hoon/info/seer/mar
-  ::
 /-  seer
 !:
 |_  stak=stack-info:seer
-::
 ::
 ++  grow
   |%

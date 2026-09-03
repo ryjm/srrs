@@ -88,7 +88,14 @@
       [%remove-context-source id=@tas]
       [%claim-context-source id=@tas worker=@t nonce=@t proof=@]
       [%recover-context-source id=@tas worker=@t nonce=@t proof=@]
-      [%finish-context-source id=@tas worker=@t label=@t content=@t nonce=@t proof=@]
+      $:  %finish-context-source
+          id=@tas
+          worker=@t
+          label=@t
+          content=@t
+          nonce=@t
+          proof=@
+      ==
       [%fail-context-source id=@tas worker=@t error=@t nonce=@t proof=@]
       [%retry-context-source id=@tas]
   ::
@@ -143,7 +150,14 @@
       [%request-login id=@tas provider=ai-provider]
       [%issue-bridge-nonce nonce=@t]
       [%claim-login id=@tas worker=@t nonce=@t proof=@]
-      [%post-login-challenge id=@tas worker=@t auth-url=@t user-code=@t nonce=@t proof=@]
+      $:  %post-login-challenge
+          id=@tas
+          worker=@t
+          auth-url=@t
+          user-code=@t
+          nonce=@t
+          proof=@
+      ==
       [%submit-login-code id=@tas code=@t]
       [%finish-login id=@tas worker=@t nonce=@t proof=@]
       [%fail-login id=@tas worker=@t message=@t nonce=@t proof=@]
@@ -228,6 +242,7 @@
 ::  manifest, /shared-context/file/[pax] gives a fresh read of a listed
 ::  file to any ship that asks.  rev counters remain from the earlier
 ::  remote-scry design and are unused by the watch transport.
+::
 +$  shared-entry     [rev=@ud label=@t mark=@tas size=@ud]
 +$  manifest-entry   [pax=path label=@t mark=@tas size=@ud]
 +$  remote-manifest  [rev=@ud at=@da entries=(list manifest-entry)]
@@ -285,7 +300,14 @@
 ::  overwrite a newer human edit.
 ::
 +$  state-operation-kind
-  $?(%create-stack %rename-stack %delete-stack %create-card %edit-card %delete-card %queue-card)
+  $?  %create-stack
+      %rename-stack
+      %delete-stack
+      %create-card
+      %edit-card
+      %delete-card
+      %queue-card
+  ==
 ::
 +$  state-operation
   $:  kind=state-operation-kind
@@ -357,6 +379,7 @@
 ::    .edit: permissions for editing the stack
 ::    .date-created: date the stack was created
 ::    .date-modified: date the stack was last modified
+::
 +$  stack-info
   $:  owner=@p
       title=@t
@@ -381,6 +404,7 @@
 ::  .contributors: list of contributors and their permissions
 ::  .subscribers: set of subscribers
 ::  .last-update: date of last update
+::
 +$  stack
   $:  info=$+(info-or-error (each stack-info $+(error tang)))
       name=@tas
@@ -421,7 +445,7 @@
 ::
 +$  recall-grade  $?(%again %hard %good %easy)
 ::
-+$  learn 
++$  learn
   $:  ease=@rs
       interval=@dr
       box=@

@@ -62,15 +62,23 @@
   |=  [secret=@t action=@tas id=@tas worker=@t nonce=@t fields=(list @t)]
   ^-  @
   =/  parts=(list @t)
-    (welp ~['seer-bridge-v1' `@t`action `@t`id worker nonce] fields)
+    %+  welp
+      ~['seer-bridge-v1' `@t`action `@t`id worker nonce]
+    fields
   =/  payload=@t
-    (crip (zing (turn parts |=(part=@t "{<(met 3 part)>}:{(trip part)}"))))
+    %-  crip
+    %-  zing
+    %+  turn  parts
+    |=(part=@t "{<(met 3 part)>}:{(trip part)}")
   (hmac-sha256t:hmac:crypto secret payload)
 ::  the proof the node bridge produces for this tuple
 ::  (bridge/seer-ai-bridge.test.mjs, cross-language hmac fixture)
 ::
 ++  fixture-proof
-  0x302.62aa.d179.84e6.9883.62ca.1c52.ce9e.4977.c0f7.2cc6.f465.a62f.e29c.46d2.e798
+  ^-  @ux
+  =/  high  0x302.62aa.d179.84e6.9883.62ca.1c52.ce9e
+  =/  low   0x4977.c0f7.2cc6.f465.a62f.e29c.46d2.e798
+  (add (lsh [2 32] high) low)
 ::
 ::  loads %12 and %13 states into the current head.  the probe login
 ::  checks that the conversion ran; a fresh install starts with empty
@@ -112,16 +120,22 @@
   =/  core  ag
   =.  core  (do core [%new-stack %s1 'Stack one' ~])
   =.  core
-    (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+    %+  do  core
+    :*  %new-item  ~zod  ~zod  %s1  %c1
+        'Card'  *perm-config  'front'  'back'
+    ==
   =/  ans
     |=  [c=agent:gall g=recall-grade]
     (do c [%answered-item ~zod %s1 %c1 g])
   =.  core  (ans core %good)
-  =/  l1=learn  learn:(~(got by items:(need (peek-stack core %s1))) %c1)
+  =/  l1=learn
+    learn:(~(got by items:(need (peek-stack core %s1))) %c1)
   =.  core  (ans core %good)
-  =/  l2=learn  learn:(~(got by items:(need (peek-stack core %s1))) %c1)
+  =/  l2=learn
+    learn:(~(got by items:(need (peek-stack core %s1))) %c1)
   =.  core  (ans core %again)
-  =/  l3=learn  learn:(~(got by items:(need (peek-stack core %s1))) %c1)
+  =/  l3=learn
+    learn:(~(got by items:(need (peek-stack core %s1))) %c1)
   ;:  weld
     (expect-eq !>(1) !>(`@`box.l1))
     (expect-eq !>(~m15) !>(`@dr`interval.l1))
@@ -179,14 +193,21 @@
   =/  core  ag
   =.  core  (do core [%new-stack %s1 'Stack one' ~])
   =.  core
-    (do core [%request-change %ch1 %library *assistant-model 'plan work'])
+    %+  do  core
+    :*  %request-change  %ch1  %library
+        *assistant-model  'plan work'
+    ==
   =.  core  (do core [%claim-change %ch1 'worker-1'])
   =/  bad-op=state-operation
     [%create-card %s1 %c9 '' 'front' 'back' '' '' '']
   =/  good-op=state-operation
     [%create-card %s1 %c9 'Title' 'front' 'back' '' '' '']
-  =.  core  (do core [%stage-change-operation %ch1 'worker-1' bad-op])
-  =.  core  (do core [%stage-change-operation %ch1 'worker-1' good-op])
+  =.  core
+    %+  do  core
+    [%stage-change-operation %ch1 'worker-1' bad-op]
+  =.  core
+    %+  do  core
+    [%stage-change-operation %ch1 'worker-1' good-op]
   =/  req  (~(got by changes:(peek-ai core)) %ch1)
   ;:  weld
     (expect-eq !>(%working) !>(status.req))

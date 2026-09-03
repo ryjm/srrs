@@ -1,6 +1,5 @@
+::  /hoon/action/seer/mar
 ::
-::::  /hoon/action/seer/mar
-  ::
 /-  *seer
 =,  format
 ::

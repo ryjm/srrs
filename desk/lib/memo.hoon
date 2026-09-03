@@ -38,9 +38,8 @@
   =/  publish-state  on-save:ag
   =/  books  (slop !>(%add-books) (slap publish-state [%limb %books]))
   =/  memo-cards=(list card:agent:gall)
-  :~
-      [%pass /memo %agent [our.bowl %seer] %poke %seer-action books]
-  ==
+    :~  [%pass /memo %agent [our.bowl %seer] %poke %seer-action books]
+    ==
   [(weld memo-cards cards) this]
 ::
 ++  on-watch
@@ -73,18 +72,18 @@
 ++  on-arvo
   |=  [=wire =sign-arvo]
   ^-  (quip card:agent:gall agent:gall)
-  %-  (print bowl "{<dap.bowl>}: on-arvo on wire {<wire>}, {<[- +<]:sign-arvo>}")
+  =/  arvo-note=tape
+    "{<dap.bowl>}: on-arvo on wire {<wire>}, {<[- +<]:sign-arvo>}"
+  %-  (print bowl arvo-note)
   %-  (print bowl "{<dap.bowl>}: state: {<on-save:ag>}")
   =^  cards  agent  (on-arvo:ag wire sign-arvo)
   =/  publish-state  on-save:ag
   =/  books=vase
-  (slop !>(%add-books) (slap publish-state [%limb %books]))
+    (slop !>(%add-books) (slap publish-state [%limb %books]))
   =/  memo-cards=(list card:agent:gall)
-  :~
-      [%pass /memo %agent [our.bowl %seer] %poke %seer-action books]
-  ==
+    :~  [%pass /memo %agent [our.bowl %seer] %poke %seer-action books]
+    ==
   [(weld cards memo-cards) this]
-
 ::
 ++  on-fail
   |=  [=term =tang]

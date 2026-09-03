@@ -12,34 +12,51 @@
 ::
 +$  state-1
   $:  %1
-      width=@ud                                     ::  display width
-      sessions=(map sole-id session)                ::  sole sessions
-      eny=@uvJ                                      ::  entropy
+      ::  display width
+      ::
+      width=@ud
+      ::  sole sessions
+      ::
+      sessions=(map sole-id session)
+      ::  entropy
+      ::
+      eny=@uvJ
   ==
 ::
 +$  state-0
   $:  %0
-      audience=(set target)                         ::  active targets
-      width=@ud                                     ::  display width
-      eny=@uvJ                                      ::  entropy
+      ::  active targets
+      ::
+      audience=(set target)
+      ::  display width
+      ::
+      width=@ud
+      ::  entropy
+      ::
+      eny=@uvJ
   ==
+::
 +$  session  version=@ud
 ::
 +$  target  [in-group=? [=ship =path]]
 ::
 +$  command
   $%
-      [%width @ud]                                  ::  display width
-      [%help ~]                                     ::  print usage info
-      [%all-reviews ~]
-      [%stacks ~]
-      [%delete-item @tas @t]
-      [%add-stack @tas]
-      [%delete-stack @tas (unit @p)]
-      [%import @p @t]
-      [%copy-stack @p @t ?]
-      [%import-file path]
-      [%settings ~]
+    ::  display width
+    ::
+    [%width @ud]
+    ::  print usage info
+    ::
+    [%help ~]
+    [%all-reviews ~]
+    [%stacks ~]
+    [%delete-item @tas @t]
+    [%add-stack @tas]
+    [%delete-stack @tas (unit @p)]
+    [%import @p @t]
+    [%copy-stack @p @t ?]
+    [%import-file path]
+    [%settings ~]
   ==
 ::
 --
@@ -69,13 +86,13 @@
   ++  on-load
     |=  =vase
     ^-  (quip card _this)
-   =/  maybe-old=(each p=versioned-state tang)
-    (mule |.(!<(versioned-state vase)))
-  =/  [old=versioned-state bad=?]
-    ?.  ?=(%| -.maybe-old)  [p &]:p.maybe-old
-    =;  [sta=versioned-state ba=?]  [sta ba]
-    ~&  >  %bad-load  [state &]
-  =^  cards  state  (prep:sc `old)
+    =/  maybe-old=(each p=versioned-state tang)
+      (mule |.(!<(versioned-state vase)))
+    =/  [old=versioned-state bad=?]
+      ?.  ?=(%| -.maybe-old)  [p &]:p.maybe-old
+      =;  [sta=versioned-state ba=?]  [sta ba]
+      ~&  >  %bad-load  [state &]
+    =^  cards  state  (prep:sc `old)
     [cards this]
   ::
   ++  on-poke
@@ -146,17 +163,17 @@
 ++  prep
   |=  old=(unit versioned-state)
   ^-  (quip card _state)
-  =;    migrate
+  =;  migrate
     ?~  old  migrate
-  ?-  -.u.old
-    %0  migrate
-    %1  [~ u.old]
+    ?-  -.u.old
+      %0  migrate
+      %1  [~ u.old]
     ==
   =^  cards  state
-      :-  ~[connect]
-      %_  state
-        width     80
-      ==
+    :-  ~[connect]
+    %_  state
+      width  80
+    ==
   [cards state]
 ::  +connect: connect to seer
 ::
@@ -184,13 +201,15 @@
   |=  [=wire del=primary-delta]
   ^-  (quip card _state)
   =/  [wir=^wire mark=@tas]
-  ~&  >>  wire+wire
+    ~&  >>  wire+wire
     ?+  -.del  [wire %txt]
       %add-review-item  [/[-.wire]/chat %letter]
-      %add-item  [/[-.wire]/chat %letter]
+      %add-item         [/[-.wire]/chat %letter]
     ==
   =/  cay=cage  [%seer-primary-delta !>(del)]
-  =+  .^(=tube:clay %cc /(scot %p our.bowl)/[q.byk.bowl]/(scot %da now.bowl)/[p.cay]/[mark])
+  =/  cc-path=path
+    /(scot %p our.bowl)/[q.byk.bowl]/(scot %da now.bowl)/[p.cay]/[mark]
+  =+  .^(=tube:clay %cc cc-path)
   =/  =cage  [mark (tube q.cay)]
   ?+  wir  [~ state]
     [%seer ~]  (handle-seer cage)
@@ -210,6 +229,7 @@
   ~!  q.cage
   ::  =^  say-cards  state  (work:sh [%say !<(letter:chat-store q.cage)])
   ::  [say-cards state]
+  ::
   [~ state]
 ::
 ::  +sh: handle user input
@@ -257,8 +277,14 @@
         (cold %& (jest '%.n'))
       ==
     ++  ship  ;~(pfix sig fed:ag)
-    ++  path  ;~(pfix fas ;~(plug urs:ab (easy ~)))  ::note  short only, tmp
-    ++  file-path  ;~(pfix fas (more fas (cook crip (star ;~(less fas prn)))))
+    ::note  short only, tmp
+    ::
+    ++  path  ;~(pfix fas ;~(plug urs:ab (easy ~)))
+    ++  file-path
+      ;~  pfix
+        fas
+        (more fas (cook crip (star ;~(less fas prn))))
+      ==
     ::  +mang: un/managed indicator prefix
     ::
     ++  mang
@@ -281,6 +307,11 @@
   ::
   ++  tab-list
     ^-  (list [@t tank])
+    =/  copy-help=tape
+      ;:  weld
+        ";copy-stack [who (@p)] [stack-name] [keep-learned] "
+        "(add subscribed stacks to main library)"
+      ==
     :~
       [%help leaf+";help"]
       [%all-reviews leaf+";all-reviews"]
@@ -289,7 +320,7 @@
       [%delete-stack leaf+";delete-stack [stack-name]"]
       [%add-stack leaf+";add-stack [stack-name]"]
       [%import leaf+";import [who (@p)] [stack-name]"]
-      [%copy-stack leaf+";copy-stack [who (@p)] [stack-name] [keep-learned] (add subscribed stacks to main library)"]
+      [%copy-stack leaf+copy-help]
       [%import-file leaf+";import-file [path to tab separated file]"]
       [%settings leaf+";settings"]
     ==
@@ -299,17 +330,17 @@
     |=  job=command
     ^-  (quip card _state)
     |^  ?-  -.job
-          %width     (set-width +.job)
-          %help      help
-          %all-reviews  all-reviews
-          %stacks  stacks
-          %delete-item  (delete-item +.job)
-          %add-stack  (add-stack +.job)
+          %width         (set-width +.job)
+          %help          help
+          %all-reviews   all-reviews
+          %stacks        stacks
+          %delete-item   (delete-item +.job)
+          %add-stack     (add-stack +.job)
           %delete-stack  (delete-stack +.job)
-          %import  (import +.job)
-          %copy-stack  (copy-stack +.job)
-          %import-file  (import-file +.job)
-          %settings  show-settings
+          %import        (import +.job)
+          %copy-stack    (copy-stack +.job)
+          %import-file   (import-file +.job)
+          %settings      show-settings
         ==
     ::  +act: build action card
     ::
@@ -351,6 +382,7 @@
     ::    +add-stack: add a stack
     ::
     ::  add a stack to the main library
+    ::
     ++  add-stack
       |=  stack=@tas
       ^-  (quip card _state)
@@ -358,8 +390,8 @@
       %^  act  %add-stack  %seer
       :-  %seer-action
       !>  ^-  action
-      [%new-stack stack stack ~] ::
-
+      [%new-stack stack stack ~]
+    ::
     ++  import
       |=  [who=@p stack=@t]
       ^-  (quip card _state)
@@ -394,6 +426,7 @@
       [~ state(width w)]
     ::
     ::  ++stacks: list of stacks
+    ::
     ++  stacks
       ^-  (quip card _state)
       =/  stacks  (scry-for (map @tas stack) %seer /all)
@@ -407,14 +440,16 @@
       ^-  (quip card _state)
       =,  html
       =/  reviews  (scry-for (list review) %seer /review)
-      =/  json  :-  %a
-        %+  turn
-          reviews
+      =/  json
+        :-  %a
+        %+  turn  reviews
         review-to-json
-      =/  print-card=card  (print:sh-out "review: {(en-json json)}")
+      =/  print-card=card
+        (print:sh-out "review: {(en-json json)}")
       ::  =^  say-cards  state
       ::    (say `letter:chat-store`[%text (crip "review: {(en-json json)}")])
       ::  [(flop (snoc say-cards print-card)) state]
+      ::
       [print-card^~ state]
     ::
     ::  +help: print (link to) usage instructions
@@ -430,7 +465,7 @@
 ::
 ++  sh-out
   |_  [=sole-id session]
-
+  ::
   ++  make
     |=  =^sole-id
     %_  ..make
@@ -503,6 +538,7 @@
 ::
 ::note  anything that uses this breaks moons support, because moons don't sync
 ::      full app state rn
+::
 ++  scry-for
   |*  [=mold app=term =path]
   .^  mold

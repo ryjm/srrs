@@ -4,6 +4,7 @@
 /*  seer-tile  %png  /lib/web/seer-tile/png
 ::  htmx 2.0.2 dist/htmx.min.js, pinned from unpkg;
 ::  sha256 e1746d9759ec0d43c5c284452333a310bb5fd7285ebac4b2dc9bf44d72b5a887
+::
 /*  htmx-src  %js  /lib/web/htmx-min/js
 ::
 |%
@@ -242,7 +243,6 @@
       [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]
       [%pass /bind/seer %arvo %e %connect [~ /apps/seer] dap.bol]
     ==
-
   ::
   ++  on-poke
     |=  [=mark =vase]
@@ -258,7 +258,8 @@
           %handle-http-request
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
         ?:  authenticated.inbound-request
-          (poke-handle-http-request:sc eyre-id inbound-request)
+          %+  poke-handle-http-request:sc  eyre-id
+          inbound-request
         :_  state
         %+  give-simple-payload:app  eyre-id
         (login-redirect:gen request.inbound-request)
@@ -270,11 +271,11 @@
     ^-  (quip card _this)
     =^  cards  state
       ?+  path  (on-watch:def path)
-        [%seertile *]       (peer-seertile:sc t.path)
-        [%seer-primary *]   [~ state]
-        [%http-response *]  [~ state]
-        [%stack @ ~]  (peer-stack:sc i.t.path)
-        [%shared-context ~]  serve-shared-manifest:sc
+        [%seertile *]                (peer-seertile:sc t.path)
+        [%seer-primary *]            [~ state]
+        [%http-response *]           [~ state]
+        [%stack @ ~]                 (peer-stack:sc i.t.path)
+        [%shared-context ~]          serve-shared-manifest:sc
         [%shared-context %file @ *]  (serve-shared-file:sc t.t.path)
       ==
     [cards this]
@@ -291,15 +292,18 @@
         [cards this]
       ?:  ?=([%import @ @ ~] wire)
         [~ this]
-      ?.  ?=([%shared-fetch @ ~] wire)  (on-agent:def wire sign)
+      ?.  ?=([%shared-fetch @ ~] wire)
+        (on-agent:def wire sign)
       ?~  p.sign  [~ this]
       =^  cards  state
-        (fail-shared-fetch:sc i.t.wire 'That ship shares nothing at this path.')
+        %+  fail-shared-fetch:sc  i.t.wire
+        'That ship shares nothing at this path.'
       [cards this]
         %kick
       ?:  ?=([%shared-fetch @ ~] wire)
         =^  cards  state
-          (fail-shared-fetch:sc i.t.wire 'The ship disconnected before replying.')
+          %+  fail-shared-fetch:sc  i.t.wire
+          'The ship disconnected before replying.'
         [cards this]
       ?:  ?=([%shared-manifest @ ~] wire)
         =^  cards  state
@@ -308,21 +312,32 @@
       ?:  ?=([%import @ @ ~] wire)
         =/  who   (slav %p i.t.wire)
         =/  name  i.t.t.wire
-        ?.  (~(has by stack-subs.state) [who name])  [~ this]
+        ?.  (~(has by stack-subs.state) [who name])
+          [~ this]
         :_  this
         [%pass wire %agent [who %seer] %watch /stack/[name]]~
       :_  this
-      ?+  wire  ~
-        [%primary @ ~]  ~[[%pass /seer-primary %agent [our.bol %seer] %watch /seer-primary]]
+      ?+    wire  ~
+          [%primary @ ~]
+        :_  ~
+        :*  %pass
+            /seer-primary
+            %agent
+            [our.bol %seer]
+            %watch
+            /seer-primary
+        ==
       ==
         %fact
       ?+    wire  (on-agent:def wire sign)
           [%shared-fetch @ ~]
-        =^  cards  state  (take-shared-fetch:sc i.t.wire cage.sign)
+        =^  cards  state
+          (take-shared-fetch:sc i.t.wire cage.sign)
         [cards this]
           [%shared-manifest @ ~]
         =^  cards  state
-          (take-remote-manifest:sc (slav %p i.t.wire) cage.sign)
+          %+  take-remote-manifest:sc  (slav %p i.t.wire)
+          cage.sign
         [cards this]
           [%seer-primary ~]
         [~ this]
@@ -339,31 +354,41 @@
           [cards this]
             %seer-stack
           =/  =stack  !<(stack q.cage.sign)
-          =^  cards  state  (handle-import-stack:sc stack)
+          =^  cards  state
+            (handle-import-stack:sc stack)
           [cards this]
         ==
       ==
     ==
     ++  pass-through
-    |=  =cage
-    ^-  card
-    (fact:io cage ~[wire])
+      |=  =cage
+      ^-  card
+      (fact:io cage ~[wire])
   --
   ::
   ++  on-arvo
     |=  [=wire =sign-arvo]
     ^-  (quip card _this)
     =^  cards  state
-      ?+  wire  (on-arvo:def wire sign-arvo)
-        [%bind %seer ~]             [~ state]
-        [%eyre ~]             [~ state]
-        [%view-bind ~]              [~ state]
-        [%review-schedule @ ~]      (wake:sc wire)
-        [%review-schedule @ @ @ ~]  (wake:sc wire)
-        [%import @ @ ~]             (peer-stack:sc i.t.t.wire)
-        [%read %paths ~]            [~ state]
-        [%shared-timeout @ ~]     (shared-fetch-timeout:sc i.t.wire)
-        [%shared-manifest-timeout @ ~]  (remote-manifest-timeout:sc (slav %p i.t.wire))
+      ?+    wire  (on-arvo:def wire sign-arvo)
+          [%bind %seer ~]
+        [~ state]
+          [%eyre ~]
+        [~ state]
+          [%view-bind ~]
+        [~ state]
+          [%review-schedule @ ~]
+        (wake:sc wire)
+          [%review-schedule @ @ @ ~]
+        (wake:sc wire)
+          [%import @ @ ~]
+        (peer-stack:sc i.t.t.wire)
+          [%read %paths ~]
+        [~ state]
+          [%shared-timeout @ ~]
+        (shared-fetch-timeout:sc i.t.wire)
+          [%shared-manifest-timeout @ ~]
+        (remote-manifest-timeout:sc (slav %p i.t.wire))
       ==
     [cards this]
   ::
@@ -386,11 +411,10 @@
     ?-  -.p.old-state
         %0
       [~ this]
-
         %1
       :-  init-cards
       %=  this
-          state
+        state
         =/  new-stacks=(map @tas stack)
           %-  ~(rep by stacks.p.old-state)
           |=  [[key=@tas val=stack-1] out=(map @tas stack)]
@@ -403,15 +427,107 @@
           |=  old-stack=stack-1
           ^-  stack
           (convert-stack-1-2 old-stack)
-        [%14 new-stacks ~ new-stack-subs ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~]
+        :*  %14
+            new-stacks
+            ~
+            new-stack-subs
+            ~
+            ~
+            ~
+            ~
+            ~
+            ~
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
       ==
-    %2
-      [~ this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %3
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state ~ ~ ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %4
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state ~ ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %5
+        %2
+      :-  ~
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            ~
+            ~
+            ~
+            ~
+            ~
+            ~
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %3
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            ~
+            ~
+            ~
+            ~
+            ~
+            ~
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %4
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            ~
+            ~
+            ~
+            ~
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %5
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
         |=  old=card-question-five
@@ -435,8 +551,32 @@
             ''
             updated-at.old
         ==
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %6
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            new-questions
+            ~
+            ~
+            ~
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %6
       =/  new-questions=(map @tas card-question)
         %-  ~(run by questions.p.old-state)
         |=  old=card-question-six
@@ -460,22 +600,214 @@
             result-back.old
             updated-at.old
         ==
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state new-questions ~ ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %7
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state ~ ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %8
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state ~ '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %9
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %10
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state '' ~ ~ ~ ~ 0 ~ ~ ~ ~])]
-    %11
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state ~ ~ ~ 0 ~ ~ ~ ~])]
-    %12
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state contexts.p.old-state question-contexts.p.old-state ~ 0 ~ ~ ~ ~])]
-    %13
-      [init-cards this(state [%14 stacks.p.old-state paths.p.old-state stack-subs.p.old-state captures.p.old-state provenance.p.old-state questions.p.old-state models.p.old-state changes.p.old-state logins.p.old-state bridge-secret.p.old-state bridge-nonces.p.old-state contexts.p.old-state question-contexts.p.old-state shared-context.p.old-state shared-manifest-rev.p.old-state outstanding-keens.p.old-state remote-manifests.p.old-state recent-clay.p.old-state ~])]
-    %14
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            new-questions
+            ~
+            ~
+            ~
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %7
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            questions.p.old-state
+            models.p.old-state
+            ~
+            ~
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %8
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            questions.p.old-state
+            models.p.old-state
+            changes.p.old-state
+            ~
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %9
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            questions.p.old-state
+            models.p.old-state
+            changes.p.old-state
+            logins.p.old-state
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %10
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            questions.p.old-state
+            models.p.old-state
+            changes.p.old-state
+            logins.p.old-state
+            ''
+            ~
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %11
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            questions.p.old-state
+            models.p.old-state
+            changes.p.old-state
+            logins.p.old-state
+            bridge-secret.p.old-state
+            bridge-nonces.p.old-state
+            ~
+            ~
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %12
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            questions.p.old-state
+            models.p.old-state
+            changes.p.old-state
+            logins.p.old-state
+            bridge-secret.p.old-state
+            bridge-nonces.p.old-state
+            contexts.p.old-state
+            question-contexts.p.old-state
+            ~
+            0
+            ~
+            ~
+            ~
+            ~
+        ==
+      ==
+        %13
+      :-  init-cards
+      %=  this
+        state
+        :*  %14
+            stacks.p.old-state
+            paths.p.old-state
+            stack-subs.p.old-state
+            captures.p.old-state
+            provenance.p.old-state
+            questions.p.old-state
+            models.p.old-state
+            changes.p.old-state
+            logins.p.old-state
+            bridge-secret.p.old-state
+            bridge-nonces.p.old-state
+            contexts.p.old-state
+            question-contexts.p.old-state
+            shared-context.p.old-state
+            shared-manifest-rev.p.old-state
+            outstanding-keens.p.old-state
+            remote-manifests.p.old-state
+            recent-clay.p.old-state
+            ~
+        ==
+      ==
+        %14
       [init-cards this(state p.old-state)]
     ==
     ++  legacy-model
@@ -499,28 +831,46 @@
           items
         %-  ~(run by items.prev)
         |=  =item-1
-        ^-  item::test
+        ::  test
+        ::
+        ^-  item
         (item content.item-1 learn.item-1 ~ name.item-1)
           review-items
         %-  ~(run by review-items.prev)
         |=  =item-1
         ^-  item
-         (item content.item-1 learn.item-1 ~ name.item-1)
+        (item content.item-1 learn.item-1 ~ name.item-1)
       ==
     --
   ++  on-leave  on-leave:def
   ++  on-peek
     |=  =path
     ^-  (unit (unit cage))
-    ?+  path  (on-peek:def path)
-        [%x %mcp %tools ~]    ``noun+!>(tools)
-        [%x %mcp %prompts ~]  ``noun+!>(prompts)
-        [%x %review ~]        ``noun+!>(all-reviews)
-        [%x %all ~]        ``noun+!>(stacks.state)
+    ?+    path  (on-peek:def path)
+        [%x %mcp %tools ~]
+      ``noun+!>(tools)
+        [%x %mcp %prompts ~]
+      ``noun+!>(prompts)
+        [%x %review ~]
+      ``noun+!>(all-reviews)
+        [%x %all ~]
+      ``noun+!>(stacks.state)
         [%x %ai-state ~]
-      ``noun+!>(`ai-state`[stacks.state captures.state provenance.state questions.state models.state changes.state contexts.state question-contexts.state])
-        [%x %logins ~]  ``noun+!>(logins.state)
-        [%x %stack-subs ~]        ``noun+!>(stack-subs.state)
+      =/  snapshot=ai-state
+        :*  stacks.state
+            captures.state
+            provenance.state
+            questions.state
+            models.state
+            changes.state
+            contexts.state
+            question-contexts.state
+        ==
+      ``noun+!>(snapshot)
+        [%x %logins ~]
+      ``noun+!>(logins.state)
+        [%x %stack-subs ~]
+      ``noun+!>(stack-subs.state)
         [%x %stacks *]
       ?~  t.t.path
         ~
@@ -547,12 +897,12 @@
   |=  del=primary-delta
   =/  target=(unit @tas)
     ?+  del  ~
-      [%add-item * * *]           ?:(=(our.bol who.del) `stack.del ~)
-      [%add-review-item * * *]    ?:(=(our.bol who.del) `stack.del ~)
-      [%delete-item * * *]        ?:(=(our.bol who.del) `stack.del ~)
+      [%add-item * * *]            ?:(=(our.bol who.del) `stack.del ~)
+      [%add-review-item * * *]     ?:(=(our.bol who.del) `stack.del ~)
+      [%delete-item * * *]         ?:(=(our.bol who.del) `stack.del ~)
       [%delete-review-item * * *]  ?:(=(our.bol who.del) `stack.del ~)
-      [%update-stack * *]         ?:(=(our.bol who.del) `name.data.del ~)
-      [%delete-stack * *]         ?:(=(our.bol who.del) `stack.del ~)
+      [%update-stack * *]          ?:(=(our.bol who.del) `name.data.del ~)
+      [%delete-stack * *]          ?:(=(our.bol who.del) `stack.del ~)
     ==
   %-  emil
   %-  zing
@@ -584,7 +934,7 @@
 ::  +stack-emit: handles state updates for the given stack
 ::
 ++  stack-emit
-  :: the door shares one stack across its action arms.
+  ::  the door shares one stack across its action arms.
   ::
   |_  =stack
   ::
@@ -607,8 +957,9 @@
     =/  info=stack-info  p.info.stack
     ?.  (~(has by stack-subs) [owner.info name.stack])
       %.  [%add-stack owner.info stack]
-      %=  emit-primary
-        stack-subs  (~(put by stack-subs.state) [owner.info name.stack] stack)
+      %=    emit-primary
+          stack-subs
+        (~(put by stack-subs.state) [owner.info name.stack] stack)
       ==
     this
   ::
@@ -616,12 +967,21 @@
     |=  owner=@p
     ^+  this
     =?  ..emit  !=(our.bol owner)
-      (emit [%pass /import/(scot %p owner)/[name.stack] %agent [owner %seer] %leave ~])
+      %-  emit
+      :*  %pass
+          /import/(scot %p owner)/[name.stack]
+          %agent
+          [owner %seer]
+          %leave
+          ~
+      ==
     =.  ..emit
       %.  [%delete-stack owner name.stack]
-      %=  emit-primary
-        stacks  ?:(=(our.bol owner) (~(del by stacks) name.stack) stacks)
-        stack-subs  (~(del by stack-subs) [owner name.stack])
+      %=    emit-primary
+          stacks
+        ?:(=(our.bol owner) (~(del by stacks) name.stack) stacks)
+          stack-subs
+        (~(del by stack-subs) [owner name.stack])
       ==
     ~(update-review stack-emit stak)
   ::
@@ -648,7 +1008,8 @@
   ++  delete-item
     |=  item=@tas
     ^+  this
-    =.  ..emit  (emit-primary [%delete-item our.bol name.stack item])
+    =.  ..emit
+      (emit-primary [%delete-item our.bol name.stack item])
     %~  update-stack  stack-emit
     %=  stack
       items  (~(del by items.stack) item)
@@ -658,7 +1019,8 @@
   ++  add-item
     |=  =item
     ^+  this
-    =.  ..emit  (emit-primary [%add-item our.bol name.stack item])
+    =.  ..emit
+      (emit-primary [%add-item our.bol name.stack item])
     =.  ..emit
     %~  update-stack  stack-emit
     %=  stack
@@ -683,8 +1045,9 @@
     ^+  this
     =.  ..emit
       %~  update-stack  stack-emit
-      %=  stack
-        review-items  (~(uni by review-items.stack) (my ~[[name.item item]]))
+      %=    stack
+          review-items
+        (~(uni by review-items.stack) (my ~[[name.item item]]))
       ==
     ~(update-review stack-emit stak)
   ::
@@ -701,7 +1064,8 @@
   ++  update-learn
     |=  [=item =recall-grade]
     ^+  this
-    =.  ..emit  (~(delete-review-item stack-emit stack) item)
+    =.  ..emit
+      (~(delete-review-item stack-emit stack) item)
     =/  =learn  (generate-learn item recall-grade)
     =/  review-date=@da  (add now.bol interval.learn)
     =/  =path
@@ -741,7 +1105,6 @@
       items  updated-items
       info  [%.y stack-info(owner our.bol)]
     ==
-
   ::
   ++  update-review
     ^+  this
@@ -759,7 +1122,8 @@
 ++  poke-handle-http-request
   |=  [eyre-id=@ta =inbound-request:eyre]
   ^-  (quip card _state)
-  =/  request-line  (parse-request-line url.request.inbound-request)
+  =/  request-line
+    (parse-request-line url.request.inbound-request)
   ?+  method.request.inbound-request
     (respond-payload eyre-id [[405 ~] ~])
   ::
@@ -770,7 +1134,8 @@
     =/  fields=(map @t @t)
       %-  malt
       %-  fall  :_  ~
-      (rush q:(fall body.request.inbound-request *octs) yquy:de-purl:html)
+      %+  rush  q:(fall body.request.inbound-request *octs)
+      yquy:de-purl:html
     (web-post eyre-id request-line fields)
   ==
 ::
@@ -806,7 +1171,17 @@
     =/  remote  (get-arg args.request-line 'remote')
     ?:  &(?=(~ dsk) ?=(~ qry) ?=(~ pick) ?=(~ remote))
       (respond-page eyre-id [%stack owner name] ~)
-    (respond-page eyre-id [%stack-browse owner name (fall dsk '') (fall qry '') (fall pick '') (fall remote '')] ~)
+    %^    respond-page
+        eyre-id
+      :*  %stack-browse
+          owner
+          name
+          (fall dsk '')
+          (fall qry '')
+          (fall pick '')
+          (fall remote '')
+      ==
+    ~
       [[~ [%apps %seer %clay-browse ~]] *]
     (respond-clay-browse eyre-id args.request-line)
   ::  preserve the old json endpoints for cli and external integrations.
@@ -829,7 +1204,8 @@
     %-  json-response:gen
     (status-to-json learn.item)
       [[[~ %json] [%seer %stacks ~]] ~]
-    (respond-payload eyre-id (json-response:gen (state-to-json state)))
+    %+  respond-payload  eyre-id
+    (json-response:gen (state-to-json state))
   ::  legacy links now land on the repaired ui.
   ::
       [[~ [%seer ~]] ~]
@@ -871,22 +1247,46 @@
           front
           back
       ==
-    (apply-web-action eyre-id act [%stack our.bol stack-name] `'Card added.')
+    %:  apply-web-action
+      eyre-id
+      act
+      [%stack our.bol stack-name]
+      `'Card added.'
+    ==
   ::
       [[~ [%apps %seer %actions %approve-proposal ~]] ~]
     =/  capture-id   (slav %tas (form-got fields 'capture'))
     =/  proposal-id  (slav %tas (form-got fields 'proposal'))
     =/  maybe-session  (~(get by captures.state) capture-id)
     ?~  maybe-session
-      (respond-page eyre-id [%inbox ~] `'That capture is no longer available.')
-    =/  maybe-draft  (~(get by proposals.u.maybe-session) proposal-id)
+      %^    respond-page
+          eyre-id
+        [%inbox ~]
+      `'That capture is no longer available.'
+    =/  maybe-draft
+      (~(get by proposals.u.maybe-session) proposal-id)
     ?~  maybe-draft
-      (respond-page eyre-id [%inbox ~] `'That proposal is no longer available.')
-    =/  maybe-stack  (~(get by stacks.state) stack.u.maybe-draft)
+      %^    respond-page
+          eyre-id
+        [%inbox ~]
+      `'That proposal is no longer available.'
+    =/  maybe-stack
+      (~(get by stacks.state) stack.u.maybe-draft)
     ?~  maybe-stack
-      (respond-page eyre-id [%inbox ~] `'The target stack does not exist. Reject the proposal, or stage a new one.')
+      =/  message=@t
+        %+  rap  3
+        :~  'The target stack does not exist. Reject the proposal, '
+            'or stage a new one.'
+        ==
+      %^    respond-page
+          eyre-id
+        [%inbox ~]
+      `message
     ?:  (~(has by items.u.maybe-stack) card.u.maybe-draft)
-      (respond-page eyre-id [%inbox ~] `'That card ID is in use. Reject the proposal, or stage a new one.')
+      %^    respond-page
+          eyre-id
+        [%inbox ~]
+      `'That card ID is in use. Reject the proposal, or stage a new one.'
     %:  apply-web-action
       eyre-id
       [%approve-proposal capture-id proposal-id]
@@ -946,11 +1346,20 @@
       [[~ [%apps %seer %actions %request-change ~]] ~]
     =/  prompt  (form-got fields 'prompt')
     =/  target-name  (slav %tas (form-got fields 'target'))
-    =/  target=change-target  ?:(=(%desk target-name) %desk %library)
+    =/  target=change-target
+      ?:(=(%desk target-name) %desk %library)
     =/  model-id  (slav %tas (form-got fields 'model'))
     =/  maybe-profile  (~(get by models.state) model-id)
     ?~  maybe-profile
-      (respond-page eyre-id [%inbox ~] `'That assistant model is unavailable. Select another model before you send the request again.')
+      =/  message=@t
+        %+  rap  3
+        :~  'That assistant model is unavailable. Select another '
+            'model before you send the request again.'
+        ==
+      %^    respond-page
+          eyre-id
+        [%inbox ~]
+      `message
     =/  id-suffix=tape
       %+  skim
         (trip (scot %uv (mug [now.bol target prompt model-id])))
@@ -1000,12 +1409,15 @@
       [%inbox ~]
       `'Change history removed.'
     ==
+  ::
       [[~ [%apps %seer %actions %add-context-source ~]] ~]
     =/  owner       (slav %p (form-got fields 'owner'))
     =/  stack-name  (slav %tas (form-got fields 'stack'))
     =/  card-raw    (form-got fields 'card')
     =/  card=(unit @tas)
-      ?:(=(0 (met 3 card-raw)) ~ (some `@tas`(slav %tas card-raw)))
+      ?:  =(0 (met 3 card-raw))
+        ~
+      (some `@tas`(slav %tas card-raw))
     =/  kind-name  (slav %tas (form-got fields 'kind'))
     =/  kind=context-kind
       ?+  kind-name  %note
@@ -1020,15 +1432,22 @@
     =/  clay-loc=(unit [who=@p dek=@tas rest=path])
       ?.(=(%clay kind) ~ (parse-clay-locator locator))
     ?:  &(=(%clay kind) ?=(~ clay-loc))
-      (respond-page eyre-id [%stack owner stack-name] `'Use a Clay path like /doc/notes/md or /~ship/desk/doc/notes/md.')
-    =/  foreign-add=?  &(?=(^ clay-loc) !=(our.bol who.u.clay-loc))
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `'Use a Clay path like /doc/notes/md or /~ship/desk/doc/notes/md.'
+    =/  foreign-add=?
+      &(?=(^ clay-loc) !=(our.bol who.u.clay-loc))
     ?:  ?&  ?=(^ clay-loc)
             !=(our.bol who.u.clay-loc)
             ?|  ?=(~ rest.u.clay-loc)
                 !(~(has in clay-text-marks) (rear rest.u.clay-loc))
             ==
         ==
-      (respond-page eyre-id [%stack owner stack-name] `'Directories from other ships are not supported. Pick a specific file.')
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `'Directories from other ships are not supported. Pick a specific file.'
     =/  maybe-content=(unit @t)
       ?:  foreign-add  `''
       ?:  =(%clay kind)
@@ -1038,35 +1457,74 @@
         `p.loaded
       `submitted-content
     ?~  maybe-content
-      (respond-page eyre-id [%stack owner stack-name] `'That Clay path could not be read. Check the desk and file, e.g. /~ship/base/gen/hood/hi/hoon.')
+      =/  message=@t
+        %+  rap  3
+        :~  'That Clay path could not be read. Check the desk and '
+            'file, e.g. /~ship/base/gen/hood/hi/hoon.'
+        ==
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `message
     =/  content=@t  u.maybe-content
     ?:  (gth (met 3 content) 131.072)
-      (respond-page eyre-id [%stack owner stack-name] `'Context sources must be 128 KB or smaller.')
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `'Context sources must be 128 KB or smaller.'
     ?:  ?&  !=(%web kind)
             !foreign-add
             =(0 (met 3 content))
         ==
-      (respond-page eyre-id [%stack owner stack-name] `'This context source is empty.')
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `'This context source is empty.'
     ?:  ?&  =(%web kind)
             =(0 (met 3 locator))
         ==
-      (respond-page eyre-id [%stack owner stack-name] `'Enter an HTTP or HTTPS URL to fetch.')
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `'Enter an HTTP or HTTPS URL to fetch.'
     =/  raw-label  (form-got fields 'label')
     =/  label=@t
       ?:  !=(0 (met 3 raw-label))  raw-label
       ?:(=(%note kind) 'Context note' locator)
     =/  id-suffix=tape
       %+  skim
-        (trip (scot %uv (mug [now.bol owner stack-name card kind label locator content])))
+        %-  trip
+        %+  scot  %uv
+        %-  mug
+        :*  now.bol
+            owner
+            stack-name
+            card
+            kind
+            label
+            locator
+            content
+        ==
       |=  char=@
       !=(char '.')
     =/  context-id=@tas
       `@tas`(slav %tas (crip (weld "ctx-" id-suffix)))
     %:  apply-web-action
       eyre-id
-      [%add-context-source context-id owner stack-name card kind label locator content]
+      :*  %add-context-source
+          context-id
+          owner
+          stack-name
+          card
+          kind
+          label
+          locator
+          content
+      ==
       [%stack owner stack-name]
-      ?:(=(%web kind) `'Web source queued for the local bridge.' `'Context attached.')
+      ?:  =(%web kind)
+        `'Web source queued for the local bridge.'
+      `'Context attached.'
     ==
   ::
       [[~ [%apps %seer %actions %remove-context-source ~]] ~]
@@ -1102,28 +1560,37 @@
       `'Refreshing from the source file.'
     ==
   ::
-  ::
       [[~ [%apps %seer %actions %browse-remote-manifest ~]] ~]
     =/  owner       (slav %p (form-got fields 'owner'))
     =/  stack-name  (slav %tas (form-got fields 'stack'))
     =/  ship-raw    (form-got fields 'ship')
     =/  who=(unit @p)  (slaw %p ship-raw)
     ?~  who
-      (respond-page eyre-id [%stack owner stack-name] `'Enter a ship name like ~sampel-palnet.')
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `'Enter a ship name like ~sampel-palnet.'
     ?:  =(our.bol u.who)
-      (respond-page eyre-id [%stack owner stack-name] `'That is this ship. Use the browser above for local files.')
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `'That is this ship. Use the browser above for local files.'
     %:  apply-web-action
       eyre-id
       [%fetch-remote-manifest u.who]
       [%stack-browse owner stack-name '' '' '' (scot %p u.who)]
       ~
     ==
+  ::
       [[~ [%apps %seer %actions %share-clay-context ~]] ~]
     =/  owner       (slav %p (form-got fields 'owner'))
     =/  stack-name  (slav %tas (form-got fields 'stack'))
     =/  maybe-pax   (parse-clay-path (form-got fields 'path'))
     ?~  maybe-pax
-      (respond-page eyre-id [%stack owner stack-name] `'Use a desk-first path like /base/gen/hood/hi/hoon.')
+      %^    respond-page
+          eyre-id
+        [%stack owner stack-name]
+      `'Use a desk-first path like /base/gen/hood/hi/hoon.'
     %:  apply-web-action
       eyre-id
       [%share-clay-context u.maybe-pax]
@@ -1144,7 +1611,6 @@
       `'No longer listed for other ships.'
     ==
   ::
-  ::
       [[~ [%apps %seer %actions %ask-card ~]] ~]
     =/  owner          (slav %p (form-got fields 'owner'))
     =/  stack-name     (slav %tas (form-got fields 'stack'))
@@ -1160,11 +1626,28 @@
     =/  model-id  (slav %tas (form-got fields 'model'))
     =/  maybe-profile  (~(get by models.state) model-id)
     ?~  maybe-profile
-      (respond-page eyre-id target-page `'That assistant model is unavailable. Select another model before you send the request again.')
+      =/  message=@t
+        %+  rap  3
+        :~  'That assistant model is unavailable. Select another '
+            'model before you send the request again.'
+        ==
+      %^    respond-page
+          eyre-id
+        target-page
+      `message
     =/  profile=assistant-model  u.maybe-profile
     =/  id-suffix=tape
       %+  skim
-        (trip (scot %uv (mug [now.bol owner stack-name item-name mode prompt])))
+        %-  trip
+        %+  scot  %uv
+        %-  mug
+        :*  now.bol
+            owner
+            stack-name
+            item-name
+            mode
+            prompt
+        ==
       |=  char=@
       !=(char '.')
     =/  question-id=@tas
@@ -1172,14 +1655,24 @@
     =/  context-ids=(list @tas)
       %+  murn  ~(tap by contexts.state)
       |=  [source-id=@tas source=context-source]
-      ?.  (context-applies source owner stack-name `item-name)  ~
+      ?.  (context-applies source owner stack-name `item-name)
+        ~
       =/  key=@t
         (crip "context-{(trip source-id)}")
       ?:  (~(has by fields) key)  `source-id
       ~
     %:  apply-web-action
       eyre-id
-      [%ask-card question-id owner stack-name item-name mode profile prompt context-ids]
+      :*  %ask-card
+          question-id
+          owner
+          stack-name
+          item-name
+          mode
+          profile
+          prompt
+          context-ids
+      ==
       target-page
       `'Request sent to {(trip label.profile)}.'
     ==
@@ -1339,14 +1832,17 @@
   ^-  (quip card _state)
   =^  action-cards  state  (poke-seer-action act)
   :_  state
-  (weld action-cards (give-simple-payload:app eyre-id (render-action-page page notice)))
+  %+  weld  action-cards
+  %+  give-simple-payload:app  eyre-id
+  (render-action-page page notice)
 ::
 ++  render-action-page
   |=  [page=page:index notice=(unit @t)]
   ^-  simple-payload:http
   =/  payload  (render-page page notice)
   =.  headers.response-header.payload
-    [['HX-Push-Url' (page-url page)] headers.response-header.payload]
+    :-  ['HX-Push-Url' (page-url page)]
+    headers.response-header.payload
   payload
 ::
 ++  page-url
@@ -1368,7 +1864,9 @@
 ++  respond-page
   |=  [eyre-id=@ta page=page:index notice=(unit @t)]
   ^-  (quip card _state)
-  [(give-simple-payload:app eyre-id (render-page page notice)) state]
+  :_  state
+  %+  give-simple-payload:app  eyre-id
+  (render-page page notice)
 ::
 ++  respond-payload
   |=  [eyre-id=@ta payload=simple-payload:http]
@@ -1385,14 +1883,39 @@
     ?~  dek  ~
     ?.  (~(has in (silt clay-desks)) u.dek)  ~
     =/  walked  (walk-clay-desk u.dek)
-    `[%files u.dek total.walked (filter-clay-paths q.page files.walked)]
+    :-  ~
+    :*  %files
+        u.dek
+        total.walked
+        (filter-clay-paths q.page files.walked)
+    ==
   =/  desks=(list @tas)
     ?:(?=(?(%stack %stack-browse) -.page) clay-desks ~)
   %-  manx-response:gen
   =/  stale=(map @tas ?(%stale %gone))
     ?.  ?=(?(%stack %stack-browse) -.page)  ~
     clay-source-stale
-  (render:index our.bol stacks.state stack-subs.state captures.state questions.state contexts.state question-contexts.state models.state changes.state logins.state all-reviews page notice picker shared-context.state remote-manifests.state recent-clay.state stale desks)
+  %:  render:index
+    our.bol
+    stacks.state
+    stack-subs.state
+    captures.state
+    questions.state
+    contexts.state
+    question-contexts.state
+    models.state
+    changes.state
+    logins.state
+    all-reviews
+    page
+    notice
+    picker
+    shared-context.state
+    remote-manifests.state
+    recent-clay.state
+    stale
+    desks
+  ==
 ::
 ++  get-arg
   |=  [args=(list [k=@t v=@t]) key=@t]
@@ -1448,7 +1971,11 @@
   =/  captured  (~(get by context-revs.state) id)
   ?~  captured  $(rows t.rows)
   =/  pax=path
-    [(scot %p our.bol) dek.u.parsed (scot %da now.bol) rest.u.parsed]
+    :*  (scot %p our.bol)
+        dek.u.parsed
+        (scot %da now.bol)
+        rest.u.parsed
+    ==
   =/  ark=(each arch tang)  (mule |.(.^(arch %cy pax)))
   ?:  |(?=(%| -.ark) ?=(~ fil.p.ark))
     $(rows t.rows, out (~(put by out) id %gone))
@@ -1462,9 +1989,9 @@
 ::
 ++  clay-desks
   ^-  (list @tas)
-  %+  sort
-    ~(tap in .^((set desk) %cd [(scot %p our.bol) '' (scot %da now.bol) ~]))
-  aor
+  =/  all=(set desk)
+    .^((set desk) %cd [(scot %p our.bol) '' (scot %da now.bol) ~])
+  (sort ~(tap in all) aor)
 ::
 ::  +walk-clay-desk: every text-compatible file in a desk, from a
 ::  single %ct scry.  total counts matches past the collection cap.
@@ -1579,7 +2106,11 @@
   ?~  parsed  !!
   ?.  =(our.bol who.u.parsed)  !!
   =/  pax=path
-    [(scot %p who.u.parsed) dek.u.parsed (scot %da now.bol) rest.u.parsed]
+    :*  (scot %p who.u.parsed)
+        dek.u.parsed
+        (scot %da now.bol)
+        rest.u.parsed
+    ==
   =/  archive=arch  .^(arch %cy pax)
   ?^  fil.archive
     (clay-file-text pax)
@@ -1639,13 +2170,40 @@
   |=  op=state-operation
   ^-  ?
   ?-  kind.op
-    %create-stack  ?&(=(0 (met 3 card.op)) !=(0 (met 3 title.op)))
-    %rename-stack  ?&(=(0 (met 3 card.op)) !=(0 (met 3 title.op)) !=(0 (met 3 original-title.op)))
-    %delete-stack  ?&(=(0 (met 3 card.op)) !=(0 (met 3 original-title.op)))
-    %create-card   ?&(!=(0 (met 3 card.op)) !=(0 (met 3 title.op)) !=(0 (met 3 front.op)) !=(0 (met 3 back.op)))
-    %edit-card     ?&(!=(0 (met 3 card.op)) !=(0 (met 3 title.op)) !=(0 (met 3 front.op)) !=(0 (met 3 back.op)) !=(0 (met 3 original-title.op)))
-    %delete-card   ?&(!=(0 (met 3 card.op)) !=(0 (met 3 original-title.op)))
-    %queue-card    ?&(!=(0 (met 3 card.op)) !=(0 (met 3 original-title.op)))
+      %create-stack
+    ?&  =(0 (met 3 card.op))
+        !=(0 (met 3 title.op))
+    ==
+      %rename-stack
+    ?&  =(0 (met 3 card.op))
+        !=(0 (met 3 title.op))
+        !=(0 (met 3 original-title.op))
+    ==
+      %delete-stack
+    ?&  =(0 (met 3 card.op))
+        !=(0 (met 3 original-title.op))
+    ==
+      %create-card
+    ?&  !=(0 (met 3 card.op))
+        !=(0 (met 3 title.op))
+        !=(0 (met 3 front.op))
+        !=(0 (met 3 back.op))
+    ==
+      %edit-card
+    ?&  !=(0 (met 3 card.op))
+        !=(0 (met 3 title.op))
+        !=(0 (met 3 front.op))
+        !=(0 (met 3 back.op))
+        !=(0 (met 3 original-title.op))
+    ==
+      %delete-card
+    ?&  !=(0 (met 3 card.op))
+        !=(0 (met 3 original-title.op))
+    ==
+      %queue-card
+    ?&  !=(0 (met 3 card.op))
+        !=(0 (met 3 original-title.op))
+    ==
   ==
 ::
 ++  operation-valid
@@ -1857,9 +2415,11 @@
     =/  =stack-info  p.info.stack
     =<  abet
     %~  update-stack  stack-emit
-    %=  stack
-      info         [%.y stack-info(title title.act, last-modified now.bol)]
-      last-update  now.bol
+    %=    stack
+        info
+      [%.y stack-info(title title.act, last-modified now.bol)]
+        last-update
+      now.bol
     ==
     ::
       %review-stack
@@ -1872,15 +2432,21 @@
     =/  stack  (~(got by stacks) stak.act)
     =/  item=item  (~(got by items.stack) name.act)
     =/  front-matter=(map knot cord)
-    %-  my
-    :~  title+title.act
-        author+(scot %p src.bol)
-        date-created+(scot %da date-created.content.item)
-        last-modified+(scot %da now.bol)
-    ==
+      %-  my
+      :~  title+title.act
+          author+(scot %p src.bol)
+          date-created+(scot %da date-created.content.item)
+          last-modified+(scot %da now.bol)
+      ==
     =/  front  (add-front-matter front-matter front.act)
     =/  back  (add-front-matter front-matter back.act)
-    =/  new-content  content.item(front front, back back, snippet (form-snippet front), title title.act)
+    =/  new-content
+      %=  content.item
+        front    front
+        back     back
+        snippet  (form-snippet front)
+        title    title.act
+      ==
     =<  abet
     %.  item(content new-content)
     %~  edit-item  stack-emit  stack
@@ -1893,33 +2459,41 @@
     %.  item
     %~  add-review-item  stack-emit  stack
       %copy-stack
-    =/  their-stack=stack  (~(got by stack-subs) [owner.act stak.act])
-
+    =/  their-stack=stack
+      (~(got by stack-subs) [owner.act stak.act])
     =<  abet
     =.  ..emit  ~(update-owner stack-emit their-stack)
     ~(add-stack stack-emit stak:emit)
       %answered-item
     =/  is-owner=?  =(our.bol owner.act)
     =/  stk=stack
-    ?:  is-owner
-      (~(got by stacks) stak.act)
-    (~(got by stack-subs) [owner.act stak.act])
+      ?:  is-owner
+        (~(got by stacks) stak.act)
+      (~(got by stack-subs) [owner.act stak.act])
     =/  =item  (~(got by items.stk) item.act)
     =/  mov=(unit card)
-    ?:  is-owner
-      ~
-    =/  new-act=action
-      :*  %new-item
-          owner.act
-          our.bol
-          stak.act
-          name.item
-          title.content.item
-          [read=*rule:clay write=*rule:clay]
-          front.content.item
-          back.content.item
+      ?:  is-owner
+        ~
+      =/  new-act=action
+        :*  %new-item
+            owner.act
+            our.bol
+            stak.act
+            name.item
+            title.content.item
+            [read=*rule:clay write=*rule:clay]
+            front.content.item
+            back.content.item
         ==
-      [~ [%pass /stacks %agent [our.bol %seer] %poke %seer-action !>(new-act)]]
+      :-  ~
+      :*  %pass
+          /stacks
+          %agent
+          [our.bol %seer]
+          %poke
+          %seer-action
+          !>(new-act)
+      ==
     =<  abet
     ?.  ?=(%~ mov)
       (emit (need mov))
@@ -1950,7 +2524,8 @@
           0
           ~
       ==
-    =.  captures.state  (~(put by captures.state) id.act session)
+    =.  captures.state
+      (~(put by captures.state) id.act session)
     [~ state]
       %stage-card
     =/  maybe-session  (~(get by captures.state) capture.act)
@@ -2073,7 +2648,11 @@
           label.act
           locator.act
           content.act
-          ?:  |(=(%web kind.act) ?=(^ (foreign-clay-locator kind.act locator.act)))  %pending  %ready
+          ?:  ?|  =(%web kind.act)
+                  ?=(^ (foreign-clay-locator kind.act locator.act))
+              ==
+            %pending
+          %ready
           ''
           ''
           %.y
@@ -2083,7 +2662,9 @@
     =.  contexts.state  (~(put by contexts.state) id.act source)
     =?  recent-clay.state  =(%clay kind.act)
       %+  scag  8
-      `(list @t)`[locator.act (skip recent-clay.state |=(l=@t =(l locator.act)))]
+      ^-  (list @t)
+      :-  locator.act
+      (skip recent-clay.state |=(l=@t =(l locator.act)))
     =?  context-revs.state
         ?&  =(%clay kind.act)
             ?=(~ (foreign-clay-locator kind.act locator.act))
@@ -2097,10 +2678,20 @@
       %+  ~(put by outstanding-keens.state)  id.act
       [who.u.foreign [dek.u.foreign rest.u.foreign] now.bol]
     :_  state
-    :~  :*  %pass  [%shared-fetch id.act ~]  %agent  [who.u.foreign %seer]
-            %watch  [%shared-context %file dek.u.foreign rest.u.foreign]
+    :~  :*  %pass
+            [%shared-fetch id.act ~]
+            %agent
+            [who.u.foreign %seer]
+            %watch
+            [%shared-context %file dek.u.foreign rest.u.foreign]
         ==
-        [%pass [%shared-timeout id.act ~] %arvo %b %wait (add now.bol ~m2)]
+        :*  %pass
+            [%shared-timeout id.act ~]
+            %arvo
+            %b
+            %wait
+            (add now.bol ~m2)
+        ==
     ==
       %remove-context-source
     =/  maybe-source  (~(get by contexts.state) id.act)
@@ -2119,8 +2710,17 @@
             =(%web kind.source)
         ==
       [~ state]
-    ?.  (bridge-proof-valid %claim-context-source id.act worker.act ~ nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    ?.  %:  bridge-proof-valid
+          %claim-context-source
+          id.act
+          worker.act
+          ~
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
     =.  status.source  %working
     =.  worker.source  worker.act
     =.  updated-at.source  now.bol
@@ -2135,8 +2735,17 @@
             =(%web kind.source)
         ==
       [~ state]
-    ?.  (bridge-proof-valid %recover-context-source id.act worker.act ~[worker.source] nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    ?.  %:  bridge-proof-valid
+          %recover-context-source
+          id.act
+          worker.act
+          ~[worker.source]
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
     =.  status.source  %pending
     =.  worker.source  ''
     =.  error.source  ''
@@ -2155,9 +2764,19 @@
             (lte (met 3 label.act) 240)
         ==
       [~ state]
-    ?.  (bridge-proof-valid %finish-context-source id.act worker.act ~[label.act content.act] nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
-    =.  label.source  ?:(=(0 (met 3 label.act)) label.source label.act)
+    ?.  %:  bridge-proof-valid
+          %finish-context-source
+          id.act
+          worker.act
+          ~[label.act content.act]
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
+    =.  label.source
+      ?:(=(0 (met 3 label.act)) label.source label.act)
     =.  content.source  content.act
     =.  status.source  %ready
     =.  error.source  ''
@@ -2175,8 +2794,17 @@
             (lte (met 3 error.act) 2.048)
         ==
       [~ state]
-    ?.  (bridge-proof-valid %fail-context-source id.act worker.act ~[error.act] nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    ?.  %:  bridge-proof-valid
+          %fail-context-source
+          id.act
+          worker.act
+          ~[error.act]
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
     =.  status.source  %failed
     =.  error.source  error.act
     =.  updated-at.source  now.bol
@@ -2191,26 +2819,42 @@
             !=(%pending status.source)
         ==
       [~ state]
-    =/  foreign  (foreign-clay-locator kind.source locator.source)
+    =/  foreign
+      (foreign-clay-locator kind.source locator.source)
     ?^  foreign
       =.  status.source  %pending
       =.  error.source  ''
       =.  updated-at.source  now.bol
-      =.  contexts.state  (~(put by contexts.state) id.act source)
+      =.  contexts.state
+        (~(put by contexts.state) id.act source)
       =.  outstanding-keens.state
         %+  ~(put by outstanding-keens.state)  id.act
         [who.u.foreign [dek.u.foreign rest.u.foreign] now.bol]
       :_  state
-      :~  :*  %pass  [%shared-fetch id.act ~]  %agent  [who.u.foreign %seer]
-              %watch  [%shared-context %file dek.u.foreign rest.u.foreign]
+      :~  :*  %pass
+              [%shared-fetch id.act ~]
+              %agent
+              [who.u.foreign %seer]
+              %watch
+              [%shared-context %file dek.u.foreign rest.u.foreign]
           ==
-          [%pass [%shared-timeout id.act ~] %arvo %b %wait (add now.bol ~m2)]
+          :*  %pass
+              [%shared-timeout id.act ~]
+              %arvo
+              %b
+              %wait
+              (add now.bol ~m2)
+          ==
       ==
     =/  parsed  (parse-clay-locator locator.source)
     ?~  parsed  [~ state]
-    =/  loaded=(each @t tang)  (mule |.((read-clay-context locator.source)))
+    =/  loaded=(each @t tang)
+      (mule |.((read-clay-context locator.source)))
     ?:  ?=(%| -.loaded)  [~ state]
-    ?:  |(=(0 (met 3 p.loaded)) (gth (met 3 p.loaded) 131.072))  [~ state]
+    ?:  ?|  =(0 (met 3 p.loaded))
+            (gth (met 3 p.loaded) 131.072)
+        ==
+      [~ state]
     =.  content.source  p.loaded
     =.  status.source  %ready
     =.  error.source  ''
@@ -2227,23 +2871,36 @@
             =(%failed status.source)
         ==
       [~ state]
-    ?.  |(=(%web kind.source) ?=(^ (foreign-clay-locator kind.source locator.source)))
+    ?.  ?|  =(%web kind.source)
+            ?=(^ (foreign-clay-locator kind.source locator.source))
+        ==
       [~ state]
     =.  status.source  %pending
     =.  error.source  ''
     =.  worker.source  ''
     =.  updated-at.source  now.bol
     =.  contexts.state  (~(put by contexts.state) id.act source)
-    =/  foreign  (foreign-clay-locator kind.source locator.source)
+    =/  foreign
+      (foreign-clay-locator kind.source locator.source)
     ?~  foreign  [~ state]
     =.  outstanding-keens.state
       %+  ~(put by outstanding-keens.state)  id.act
       [who.u.foreign [dek.u.foreign rest.u.foreign] now.bol]
     :_  state
-    :~  :*  %pass  [%shared-fetch id.act ~]  %agent  [who.u.foreign %seer]
-            %watch  [%shared-context %file dek.u.foreign rest.u.foreign]
+    :~  :*  %pass
+            [%shared-fetch id.act ~]
+            %agent
+            [who.u.foreign %seer]
+            %watch
+            [%shared-context %file dek.u.foreign rest.u.foreign]
         ==
-        [%pass [%shared-timeout id.act ~] %arvo %b %wait (add now.bol ~m2)]
+        :*  %pass
+            [%shared-timeout id.act ~]
+            %arvo
+            %b
+            %wait
+            (add now.bol ~m2)
+        ==
     ==
       %fetch-remote-manifest
     ?.  =(our.bol src.bol)  [~ state]
@@ -2259,10 +2916,14 @@
       %-  zing
       :-  "/{(trip (scot %p our.bol))}/{(trip dek)}"
       (turn rest |=(k=@ta "/{(trip k)}"))
-    =/  loaded=(each @t tang)  (mule |.((read-clay-context (crip loc))))
+    =/  loaded=(each @t tang)
+      (mule |.((read-clay-context (crip loc))))
     ?:  ?=(%| -.loaded)  [~ state]
     =/  content=@t  p.loaded
-    ?:  |(=(0 (met 3 content)) (gth (met 3 content) 131.072))  [~ state]
+    ?:  ?|  =(0 (met 3 content))
+            (gth (met 3 content) 131.072)
+        ==
+      [~ state]
     =/  old  (~(get by shared-context.state) pax.act)
     =/  file-rev=@ud  ?~(old 1 +(rev.u.old))
     =/  label=@t  (crip loc)
@@ -2276,7 +2937,8 @@
     ?.  =(our.bol src.bol)  [~ state]
     =/  old  (~(get by shared-context.state) pax.act)
     ?~  old  [~ state]
-    =.  shared-context.state  (~(del by shared-context.state) pax.act)
+    =.  shared-context.state
+      (~(del by shared-context.state) pax.act)
     =/  manifest-rev=@ud  +(shared-manifest-rev.state)
     =.  shared-manifest-rev.state  manifest-rev
     [~ state]
@@ -2327,7 +2989,8 @@
           ''
           now.bol
       ==
-    =.  questions.state  (~(put by questions.state) id.act question)
+    =.  questions.state
+      (~(put by questions.state) id.act question)
     =.  question-contexts.state
       (~(put by question-contexts.state) id.act selected-contexts)
     [~ state]
@@ -2362,7 +3025,8 @@
     =.  status.question  %working
     =.  worker.question  worker.act
     =.  updated-at.question  now.bol
-    =.  questions.state  (~(put by questions.state) id.act question)
+    =.  questions.state
+      (~(put by questions.state) id.act question)
     [~ state]
       %answer-card-question
     =/  maybe-question  (~(get by questions.state) id.act)
@@ -2376,7 +3040,8 @@
     =.  status.question  %answered
     =.  response.question  response.act
     =.  updated-at.question  now.bol
-    =.  questions.state  (~(put by questions.state) id.act question)
+    =.  questions.state
+      (~(put by questions.state) id.act question)
     [~ state]
       %apply-card-edit
     =/  maybe-question  (~(get by questions.state) id.act)
@@ -2394,27 +3059,37 @@
       [~ state]
     =/  maybe-stack  (~(get by stacks.state) stack.question)
     ?~  maybe-stack
-      =.  status.question      %failed
-      =.  response.question    'The stack was removed before this edit could be applied.'
+      =.  status.question  %failed
+      =.  response.question
+        'The stack was removed before this edit could be applied.'
       =.  updated-at.question  now.bol
-      =.  questions.state  (~(put by questions.state) id.act question)
+      =.  questions.state
+        (~(put by questions.state) id.act question)
       [~ state]
-    =/  maybe-item  (~(get by items.u.maybe-stack) card.question)
+    =/  maybe-item
+      (~(get by items.u.maybe-stack) card.question)
     ?~  maybe-item
-      =.  status.question      %failed
-      =.  response.question    'The card was removed before this edit could be applied.'
+      =.  status.question  %failed
+      =.  response.question
+        'The card was removed before this edit could be applied.'
       =.  updated-at.question  now.bol
-      =.  questions.state  (~(put by questions.state) id.act question)
+      =.  questions.state
+        (~(put by questions.state) id.act question)
       [~ state]
     =/  current  u.maybe-item
     ?.  ?&  =(title.content.current title.question)
             =(front.content.current front.question)
             =(back.content.current back.question)
         ==
-      =.  status.question      %failed
-      =.  response.question    'The card changed after you sent this request. Review the current card. Retry the request if needed.'
+      =.  status.question  %failed
+      =.  response.question
+        %+  rap  3
+        :~  'The card changed after you sent this request. Review '
+            'the current card. Retry the request if needed.'
+        ==
       =.  updated-at.question  now.bol
-      =.  questions.state  (~(put by questions.state) id.act question)
+      =.  questions.state
+        (~(put by questions.state) id.act question)
       [~ state]
     =/  edit-act=action
       :*  %edit-item
@@ -2433,7 +3108,8 @@
     =.  result-front.question  front.act
     =.  result-back.question   back.act
     =.  updated-at.question    now.bol
-    =.  questions.state  (~(put by questions.state) id.act question)
+    =.  questions.state
+      (~(put by questions.state) id.act question)
     [edit-cards state]
       %fail-card-question
     =/  maybe-question  (~(get by questions.state) id.act)
@@ -2446,7 +3122,8 @@
     =.  status.question  %failed
     =.  response.question  response.act
     =.  updated-at.question  now.bol
-    =.  questions.state  (~(put by questions.state) id.act question)
+    =.  questions.state
+      (~(put by questions.state) id.act question)
     [~ state]
       %retry-card-question
     =/  maybe-question  (~(get by questions.state) id.act)
@@ -2457,7 +3134,8 @@
     =.  worker.question  ''
     =.  response.question  ''
     =.  updated-at.question  now.bol
-    =.  questions.state  (~(put by questions.state) id.act question)
+    =.  questions.state
+      (~(put by questions.state) id.act question)
     [~ state]
       %delete-card-question
     =.  questions.state  (~(del by questions.state) id.act)
@@ -2551,12 +3229,18 @@
         ==
       [~ state]
     ?.  (change-valid operations.request)
-      =.  status.request      %failed
-      =.  response.request    'The library changed after the plan was created. Seer did not apply the plan. Build a new plan.'
+      =.  status.request  %failed
+      =.  response.request
+        %+  rap  3
+        :~  'The library changed after the plan was created. Seer '
+            'did not apply the plan. Build a new plan.'
+        ==
       =.  updated-at.request  now.bol
-      =.  changes.state  (~(put by changes.state) id.act request)
+      =.  changes.state
+        (~(put by changes.state) id.act request)
       [~ state]
-    =^  operation-cards  state  (apply-operations operations.request)
+    =^  operation-cards  state
+      (apply-operations operations.request)
     =.  status.request      %applied
     =.  response.request    'Plan applied after approval.'
     =.  updated-at.request  now.bol
@@ -2602,6 +3286,7 @@
       %request-login
     ::  the ship never runs a provider login itself; it only queues the
     ::  request for the local bridge.  one live request per provider.
+    ::
     =/  existing=(list [@tas login-request])
       %+  skim  ~(tap by logins.state)
       |=  [id=@tas req=login-request]
@@ -2612,6 +3297,7 @@
       ?=(?(%pending %working %challenge) status.req)
     ?:  active  [~ state]
     ::  settled requests for this provider make way for the new one
+    ::
     =.  logins.state
       %-  malt
       %+  skip  ~(tap by logins.state)
@@ -2627,15 +3313,25 @@
       %+  skim  ~(tap by bridge-nonces.state)
       |=  [old-nonce=@t issued=@da]
       (lte (sub now.bol issued) ~m5)
-    =.  bridge-nonces.state  (~(put by bridge-nonces.state) nonce.act now.bol)
+    =.  bridge-nonces.state
+      (~(put by bridge-nonces.state) nonce.act now.bol)
     [~ state]
       %claim-login
     =/  maybe-login  (~(get by logins.state) id.act)
     ?~  maybe-login  [~ state]
     =/  req  u.maybe-login
     ?.  =(%pending status.req)  [~ state]
-    ?.  (bridge-proof-valid %claim-login id.act worker.act ~ nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    ?.  %:  bridge-proof-valid
+          %claim-login
+          id.act
+          worker.act
+          ~
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
     =/  next=login-request
       :*  id.req  provider.req  %working
           auth-url.req  user-code.req  pasted-code.req  message.req
@@ -2651,8 +3347,17 @@
             =(worker.act worker.req)
         ==
       [~ state]
-    ?.  (bridge-proof-valid %post-login-challenge id.act worker.act ~[auth-url.act user-code.act] nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    ?.  %:  bridge-proof-valid
+          %post-login-challenge
+          id.act
+          worker.act
+          ~[auth-url.act user-code.act]
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
     =/  next=login-request
       :*  id.req  provider.req  %challenge
           auth-url.act  user-code.act  pasted-code.req  message.req
@@ -2680,8 +3385,17 @@
             =(worker.act worker.req)
         ==
       [~ state]
-    ?.  (bridge-proof-valid %consume-login-code id.act worker.act ~ nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    ?.  %:  bridge-proof-valid
+          %consume-login-code
+          id.act
+          worker.act
+          ~
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
     =/  next=login-request
       :*  id.req  provider.req  %challenge
           auth-url.req  user-code.req  ''  message.req
@@ -2698,8 +3412,17 @@
             =(worker.act worker.req)
         ==
       [~ state]
-    ?.  (bridge-proof-valid %finish-login id.act worker.act ~ nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    ?.  %:  bridge-proof-valid
+          %finish-login
+          id.act
+          worker.act
+          ~
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
     =/  next=login-request
       :*  id.req  provider.req  %done
           ''  ''  ''  ''
@@ -2713,8 +3436,17 @@
     =/  req  u.maybe-login
     ?:  ?|(=(%done status.req) =(%failed status.req))  [~ state]
     ?.  =(worker.act worker.req)  [~ state]
-    ?.  (bridge-proof-valid %fail-login id.act worker.act ~[message.act] nonce.act proof.act)  [~ state]
-    =.  bridge-nonces.state  (~(del by bridge-nonces.state) nonce.act)
+    ?.  %:  bridge-proof-valid
+          %fail-login
+          id.act
+          worker.act
+          ~[message.act]
+          nonce.act
+          proof.act
+        ==
+      [~ state]
+    =.  bridge-nonces.state
+      (~(del by bridge-nonces.state) nonce.act)
     =/  next=login-request
       :*  id.req  provider.req  %failed
           ''  ''  ''  message.act
@@ -2760,8 +3492,13 @@
   =/  parts=(list @t)
     (welp ~['seer-bridge-v1' action id worker nonce] fields)
   =/  payload=@t
-    (crip (zing (turn parts |=(part=@t "{<(met 3 part)>}:{(trip part)}"))))
-  =(proof (hmac-sha256t:hmac:crypto bridge-secret.state payload))
+    %-  crip
+    %-  zing
+    %+  turn  parts
+    |=(part=@t "{<(met 3 part)>}:{(trip part)}")
+  .=  proof
+  %+  hmac-sha256t:hmac:crypto  bridge-secret.state
+  payload
 ::
 ++  serve-shared-manifest
   ^-  (quip card _state)
@@ -2779,9 +3516,11 @@
     %-  zing
     :-  "/{(trip (scot %p our.bol))}"
     (turn pax |=(k=@ta "/{(trip k)}"))
-  =/  loaded=(each @t tang)  (mule |.((read-clay-context (crip loc))))
+  =/  loaded=(each @t tang)
+    (mule |.((read-clay-context (crip loc))))
   ?:  ?=(%| -.loaded)  ~|(%shared-file-unreadable !!)
-  ?:  (gth (met 3 p.loaded) 131.072)  ~|(%shared-file-too-large !!)
+  ?:  (gth (met 3 p.loaded) 131.072)
+    ~|(%shared-file-too-large !!)
   :_  state
   :~  [%give %fact ~ %noun !>([%0 label.u.entry mark.u.entry p.loaded])]
       [%give %kick ~ ~]
@@ -2790,7 +3529,8 @@
 ++  fail-shared-fetch
   |=  [id=@tas msg=@t]
   ^-  (quip card _state)
-  =.  outstanding-keens.state  (~(del by outstanding-keens.state) id)
+  =.  outstanding-keens.state
+    (~(del by outstanding-keens.state) id)
   =/  maybe-source  (~(get by contexts.state) id)
   ?~  maybe-source  [~ state]
   =/  source  u.maybe-source
@@ -2808,14 +3548,17 @@
   ?~  maybe-source  [~ state]
   =/  source  u.maybe-source
   ?.  =(%pending status.source)  [~ state]
-  =/  payload  ((soft ,[%0 label=@t mark=@tas content=@t]) q.q.cage)
+  =/  payload
+    ((soft ,[%0 label=@t mark=@tas content=@t]) q.q.cage)
   ?~  payload
     (fail-shared-fetch id 'That ship sent an unexpected reply.')
   ?:  ?|  =(0 (met 3 content.u.payload))
           (gth (met 3 content.u.payload) 131.072)
       ==
-    (fail-shared-fetch id 'The shared file is empty or larger than 128 KB.')
-  =.  outstanding-keens.state  (~(del by outstanding-keens.state) id)
+    %+  fail-shared-fetch  id
+    'The shared file is empty or larger than 128 KB.'
+  =.  outstanding-keens.state
+    (~(del by outstanding-keens.state) id)
   =.  content.source  content.u.payload
   =.  status.source  %ready
   =.  error.source  ''
@@ -2827,7 +3570,8 @@
   |=  id=@tas
   ^-  (quip card _state)
   ?.  (~(has by outstanding-keens.state) id)  [~ state]
-  (fail-shared-fetch id 'Timed out waiting for that ship to reply.')
+  %+  fail-shared-fetch  id
+  'Timed out waiting for that ship to reply.'
 ::
 ++  fetch-remote-manifest
   |=  who=@p
@@ -2845,7 +3589,13 @@
   :~  :*  %pass  [%shared-manifest (scot %p who) ~]  %agent  [who %seer]
           %watch  /shared-context
       ==
-      [%pass [%shared-manifest-timeout (scot %p who) ~] %arvo %b %wait (add now.bol ~s45)]
+      :*  %pass
+          [%shared-manifest-timeout (scot %p who) ~]
+          %arvo
+          %b
+          %wait
+          (add now.bol ~s45)
+      ==
   ==
 ::
 ++  fail-remote-manifest
@@ -2864,7 +3614,8 @@
 ++  take-remote-manifest
   |=  [who=@p =cage]
   ^-  (quip card _state)
-  =/  payload  ((soft ,[%0 entries=(list manifest-entry)]) q.q.cage)
+  =/  payload
+    ((soft ,[%0 entries=(list manifest-entry)]) q.q.cage)
   ?~  payload  (fail-remote-manifest who)
   =.  remote-manifests.state
     %+  ~(put by remote-manifests.state)  who
@@ -2905,7 +3656,8 @@
   ?+  del  [~ state]
       [%update-stack * *]
     ?.  &(=(who who.del) =(name name.data.del))  [~ state]
-    =.  stack-subs.state  (~(put by stack-subs.state) key data.del)
+    =.  stack-subs.state
+      (~(put by stack-subs.state) key data.del)
     [~ state]
   ::
       [%delete-stack * *]
@@ -3012,9 +3764,9 @@
   =/  front-matter=(map knot cord)
     %-  my
     :~  title+title.act
-         author+(scot %p src.bol)
-         date-created+(scot %da now.bol)
-         last-modified+(scot %da now.bol)
+        author+(scot %p src.bol)
+        date-created+(scot %da now.bol)
+        last-modified+(scot %da now.bol)
     ==
   =/  front  (add-front-matter front-matter front.act)
   =/  back  (add-front-matter front-matter back.act)
@@ -3029,7 +3781,7 @@
         back
         (form-snippet front)
         ~
-       %.n
+        %.n
     ==
   (item new-content (learn [.2.5 0 0]) ~ name.act)
 ::
@@ -3099,6 +3851,7 @@
   |=  [next-ease=@rs next-box=@ =learn]
   ^-  @dr
   ::  ~15 min, 1 day, 6 days
+  ::
   =/  fixed-intervals=(list @dr)  [~s5 ~m15 ~d1 ~d6 ~]
   ?:  (lth next-box (lent fixed-intervals))
     (snag next-box fixed-intervals)
@@ -3124,14 +3877,18 @@
     =+  ark=.^(arch %cy pax)
     ?^  fil.ark
       =/  fyl  .^(noun %cx pax)
-      =+  `(unit wain)`?@(fyl `(to-wain:format fyl) ((soft wain) fyl))
+      =+  ^-  (unit wain)
+          ?@(fyl `(to-wain:format fyl) ((soft wain) fyl))
       ?^  -  (wain-to-tape u)  ~&("could not parse" !!)
     !!
   =/  filtered  (murn (need items) |*(a=(unit *) a))
-
   =<  abet
   %-  emit-action
-  [%new-stack (string-to-symbol (trip name)) name (molt filtered)]
+  :*  %new-stack
+      (string-to-symbol (trip name))
+      name
+      (molt filtered)
+  ==
   |%
   ++  wain-to-tape  |=(a=wain (turn a |=(b=cord (trip b))))
   ++  parse
@@ -3152,17 +3909,17 @@
         :-  uid
         %-  create-item
         =/  act
-        :*  %new-item
-            our.bol
-            our.bol
-            stack-name
-            uid
-            `@tas`front
-            [read=*rule:clay write=*rule:clay]
-            `@t`front
-            `@t`back
-         ==
-         `$>(%new-item action)`act
+          :*  %new-item
+              our.bol
+              our.bol
+              stack-name
+              uid
+              `@tas`front
+              [read=*rule:clay write=*rule:clay]
+              `@t`front
+              `@t`back
+          ==
+        `$>(%new-item action)`act
       (most (just `@`9) (star prn))
     --
   --
