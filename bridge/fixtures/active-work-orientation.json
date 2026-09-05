@@ -1,0 +1,190 @@
+{
+  "status": "ok",
+  "automatic_truth_promotion": false,
+  "evidence_gaps": {
+    "detail_tool": "seer/learning-context",
+    "meaning": "Cards without recorded approved provenance; not a claim that attached sources are true."
+  },
+  "learning_lookup": true,
+  "navigation": {
+    "snapshots": "seer/get-evidence-snapshot",
+    "proposal_preview": "seer/preview-proposal",
+    "library": "seer/list-stacks",
+    "learning": "seer/lookup-learning",
+    "models": "seer/list-assistant-models",
+    "evidence": "seer/list-context-sources",
+    "captures": "seer/list-captures",
+    "questions": "seer/list-card-questions",
+    "changes": "seer/list-change-requests",
+    "operator": "/apps/seer/review",
+    "packets": "seer/get-context-packet",
+    "operation_receipt": "seer/get-operation-result",
+    "change_preview": "seer/preview-change",
+    "card_detail": "seer/learning-context"
+  },
+  "scoped_delegation": false,
+  "projection": "metadata",
+  "state_revision": 911,
+  "mutation_identity": "schema_version=2, idempotency_epoch, operation_id",
+  "observation_basis": "local-state-and-cached-imports",
+  "capabilities_revision": 2,
+  "counts": {
+    "stack": {
+      "total": 102,
+      "without_provenance": 0,
+      "review_queued": 0
+    },
+    "question": {
+      "total": 0,
+      "without_provenance": 0,
+      "review_queued": 0
+    },
+    "model": {
+      "total": 0,
+      "without_provenance": 0,
+      "review_queued": 0
+    },
+    "context": {
+      "total": 3,
+      "without_provenance": 0,
+      "review_queued": 0
+    },
+    "login": {
+      "total": 0,
+      "without_provenance": 0,
+      "review_queued": 0
+    },
+    "capture": {
+      "total": 100,
+      "without_provenance": 0,
+      "review_queued": 0
+    },
+    "proposal": {
+      "total": 0,
+      "without_provenance": 0,
+      "review_queued": 0
+    },
+    "card": {
+      "total": 301,
+      "without_provenance": 301,
+      "review_queued": 300
+    },
+    "change": {
+      "total": 1,
+      "without_provenance": 0,
+      "review_queued": 0
+    }
+  },
+  "next_cursor": null,
+  "complete": true,
+  "providers": [
+    {
+      "authentication": "not-observed",
+      "catalog_observed_at": null,
+      "provider": "codex",
+      "catalog_models": 0
+    },
+    {
+      "authentication": "not-observed",
+      "catalog_observed_at": null,
+      "provider": "claude",
+      "catalog_models": 0
+    }
+  ],
+  "cursor_policy": "scope-revision-bound; refresh explicitly after snapshot-expired",
+  "omissions": [],
+  "ship": "~zod",
+  "receipt_retention": 4096,
+  "provider_execution": "Runtime capability must be checked; catalog presence is not proof of supported isolation.",
+  "leased_execution": true,
+  "atomic_catalog_replacement": true,
+  "bounded_reads": true,
+  "recovery_policy": "Source-time lease expiry only; unknown external outcome requires explicit new authorization.",
+  "worker_authority": "paired-proof-seer-bridge-v2",
+  "schema_version": 2,
+  "metadata_first": true,
+  "idempotency_epoch": "~2026.09.05..07.33.07..3bea",
+  "observed_at": "~2026.09.05..10.00.18..9904",
+  "scope_revision": 911,
+  "authority": "owner-trusted",
+  "work": [
+    {
+      "change_id": "build-a-source-backed-deck-with-human-reviewed-atomic-approval",
+      "target": "library",
+      "provider": null,
+      "model_id": null,
+      "status": "ready",
+      "worker_id": "",
+      "created_at": "~2026.09.05..08.48.14..4e78",
+      "updated_at": "~2026.09.05..09.27.37..b0fc",
+      "packet_ref": null,
+      "packet_tool": "seer/get-context-packet",
+      "plan_digest": "0xff90.2e88.78ad.5312.b55d.2453.dd40.cbb5.2e5c.5a34.bd0e.b889.31f8.ef96.7331.e0b6",
+      "preview_tool": "seer/preview-change",
+      "ref": {
+        "incarnation": 502,
+        "present": true,
+        "review_revision": 902,
+        "arguments": {
+          "projection": "detail",
+          "id": "build-a-source-backed-deck-with-human-reviewed-atomic-approval"
+        },
+        "id": "build-a-source-backed-deck-with-human-reviewed-atomic-approval",
+        "kind": "change",
+        "tool": "seer/list-change-requests",
+        "content_revision": 906,
+        "scope": "root",
+        "owner": "~zod"
+      },
+      "work": {
+        "input_bytes": 0,
+        "checkpoint": "effect-committed",
+        "stop_reason": null,
+        "updated_at": "~2026.09.05..09.27.37..b0fc",
+        "model_id": "",
+        "retryable": false,
+        "max_invocations": 0,
+        "usage": null,
+        "worker": "",
+        "lease_until": null,
+        "prompt_version": 0,
+        "max_operations": 0,
+        "effect": "staged",
+        "cost": null,
+        "policy_version": 0,
+        "model_revision": 0,
+        "secret_revision": 0,
+        "attempt": 0,
+        "packet_ref": null,
+        "lease": "0x0",
+        "provider": null,
+        "deadline_ms": null,
+        "max_output_bytes": 0,
+        "schema_version": 0,
+        "packet_digest": null,
+        "execution": "succeeded",
+        "max_input_bytes": 0,
+        "lease_until_ms": null,
+        "deadline": null,
+        "invocations": 0,
+        "consumed_output_bytes": 0
+      },
+      "legal_next_actions": [
+        "seer/preview-change",
+        "/apps/seer/review"
+      ]
+    }
+  ],
+  "watermark": "0v4m2u.frt8h.5t504.eh7gu.ftvsv.l29hq.qobf0.hrpjn.mfmvl.i9nhk.j1o08.073qg.60000.0d74s.t6cpr.t8000.00000.00201",
+  "atomic_plan_preview": true,
+  "scope": {
+    "status": null,
+    "context": null,
+    "card_id": null,
+    "id": null,
+    "stack_id": null,
+    "owner": null
+  },
+  "source_authored_packets": true,
+  "mutation_receipts": true
+}
