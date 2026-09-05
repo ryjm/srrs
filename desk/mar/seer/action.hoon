@@ -3,19 +3,19 @@
 /+  *seer-json
 =,  format
 ::
-|_  act=action
+|_  packet=command
 ::
 ++  grow
   |%
-  ++  tank  >act<
+  ++  tank  >[schema.packet epoch.packet operation.packet digest.packet]<
   --
 ::
 ++  grab
   |%
-  ++  noun  action
+  ++  noun  command
   ++  json
     |=  jon=^json
-    (json-to-action jon)
+    (json-to-command jon)
   --
 ++  grad  %noun
 --

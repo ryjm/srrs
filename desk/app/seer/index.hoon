@@ -1,4 +1,5 @@
 /-  *seer
+/+  seer, ev=seer-evidence, effects=seer-effects, memory=seer-learning
 ::
 ::  seer's browser ui is deliberately server-rendered. htmx is the only
 ::  client-side runtime: links and forms ask the agent for fresh html and
@@ -104,7 +105,7 @@
           captures=(map @tas capture)
           questions=(map @tas card-question)
           contexts=(map @tas context-source)
-          question-contexts=(map @tas (list @tas))
+          evidence=evidence-state
           models=(map @tas assistant-model)
           changes=(map @tas change-request)
           logins=(map @tas login-request)
@@ -117,20 +118,21 @@
           recents=(list @t)
           stale=(map @tas ?(%stale %gone))
           desks=(list @tas)
+          control=agent-state
+          learning=learning-state
       ==
   ^-  manx
   =/  stack-count=@ud  (lent ~(tap by stacks))
   =/  subscription-count=@ud  (lent ~(tap by subscriptions))
   =/  pending-count=@ud
-    =/  rows=(list [@tas capture])  ~(tap by captures)
+    =/  tree=(map @tas capture)  captures
     |-
-    ?~  rows  0
-    (add (lent ~(tap by proposals.i.rows)) $(rows t.rows))
-  =/  completed-count=@ud
-    =/  rows=(list [@tas capture])  ~(tap by captures)
-    |-
-    ?~  rows  0
-    (add ?:(=(%complete status.+.i.rows) 1 0) $(rows t.rows))
+    ?~  tree  0
+    ;:  add
+      (lent ~(tap by proposals.q.n.tree))
+      $(tree l.tree)
+      $(tree r.tree)
+    ==
   =/  open-change-count=@ud
     =/  rows=(list [@tas change-request])  ~(tap by changes)
     |-
@@ -140,6 +142,7 @@
           =(%working status.+.i.rows)
           =(%ready status.+.i.rows)
           =(%failed status.+.i.rows)
+          =(%draft status.+.i.rows)
       ==
     (add ?:(open 1 0) $(rows t.rows))
   =/  inbox-count=@ud  (add pending-count open-change-count)
@@ -150,8 +153,532 @@
   =/  review-active=?  ?=(%review -.page)
   =/  inbox-active=?  ?=(%inbox -.page)
   =/  shared-active=?  ?=(%subscriptions -.page)
-  =<  document
+  =<  (identify-posts document)
   |%
+  ++  identify-posts
+    |=  tree=manx
+    ^-  manx
+    =/  post=?
+      ?&  =(%form n.g.tree)
+          %+  lien  a.g.tree
+          |=  attr=[n=mane v=tape]
+          ?&  =(%method n.attr)
+              ?|(=("post" v.attr) =("POST" v.attr))
+          ==
+      ==
+    ?.  post
+      tree(c (turn c.tree identify-posts))
+    =/  operation=tape
+      (scow %ux (shax (jam [epoch.control receipt-count.control revision.control tree])))
+    =/  identity=(list manx)
+      :~
+        ;input(type "hidden", name "operation-id", value operation);
+        ;input(type "hidden", name "idempotency-epoch", value (scow %da epoch.control));
+      ==
+    tree(c (weld (turn c.tree identify-posts) identity))
+  ::
+  ++  json-tree
+    |=  value=json
+    ^-  manx
+    ?~  value  ;span.muted: not available
+    ?-  -.value
+      %s  ;div.proposal-answer: {(trip p.value)}
+      %n  ;span: {(trip p.value)}
+      %b  ;span: {?:(p.value "yes" "no")}
+      %a
+        ;ol
+          ;*  %+  turn  p.value
+              |=  entry=json
+              ;li
+                ;+  (json-tree entry)
+              ==
+        ==
+      %o
+        ;dl
+          ;*  %+  turn  ~(tap by p.value)
+              |=  [key=@t entry=json]
+              ;div
+                ;dt
+                  ;strong: {(trip key)}
+                ==
+                ;dd
+                  ;+  (json-tree entry)
+                ==
+              ==
+        ==
+    ==
+  ::
+  ++  projection-complete
+    |=  value=json
+    ^-  ?
+    ?~  value  %.n
+    ?.  ?=(%o -.value)  %.n
+    =/  complete  (~(get by p.value) 'complete')
+    ?~  complete  %.n
+    =(u.complete [%b %.y])
+  ::
+  ++  effect-panel
+    |=  [preview=plan-preview projection=json]
+    ^-  manx
+    ;div.provenance
+      ;p
+        ;strong: Source-validated effects · {(trip status.preview)}
+      ==
+      ;p: {(trip reason.preview)} · {<(lent affected.preview)>} affected entities
+      ;+  ?:  =(%ok status.preview)  ;span.hidden;
+          ;p.proposal-conflict: No effect is authorized. Reject this plan and review a newly generated diff; Seer will not rebase a stale approval.
+      ;+  ?:  (projection-complete projection)  ;span.hidden;
+          ;p.proposal-conflict: This bounded preview omits effects. Approval is unavailable; split the plan into a smaller reviewable change.
+      ;p.muted: Approval is owner-only and binds this digest. Surviving cards keep learning state; no automatic recall grades are recorded.
+      ;p.muted: Changed card content follows the stack's existing sharing rules. Attached source material is not published to subscribers.
+      ;details.reveal
+        ;summary: Inspect exact before/after, review effects, and revision-bound digest
+        ;+  (json-tree projection)
+      ==
+    ==
+  ::
+  ++  packet-panel
+    |=  [ref=(unit @ux) citations=(list evidence-citation)]
+    ^-  manx
+    ?~  ref
+      ;p.muted: No frozen evidence packet. Generated text is not source evidence.
+    =/  packet  (~(get by packets.evidence) u.ref)
+    ?~  packet
+      ;p.proposal-conflict: The recorded packet is unavailable. Do not infer support from generated text.
+    =/  frozen  u.packet
+    =/  projection  (packet-projection:ev frozen contexts evidence 262.144)
+    =/  blocked  (packet-egress-error:ev frozen contexts evidence)
+    =/  quote-error  (validate-citations:ev frozen citations evidence)
+    ;details.reveal
+      =data-persist  "packet|{(scow %ux u.ref)}"
+      ;summary: Inspect outgoing packet · {(trip provider.profile.request.frozen)} · {<prompt-bytes.frozen>} bytes
+      ;div.provenance
+        ;p: Exact provider/model: {(trip provider.profile.request.frozen)} / {(trip model.profile.request.frozen)}
+        ;p.muted: Only canonical_prompt below is provider-bound. It includes the frozen request and explicitly selected excerpts, not today's live source bodies.
+        ;p.muted: Source material leaves this ship only for the authorized provider. It is not shared with stack subscribers. Generated card content may be shared under existing stack permissions.
+        ;+  ?~  blocked  ;span.hidden;
+            ;p.proposal-conflict: Dispatch blocked · {(trip u.blocked)}. Restore source authorization if appropriate, then prepare a new packet; do not silently replace this one.
+        ;+  ?:  (projection-complete projection)  ;span.hidden;
+            ;p.muted: Coverage is incomplete. Inspect exclusions and bounded omissions below; absent evidence must not be treated as included.
+        ;p.muted: Included ranges are UTF-8 byte offsets. Excluded, partial, listing-only, budget-omitted, and purged material is qualified in the source projection; a listing is not file contents.
+        ;+  (json-tree projection)
+        ;h4: Citation support
+        ;+  ?~  citations
+              ;p.muted: No citations. This is an unsupported generated claim, not verified source evidence.
+            ?^  quote-error
+              ;p.proposal-conflict: Citation support unavailable · {(trip u.quote-error)}
+            ;p.muted: Exact quoted bytes match the frozen selected evidence. This does not establish truth or that the evidence supports every generated claim.
+        ;+  (json-tree (citations-json:seer citations))
+      ==
+    ==
+  ::
+  ++  learning-panel
+    |=  [scope=context-scope objective=@t provider=ai-provider]
+    ^-  manx
+    =/  projection
+      %:  lookup-artifacts:memory
+        scope  objective  provider  16  32.768
+        contexts  evidence  versions.control  learning
+      ==
+    ;details.reveal
+      ;summary: Prior learning · {(trip provider)} · inspect source qualification
+      ;p.muted: Generated memory is not primary evidence. Approval, rejection, and your recall grades describe decisions and learning, not factual truth.
+      ;p.muted: Reuse must match the exact packet and model. Unavailable or omitted bodies are not permission to reconstruct them from memory.
+      ;+  (json-tree projection)
+    ==
+  ::
+  ++  scope-learning-panel
+    |=  scope=context-scope
+    ^-  manx
+    ;details.reveal
+      ;summary: Review existing learning before a new request
+      ;+  (learning-panel scope '' %codex)
+      ;+  (learning-panel scope '' %claude)
+      ;+  ?.  ?=(%stack -.scope)  ;span.hidden;
+          ?~  card.scope  ;span.hidden;
+          (observation-panel [%card owner.scope stack.scope u.card.scope])
+    ==
+  ::
+  ++  observation-panel
+    |=  key=entity-key
+    ^-  manx
+    =/  observations
+      (fall (~(get by observations.learning) key) *(list learner-observation))
+    ;details.reveal
+      ;summary: Recorded recall observations · {<(lent observations)>}
+      ;p.muted: Only your actual grading actions are recorded. A grade measures recall of that card revision, not whether a generated claim is true.
+      ;p.muted: Showing up to 20 observations; no grades are inferred from approval, generated text, or provider usage.
+      ;*  %+  turn  (scag 20 observations)
+          |=  observation=learner-observation
+          ;div.provenance
+            ;p: {(trip grade.observation)} · {(scow %p actor.observation)} · {(scow %da at.observation)}
+            ;+  (json-tree (version-json:ev version.subject.observation))
+          ==
+    ==
+  ::
+  ++  work-panel
+    |=  [key=entity-key return=@t]
+    ^-  manx
+    =/  record  (~(get by jobs.control) key)
+    ?~  record  ;span.hidden;
+    =/  work  u.record
+    ;div.provenance
+      ;p
+        ;strong: Execution · {(trip execution.work)} / effect · {(trip effect.work)}
+      ==
+      ;p: Attempt {<attempt.work>} · checkpoint {(trip checkpoint.work)}
+      ;+  ?~  stop-reason.work  ;span.hidden;
+          ;p.proposal-conflict: Stop reason · {(trip u.stop-reason.work)}
+      ;+  ?.  =(%unknown effect.work)  ;span.hidden;
+          ;p.proposal-conflict: External outcome unknown. Cancellation cannot undo provider work or charges. Reconcile this receipt with the paired worker before authorizing a potentially billable new attempt.
+      ;details.reveal
+        ;summary: Inspect deadline, lease, budget, and recovery
+        ;p: Worker · {(trip worker.work)}
+        ;p: Lease until · {?~(lease-until.work "not leased" (scow %da u.lease-until.work))}
+        ;p: Hard deadline · {?~(deadline.work "not started" (scow %da u.deadline.work))}
+        ;p: Invocations · {<invocations.work>} / {<max-invocations.work>}
+        ;p: Input bytes · {<input-bytes.work>} / {<max-input-bytes.work>}
+        ;p: Output bytes · {<consumed-output-bytes.work>} / {<max-output-bytes.work>}
+        ;p: Operation budget · {<max-operations.work>}
+        ;p: Provider usage · {?~(usage.work "unknown" (scow %ud u.usage.work))}
+        ;p: Cost · {?~(cost.work "unknown" (scow %ud u.cost.work))}
+        ;p: Model · {(trip model-id.work)} · definition revision {<model-revision.work>}
+        ;p: Packet digest · {?~(packet-digest.work "not frozen" (scow %ux u.packet-digest.work))}
+        ;p: Policy {<policy-version.work>} · prompt {<prompt-version.work>} · schema {<schema-version.work>}
+        ;p: Retryable · {?:(retryable.work "yes, by explicit new attempt" "no")}
+        ;p.muted: The source clock controls expiry. Only the paired worker can recover an expired lease; before provider start it may requeue, afterward it must preserve an unknown external outcome. There is no automatic provider retry.
+      ==
+      ;+  ?.  ?|  =(%queued execution.work)
+                  =(%running execution.work)
+                  =(%blocked execution.work)
+              ==
+            ;span.hidden;
+          ;form.inline
+            =method   "post"
+            =action   "/apps/seer/actions/cancel-work"
+            =hx-post  "/apps/seer/actions/cancel-work"
+            ;input(type "hidden", name "work-kind", value (trip kind.key));
+            ;input(type "hidden", name "work-owner", value (scow %p owner.key));
+            ;input(type "hidden", name "work-scope", value (trip scope.key));
+            ;input(type "hidden", name "work-id", value (trip id.key));
+            ;input(type "hidden", name "return", value (trip return));
+            ;button.danger(type "submit"): Cancel future work · does not undo charges
+          ==
+    ==
+  ::
+  ++  receipt-panel
+    ^-  manx
+    =/  rows
+      %+  sort  ~(val by receipts.control)
+      |=  [a=operation-receipt b=operation-receipt]
+      ?:  =(at.a at.b)  (gth revision.a revision.b)
+      (gth at.a at.b)
+    ;details.reveal
+      =data-persist  "operation-receipts"
+      ;summary: Operation receipts · {<receipt-count.control>} retained
+      ;p.muted: These are source receipts, not request acknowledgements. A missing receipt or lost connection does not prove failure or permission to retry. Refresh to reconcile before starting a new operation.
+      ;p: Current replay epoch · {(scow %da epoch.control)}
+      ;a.button.secondary(href "/apps/seer/inbox"): Refresh and reconcile
+      ;form
+        =method    "get"
+        =action    "/apps/seer/operation-result"
+        =hx-boost  "false"
+        ;label
+          ;span: operation ID to reconcile
+          ;input(name "operation-id", required "", maxlength "128");
+        ==
+        ;label
+          ;span: idempotency epoch
+          ;input(name "idempotency-epoch", required "", value (scow %da epoch.control));
+        ==
+        ;label
+          ;span: expected payload digest · optional
+          ;input(name "digest");
+        ==
+        ;button.secondary(type "submit"): Inspect authoritative receipt
+      ==
+      ;p.muted: Showing the latest {<(min 20 (lent rows))>} receipts.
+      ;*  %+  turn  (scag 20 rows)
+          |=  receipt=operation-receipt
+          (receipt-row receipt)
+    ==
+  ::
+  ++  receipt-row
+    |=  receipt=operation-receipt
+    ^-  manx
+    ;details.reveal
+      ;summary: {(trip action.receipt)} · {(trip status.receipt)} · effect {(trip effect.receipt)}
+      ;p: Reason · {(trip reason.receipt)}
+      ;p: Authority · {(trip authority.receipt)} · revision {<revision.receipt>}
+      ;p: Operation ID · {(trip id.receipt)}
+      ;p: Epoch · {(scow %da epoch.receipt)}
+      ;p: Payload digest · {(scow %ux digest.receipt)}
+      ;p: Plan digest · {?~(plan.receipt "none" (scow %ux u.plan.receipt))}
+      ;p: Attempt · {?~(attempt.receipt "not applicable" (scow %ud u.attempt.receipt))}
+      ;p: Observed · {(scow %da at.receipt)}
+      ;+  ?~  work.receipt  ;span.hidden;
+          (json-tree (key-json:ev u.work.receipt))
+      ;+  ?.  =(%conflict status.receipt)  ;span.hidden;
+          ;p.proposal-conflict: This operation made no changes. Review the current diff; a stale approval cannot be rebased or reused.
+      ;+  ?.  =(%unknown effect.receipt)  ;span.hidden;
+          ;p.proposal-conflict: External outcome is unknown. Inspect the work checkpoint and reconcile with the worker; a new attempt may repeat billable work.
+      ;details.reveal
+        ;summary: Inspect observed before/after revisions
+        ;h4: Before
+        ;*  (turn before.receipt precondition-row)
+        ;h4: After
+        ;*  (turn after.receipt precondition-row)
+      ==
+    ==
+  ::
+  ++  precondition-row
+    |=  fence=entity-precondition
+    ^-  manx
+    ;div.provenance
+      ;+  (json-tree (key-json:ev key.fence))
+      ;p: Content fence · {?:(content.fence "yes" "no")} / review fence · {?:(review.fence "yes" "no")}
+      ;+  ?~  seen.fence  ;p: Not observed as present
+          (json-tree (version-json:ev u.seen.fence))
+    ==
+  ::
+  ++  work-context-panel
+    |=  scope=context-scope
+    ^-  manx
+    ?>  ?=(?(%capture %change) -.scope)
+    =/  rows
+      %+  skim  ~(tap by contexts)
+      |=  [id=@tas source=context-source]
+      ?&(active.source =(scope scope.source))
+    ;details.context-panel
+      =data-persist  "work-context|{(trip -.scope)}|{(trip id.scope)}"
+      ;summary.context-summary
+        ;span.context-title: Work-scoped sources · {<(lent rows)>}
+      ==
+      ;div.context-body
+        ;p.muted: Only this {(trip -.scope)} can select these sources. Attach, inspect, and authorize provider egress before freezing a packet. Changes here never rewrite an existing packet.
+        ;a.button.secondary(href "/apps/seer/inbox"): Refresh source acquisition status
+        ;*  %+  turn  rows
+            |=  [id=@tas source=context-source]
+            (context-source-row id source *(set @t))
+        ;form.context-form
+          =method   "post"
+          =action   "/apps/seer/actions/add-context-source"
+          =hx-post  "/apps/seer/actions/add-context-source"
+          ;input(type "hidden", name "scope-kind", value (trip -.scope));
+          ;input(type "hidden", name "scope-id", value (trip id.scope));
+          ;input(type "hidden", name "return", value "inbox");
+          ;label
+            ;span: source type
+            ;select(name "kind")
+              ;option(value "note"): Pasted note or local text
+              ;option(value "clay"): Ship file
+              ;option(value "web"): Public web page
+            ==
+          ==
+          ;label
+            ;span: name · optional
+            ;input(name "label", maxlength "240");
+          ==
+          ;label
+            ;span: text · for a note
+            ;textarea(name "content", maxlength "131072");
+          ==
+          ;label
+            ;span: ship file path · for a ship file
+            ;input(name "locator", maxlength "2048");
+          ==
+          ;label
+            ;span: public URL · for a web page
+            ;input(name "web-locator", type "url", maxlength "2048");
+          ==
+          ;p.muted: Native form: paste local text as a note. Web acquisition uses the paired bridge; provider egress is a separate authorization below each source.
+          ;button(type "submit"): Attach source
+        ==
+      ==
+    ==
+  ::
+  ++  capture-packet-form
+    |=  capture-id=@tas
+    ^-  manx
+    =/  available  ordered-assistant-models
+    ?~  available  ;p.muted: Connect an available model before freezing a capture packet.
+    =/  rows
+      %+  skim  ~(tap by contexts)
+      |=  [id=@tas source=context-source]
+      ?&(active.source =(scope.source [%capture capture-id]))
+    ;details.reveal
+      ;summary: Select evidence and freeze capture packet
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/prepare-capture"
+        =hx-post  "/apps/seer/actions/prepare-capture"
+        ;input(type "hidden", name "capture", value (trip capture-id));
+        ;label
+          ;span: exact provider/model
+          ;select(name "model", required "")
+            ;*  %+  turn  available
+                |=  [id=@tas profile=assistant-model]
+                ;option(value (trip id)): {(model-option-label profile)}
+          ==
+        ==
+        ;+  (context-picker rows)
+        ;+  packet-budget-fields
+        ;p.muted: Freezing records the outgoing evidence, not a generated answer. Inspect the immutable packet before asking an MCP client to stage proposals from it.
+        ;button(type "submit"): Freeze selected packet
+      ==
+    ==
+  ::
+  ++  packet-budget-fields
+    ^-  manx
+    ;div.context-type-row
+      ;label
+        ;span: maximum prompt bytes
+        ;input(type "number", name "max-bytes", min "1024", max "131072", value "32768", required "");
+      ==
+      ;label
+        ;span: maximum bytes per excerpt
+        ;input(type "number", name "excerpt-bytes", min "1", max "131072", value "8192", required "");
+      ==
+    ==
+  ::
+  ++  context-return-fields
+    |=  scope=context-scope
+    ^-  (list manx)
+    ?:  ?=(%stack -.scope)
+      :~
+        ;input(type "hidden", name "owner", value (scow %p owner.scope));
+        ;input(type "hidden", name "stack", value (trip stack.scope));
+      ==
+    :~
+      ;input(type "hidden", name "scope-kind", value (trip -.scope));
+      ;input(type "hidden", name "scope-id", value (trip id.scope));
+      ;input(type "hidden", name "return", value "inbox");
+    ==
+  ::
+  ++  context-policy
+    |=  source=context-source
+    ^-  manx
+    ;details.reveal
+      ;summary: Inspect source snapshot and provider permissions
+      ;p.muted: This is retrieved source evidence, not an assistant summary. Retrieval does not assert that the live origin is unchanged or factually correct.
+      ;+  ?~  snapshot.source
+            ;p.muted: No immutable snapshot is available yet.
+          =/  snap  (~(get by snapshots.evidence) u.snapshot.source)
+          ?~  snap  ;p.proposal-conflict: Snapshot unavailable.
+          (json-tree (snapshot-projection:ev u.snapshot.source 0 bytes.u.snap 32.768 evidence))
+      ;p: Provider policy revision · {<policy-revision.source>}
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/set-context-egress"
+        =hx-post  "/apps/seer/actions/set-context-egress"
+        ;input(type "hidden", name "context-id", value (trip id.source));
+        ;*  (context-return-fields scope.source)
+        ;fieldset.context-picker
+          ;legend: Allow this source to leave the ship for
+          ;*  %+  turn  ^-((list ai-provider) ~[%codex %claude])
+              |=  provider=ai-provider
+              =/  attrs=mart
+                :~  [%type "checkbox"]
+                    [%name (trip provider)]
+                    [%value "1"]
+                ==
+              =?  attrs  (~(has in egress.source) provider)
+                [[%checked ""] attrs]
+              ;label.context-choice
+                ;+  [[%input attrs] ~]
+                ;span: {(trip provider)}
+              ==
+        ==
+        ;p.muted: Neither checked means no provider egress. Changing this policy fences previously frozen packets; it cannot recall bytes already sent externally.
+        ;button.secondary(type "submit"): Save provider permissions
+      ==
+      ;form
+        =method   "post"
+        =action   "/apps/seer/actions/rename-context-source"
+        =hx-post  "/apps/seer/actions/rename-context-source"
+        ;input(type "hidden", name "context-id", value (trip id.source));
+        ;*  (context-return-fields scope.source)
+        ;label
+          ;span: source label
+          ;input(name "label", value (trip label.source), maxlength "240", required "");
+        ==
+        ;button.secondary(type "submit"): Rename source link
+      ==
+      ;p.muted: Removing this link excludes future selection but retains historical evidence. Use Inbox privacy maintenance for explicit irreversible purge.
+    ==
+  ::
+  ++  scope-exists
+    |=  scope=context-scope
+    ^-  ?
+    ?-  -.scope
+      %capture  (~(has by captures) id.scope)
+      %change   (~(has by changes) id.scope)
+      %stack
+        =/  stack  (lookup-stack owner.scope stack.scope)
+        ?~  stack  %.n
+        ?~  card.scope  %.y
+        (~(has by items.u.stack) u.card.scope)
+    ==
+  ::
+  ++  maintenance-panel
+    ^-  manx
+    =/  orphans
+      %+  skim  ~(tap by contexts)
+      |=  [id=@tas source=context-source]
+      ?&(active.source !(scope-exists scope.source))
+    ;details.reveal
+      =data-persist  "source-maintenance"
+      ;summary: Source privacy and orphan maintenance · {<(lent orphans)>} orphan links
+      ;p.muted: Unlinking or archiving excludes a source from future selection but retains historical evidence. Purging irreversibly removes retained bytes and invalidates dependent generated support; approved-card dependencies can block it.
+      ;*  %+  turn  (scag 20 orphans)
+          |=  [id=@tas source=context-source]
+          ;p: {(trip id)} · {(trip label.source)} · {(trip -.scope.source)} scope
+      ;p.muted: Showing up to 20 orphan links. Archive scans all active sources whose owning card, stack, capture, or change no longer exists; no selection means the full deterministic sweep, not deletion.
+      ;form.inline
+        =method   "post"
+        =action   "/apps/seer/actions/archive-orphan-contexts"
+        =hx-post  "/apps/seer/actions/archive-orphan-contexts"
+        ;button.secondary(type "submit"): Archive all orphan links
+      ==
+      ;form.inline
+        =method   "post"
+        =action   "/apps/seer/actions/collect-retained"
+        =hx-post  "/apps/seer/actions/collect-retained"
+        ;button.secondary(type "submit"): Collect unreferenced retained evidence
+      ==
+      ;details.reveal
+        ;summary: Purge a retained snapshot
+        ;form
+          =method   "post"
+          =action   "/apps/seer/actions/purge-evidence"
+          =hx-post  "/apps/seer/actions/purge-evidence"
+          ;label
+            ;span: exact snapshot reference · from the packet
+            ;input(name "snapshot-ref", required "", placeholder "0x…");
+          ==
+          ;label.context-choice
+            ;input(type "checkbox", required "");
+            ;span: I understand this permanently removes evidence bytes, not just the source link.
+          ==
+          ;button.danger(type "submit"): Purge snapshot bytes
+        ==
+      ==
+      ;details.reveal
+        ;summary: Retire the current operation replay epoch
+        ;p.muted: Do this only after reconciling outstanding requests. Old operation identities will return replay-expired and never execute; old forms must be refreshed.
+        ;form
+          =method   "post"
+          =action   "/apps/seer/actions/retire-operation-epoch"
+          =hx-post  "/apps/seer/actions/retire-operation-epoch"
+          ;label.context-choice
+            ;input(type "checkbox", required "");
+            ;span: Outstanding operations have been reconciled.
+          ==
+          ;button.danger(type "submit"): Retire replay epoch
+        ==
+      ==
+    ==
+  ::
   ++  document
     ^-  manx
     =/  viewport=tape
@@ -1251,7 +1778,11 @@
                  white-space: nowrap;
                }
                .prompt { white-space: pre-wrap; }
-               details.reveal { border-top: 1px solid var(--line); }
+               details.reveal {
+                 border-top: 1px solid var(--line);
+                 min-width: 0;
+                 overflow-wrap: anywhere;
+               }
                details.reveal > summary {
                  cursor: pointer;
                  font-size: .86rem;
@@ -2746,6 +3277,7 @@
               ?~  notice
                 ;div.hidden;
               ;div.flash(role "status"): {(trip u.notice)}
+              ;+  receipt-panel
               ;+  page-body
               ;footer.app-footer.meta
                 ;p: Server-rendered by %seer
@@ -2768,9 +3300,44 @@
       %stack-browse   (stack-page owner.page name.page)
     ==
   ::
+  ++  inbox-captures
+    ::  Walk the map without materializing completed history. Only active
+    ::  captures and the twenty most recent completed rows are retained.
+    ::
+    =/  tree=(map @tas capture)  captures
+    =/  active=(list [@tas capture])  ~
+    =/  recent=(list [@tas capture])  ~
+    =/  completed=@ud  0
+    |-
+    ^-  [active=(list [@tas capture]) recent=(list [@tas capture]) completed=@ud]
+    ?~  tree  [active recent completed]
+    =/  right  $(tree r.tree)
+    =.  active  active.right
+    =.  recent  recent.right
+    =.  completed  completed.right
+    ?:  =(%open status.q.n.tree)
+      $(tree l.tree, active [n.tree active])
+    $(tree l.tree, recent (retain-recent-capture n.tree recent 20), completed +(completed))
+  ::
+  ++  retain-recent-capture
+    |=  [row=[@tas capture] rows=(list [@tas capture]) limit=@ud]
+    ^-  (list [@tas capture])
+    ?:  =(0 limit)  ~
+    ?~  rows  ~[row]
+    ::  Captures have no updated-at: use created-at, then alphabetical ID.
+    ::
+    =/  before=?
+      ?:  =(created-at.+.row created-at.+.i.rows)
+        (aor -.row -.i.rows)
+      (gth created-at.+.row created-at.+.i.rows)
+    ?:  before  [row (scag (dec limit) ^-((list [@tas capture]) rows))]
+    [i.rows $(rows t.rows, limit (dec limit))]
+  ::
   ++  inbox-page
     ^-  manx
-    =/  sessions=(list [@tas capture])  ~(tap by captures)
+    =/  selected  inbox-captures
+    =/  shown=@ud  (lent recent.selected)
+    =/  omitted=@ud  (sub completed.selected shown)
     =/  requests=(list [@tas change-request])  ~(tap by changes)
     =/  available-models=(list [@tas assistant-model])  ordered-assistant-models
     =/  waiting=?  (changes-waiting requests)
@@ -2790,8 +3357,8 @@
       ==
     =/  history-copy=tape
       ;:  weld
-        "Completed captures remain available to MCP clients. Approved "
-        "cards retain their source records."
+        "Older completed captures remain available through bounded MCP "
+        "inspection with seer/list-captures. Approved cards retain their source records."
       ==
     ;section
       ;div.page-head
@@ -2819,6 +3386,7 @@
           =method   "post"
           =action   "/apps/seer/actions/request-change"
           =hx-post  "/apps/seer/actions/request-change"
+          ;input(type "hidden", name "start", value "false");
           ;label
             ;span: instruction
             ;textarea(name "prompt", required "", placeholder prompt-hint);
@@ -2844,7 +3412,7 @@
                 ==
               ==
             ==
-            ;button(type "submit"): Draft plan
+            ;button(type "submit"): Create draft · attach sources next
           ==
         ==
       ==
@@ -2874,36 +3442,59 @@
           ;h2: Capture inbox
           ;p.muted: {capture-copy}
         ==
+        ;details.reveal
+          ;summary: Start a capture before generating proposals
+          ;form
+            =method   "post"
+            =action   "/apps/seer/actions/begin-capture"
+            =hx-post  "/apps/seer/actions/begin-capture"
+            ;label
+              ;span: capture title
+              ;input(name "title", required "", maxlength "1024");
+            ==
+            ;label
+              ;span: learning goal
+              ;textarea(name "goal", required "", maxlength "131072");
+            ==
+            ;label
+              ;span: source description · not evidence
+              ;input(name "source", maxlength "1024");
+            ==
+            ;button(type "submit"): Create capture · attach evidence next
+          ==
+        ==
         ;+
-        ?:  =(0 pending-count)
+        ?~  active.selected
           ;div.empty
             ;h2: Your inbox is clear
-            ;p: Use an MCP client to create a capture and stage card proposals.
+            ;p: Create a capture, attach sources, and freeze the packet before asking an MCP client to stage proposals.
             ;a.button.secondary(href "/apps/seer/stacks"): Open library
           ==
         ;div.capture-list
           ;*
-          %+  turn  sessions
+          %+  turn  active.selected
           |=  [capture-id=@tas session=capture]
           (capture-section capture-id session)
         ==
       ==
       ;+
-      ?:  =(0 completed-count)
+      ?:  =(0 completed.selected)
         ;div.hidden;
       ;section.capture-history
         ;div.form-head
           ;div.kicker: capture history
           ;h2: Recent captures
+          ;p.muted: Showing {<shown>} of {<completed.selected>} completed captures · {<omitted>} omitted.
           ;p.muted: {history-copy}
         ==
         ;div.stack-list.section
           ;*
-          %+  turn  sessions
+          %+  turn  recent.selected
           |=  [capture-id=@tas session=capture]
           (capture-history-row capture-id session)
         ==
       ==
+      ;+  maintenance-panel
     ==
   ::
   ++  change-row
@@ -2914,19 +3505,14 @@
           =(%working status.request)
       ==
     =/  eyebrow=tape
+      ?:  =(0 id.profile.request)
+        "{(trip target.request)} · planner-submitted · no provider recorded"
       ;:  weld
         "{(trip target.request)} · "
         "{(role-name role.profile.request)} · "
         "{(trip label.profile.request)}"
       ==
-    =/  brief-copy=tape
-      ;:  weld
-        "This implementation brief cannot change the desk. "
-        "MCP clients can read it."
-      ==
     =/  change-tape=tape  (tas-tape change-id)
-    =/  apply-confirm=tape
-      "Apply every operation in this plan to your Seer library?"
     =/  row-class=tape
       ?:  active
         "capture change-request is-thinking"
@@ -2949,8 +3535,24 @@
         ==
       ==
       ;div.proposal-body.change-body
+        ;+  (work-panel [%change our %root change-id] 'inbox')
+        ;+  (packet-panel packet.request citations.request)
+        ;+  ?:  =(0 id.profile.request)  ;span.hidden;
+            (learning-panel [%change change-id] prompt.request provider.profile.request)
         ;+
         ?-  status.request
+          %draft
+            ;div
+              ;p.muted: Attach and authorize sources before generation. No provider invocation has started.
+              ;+  (work-context-panel [%change change-id])
+              ;form.inline
+                =method   "post"
+                =action   "/apps/seer/actions/start-change"
+                =hx-post  "/apps/seer/actions/start-change"
+                ;input(type "hidden", name "change-id", value change-tape);
+                ;button(type "submit"): Generate plan · potentially billable
+              ==
+            ==
           %pending
             %-  thinking-indicator
             "Wait for the local bridge to claim this request."
@@ -2958,54 +3560,19 @@
             %-  thinking-indicator
             "Wait while {(trip label.profile.request)} creates a plan."
           %ready
-            ;div
-              ;div.proposal-answer: {(trip summary.request)}
-              ;+
-              ?:  =(%desk target.request)
-                ;div.provenance
-                  ;p: {brief-copy}
-                  ;details.reveal
-                    ;summary: Open implementation brief
-                    ;div.proposal-answer: {(trip artifact.request)}
-                  ==
-                ==
-              ;div.operation-list
-                ;*
-                %+  turn  operations.request
-                |=  op=state-operation
-                (operation-row op)
-              ==
-              ;div.decision-row
-                ;form.inline
-                  =method   "post"
-                  =action   "/apps/seer/actions/reject-change"
-                  =hx-post  "/apps/seer/actions/reject-change"
-                  ;input(type "hidden", name "change-id", value change-tape);
-                  ;button.danger(type "submit"): Reject
-                ==
-                ;+
-                ?:  =(%library target.request)
-                  ;form.inline
-                    =hx-confirm  apply-confirm
-                    =method      "post"
-                    =action      "/apps/seer/actions/apply-change"
-                    =hx-post     "/apps/seer/actions/apply-change"
-                    ;input(type "hidden", name "change-id", value change-tape);
-                    ;button(type "submit"): Approve and apply
-                  ==
-                ;span.pill: proposal only
-              ==
-            ==
+            (change-ready change-id request)
           %failed
             ;div
               ;div.proposal-conflict: {(trip response.request)}
+              ;p.muted: First reconcile the receipt and external outcome below. A new attempt is not a replay and may incur another charge.
+              ;+  (work-context-panel [%change change-id])
               ;div.decision-row
                 ;form.inline
                   =method   "post"
                   =action   "/apps/seer/actions/retry-change"
                   =hx-post  "/apps/seer/actions/retry-change"
                   ;input(type "hidden", name "change-id", value change-tape);
-                  ;button.secondary(type "submit"): Rebuild plan
+                  ;button.secondary(type "submit"): Start new attempt · potentially billable
                 ==
                 ;form.inline
                   =method   "post"
@@ -3024,57 +3591,55 @@
       ==
     ==
   ::
-  ++  operation-row
-    |=  op=state-operation
+  ++  change-ready
+    |=  [change-id=@tas request=change-request]
     ^-  manx
-    =/  scope=tape
-      ?:  =(0 card.op)
-        "/{(tas-tape stack.op)}"
-      "/{(tas-tape stack.op)}/{(tas-tape card.op)}"
-    =/  rename-copy=tape
-      "Rename “{(trip original-title.op)}” to “{(trip title.op)}”."
-    =/  delete-copy=tape
-      ;:  weld
-        "Delete stack “{(trip original-title.op)}” "
-        "and all of its cards."
+    =/  preview
+      %:  validate-plan:effects
+        our  updated-at.request  stacks  versions.control
+        operations.request  preconditions.request
       ==
-    ;article.operation
-      ;div.operation-head
-        ;span.pill: {(trip kind.op)}
-        ;span.meta: {scope}
-      ==
+    =/  projection  (preview-json:effects preview 262.144)
+    ;div
+      ;p.meta: Proposed summary · awaiting operator review, not applied
+      ;div.proposal-answer: {(trip summary.request)}
       ;+
-      ?-  kind.op
-        %create-stack  ;p: Create stack “{(trip title.op)}”.
-        %rename-stack  ;p: {rename-copy}
-        %delete-stack  ;p: {delete-copy}
-        %create-card   (card-operation-detail op %.n)
-        %edit-card     (card-operation-detail op %.y)
-        %delete-card   ;p: Delete “{(trip original-title.op)}”.
-        %queue-card    ;p: Queue “{(trip original-title.op)}” for review.
-      ==
-    ==
-  ::
-  ++  card-operation-detail
-    |=  [op=state-operation editing=?]
-    ^-  manx
-    ;details.reveal
-      ;summary: {?:(editing "Inspect before and after" "Inspect new card")}
-      ;div.ai-diff
-        ;+
-        ?:  editing
-          ;div.ai-version
-            ;div.eyebrow: before
-            ;p: {(trip original-title.op)}
-            ;p: {(trip original-front.op)}
-            ;p: {(trip original-back.op)}
+      ?:  =(%desk target.request)
+        ;div.provenance
+          ;p: Implementation brief only. No code is changed, installed, or deployed.
+          ;details.reveal
+            ;summary: Inspect implementation brief
+            ;div.proposal-answer: {(trip artifact.request)}
           ==
-        ;div.hidden;
-        ;div.ai-version
-          ;div.eyebrow: after
-          ;p: {(trip title.op)}
-          ;p: {(trip front.op)}
-          ;p: {(trip back.op)}
+        ==
+      (effect-panel preview projection)
+      ;+  ?.  ?&  =(%library target.request)
+                  !=(plan.request `digest.preview)
+              ==
+            ;span.hidden;
+          ;p.proposal-conflict: The stored plan digest does not match this preview. No effect is authorized; reject and request a new plan.
+      ;div.decision-row
+        ;form.inline
+          =method   "post"
+          =action   "/apps/seer/actions/reject-change"
+          =hx-post  "/apps/seer/actions/reject-change"
+          ;input(type "hidden", name "change-id", value (tas-tape change-id));
+          ;button.danger(type "submit"): Reject
+        ==
+        ;+
+        ?.  ?&  =(%library target.request)
+                =(%ok status.preview)
+                =(plan.request `digest.preview)
+                (projection-complete projection)
+            ==
+          ;span.pill: no library effect authorized
+        ;form.inline
+          =method   "post"
+          =action   "/apps/seer/actions/apply-change"
+          =hx-post  "/apps/seer/actions/apply-change"
+          ;input(type "hidden", name "change-id", value (tas-tape change-id));
+          ;input(type "hidden", name "digest", value (scow %ux digest.preview));
+          ;button(type "submit"): Approve this exact diff
         ==
       ==
     ==
@@ -3101,8 +3666,6 @@
     =/  drafts=(list [@tas proposal])  ~(tap by proposals.session)
     =/  clear-confirm=tape
       "Reject every remaining proposal in this capture?"
-    ?~  drafts
-      ;div.hidden;
     ;article.capture
       ;div.capture-head
         ;div.capture-copy
@@ -3125,6 +3688,10 @@
           ;button.danger(type "submit"): Clear
         ==
       ==
+      ;+  (work-context-panel [%capture capture-id])
+      ;+  (scope-learning-panel [%capture capture-id])
+      ;+  (capture-packet-form capture-id)
+      ;+  (packet-panel packet.session ~)
       ;div
         ;*
         %+  turn  drafts
@@ -3136,16 +3703,12 @@
   ++  proposal-row
     |=  [capture-id=@tas proposal-id=@tas draft=proposal]
     ^-  manx
-    =/  target=(unit stack)  (~(get by stacks) stack.draft)
+    =/  preview
+      (proposal-preview:effects our created-at.draft stacks versions.control draft)
+    =/  projection  (preview-json:effects preview 262.144)
     =/  conflict=?
-      ?~  target  %.y
-      (~(has by items.u.target) card.draft)
+      ?|(!=(%ok status.preview) !(projection-complete projection))
     =/  proposal-tape=tape  (tas-tape proposal-id)
-    =/  conflict-copy=tape
-      ;:  weld
-        "The target stack is missing, or the card ID is in use. "
-        "Reject the proposal."
-      ==
     ;article.proposal
       ;div.proposal-head
         ;div.capture-copy
@@ -3161,13 +3724,19 @@
           ;div.proposal-answer: {(trip back.draft)}
         ==
         ;div.provenance
-          ;p: Reason · {(trip rationale.draft)}
-          ;p: Source · {(trip source.draft)}
+          ;p: Generated rationale · {(trip rationale.draft)}
+          ;p: Declared source · {(trip source.draft)}
+          ;p: Learning objective · {(trip objective.draft)}
+          ;p: Generated claim · {(trip claim.draft)}
+          ;p: Why a new card · {(trip why-new.draft)}
+          ;p: Caveat · {(trip caveat.draft)}
         ==
-        ;+
-        ?:  conflict
-          ;div.proposal-conflict: {conflict-copy}
-        ;div.hidden;
+        ;+  (packet-panel packet.draft citations.draft)
+        ;+  (effect-panel preview projection)
+        ;+  ?~  packet.draft  ;div.hidden;
+            =/  packet  (~(get by packets.evidence) u.packet.draft)
+            ?~  packet  ;div.hidden;
+            (learning-panel [%capture capture-id] objective.draft provider.profile.request.u.packet)
         ;div.decision-row
           ;form.inline
             =method   "post"
@@ -3175,6 +3744,10 @@
             =hx-post  "/apps/seer/actions/reject-proposal"
             ;input(type "hidden", name "capture", value (tas-tape capture-id));
             ;input(type "hidden", name "proposal", value proposal-tape);
+            ;label
+              ;span: rejection reason · optional
+              ;input(name "reason", maxlength "1024");
+            ==
             ;button.danger(type "submit"): Reject
           ==
           ;+
@@ -3186,6 +3759,7 @@
             =hx-post  "/apps/seer/actions/approve-proposal"
             ;input(type "hidden", name "capture", value (tas-tape capture-id));
             ;input(type "hidden", name "proposal", value proposal-tape);
+            ;input(type "hidden", name "digest", value (scow %ux digest.preview));
             ;button(type "submit"): Approve card
           ==
         ==
@@ -3201,8 +3775,6 @@
         "{(trip created-by.session)} · "
         "{(trip source.session)}"
       ==
-    ?.  =(%complete status.session)
-      ;div.hidden;
     ;article.stack-row
       ;div.stack-link
         ;div.stack-name
@@ -4300,9 +4872,11 @@
   ++  context-source-row
     |=  [context-id=@tas source=context-source attached=(set @t)]
     ^-  manx
-    =/  members=(list @t)  (manifest-members content.source)
+    =/  body  (context-body:seer source evidence)
+    =/  members=(list @t)
+      ?.  ?=(%stack -.scope.source)  ~
+      ?~(body ~ (manifest-members u.body))
     =/  context-tape=tape  (tas-tape context-id)
-    =/  stack-tape=tape  (tas-tape stack.source)
     =/  gone-copy=tape  "source file removed · snapshot kept"
     =/  stale-copy=tape  "desk updated · refresh to re-read"
     =/  remove-confirm=tape  "Remove this source from future prompts?"
@@ -4336,6 +4910,8 @@
         ;span.hidden;
         ;+  ?~  members  ;span.hidden;
             (member-list source attached members)
+        ;+  (context-policy source)
+        ;+  (work-panel [%context our %root context-id] 'inbox')
       ==
       ;div.context-source-actions
         ;+  ?.  =(%failed status.source)  ;span.hidden;
@@ -4344,9 +4920,8 @@
               =action   "/apps/seer/actions/retry-context-source"
               =hx-post  "/apps/seer/actions/retry-context-source"
               ;input(type "hidden", name "context-id", value context-tape);
-              ;input(type "hidden", name "owner", value (scow %p owner.source));
-              ;input(type "hidden", name "stack", value stack-tape);
-              ;button.secondary(type "submit"): Retry
+              ;*  (context-return-fields scope.source)
+              ;button.secondary(type "submit"): Start new acquisition attempt
             ==
         ;+  ?.  ?&  =(%clay kind.source)
                     !=(%pending status.source)
@@ -4357,8 +4932,7 @@
               =action   "/apps/seer/actions/refresh-context-source"
               =hx-post  "/apps/seer/actions/refresh-context-source"
               ;input(type "hidden", name "context-id", value context-tape);
-              ;input(type "hidden", name "owner", value (scow %p owner.source));
-              ;input(type "hidden", name "stack", value stack-tape);
+              ;*  (context-return-fields scope.source)
               ;button.secondary(type "submit"): Refresh
             ==
         ;form.inline
@@ -4367,8 +4941,7 @@
           =action      "/apps/seer/actions/remove-context-source"
           =hx-post     "/apps/seer/actions/remove-context-source"
           ;input(type "hidden", name "context-id", value context-tape);
-          ;input(type "hidden", name "owner", value (scow %p owner.source));
-          ;input(type "hidden", name "stack", value stack-tape);
+          ;*  (context-return-fields scope.source)
           ;button.icon-button
             =type        "submit"
             =title       "Remove this source"
@@ -4415,8 +4988,9 @@
   ++  member-row
     |=  [source=context-source attached=(set @t) member=@t]
     ^-  manx
+    ?>  ?=(%stack -.scope.source)
     =/  loc=@t  (cat 3 locator.source member)
-    =/  card-value=tape  ?~(card.source "" (tas-tape u.card.source))
+    =/  card-value=tape  ?~(card.scope.source "" (tas-tape u.card.scope.source))
     ;div.context-member
       ;span.context-member-path: {(trip member)}
       ;+  ?:  (~(has in attached) loc)
@@ -4425,8 +4999,8 @@
             =method   "post"
             =action   "/apps/seer/actions/add-context-source"
             =hx-post  "/apps/seer/actions/add-context-source"
-            ;input(type "hidden", name "owner", value (scow %p owner.source));
-            ;input(type "hidden", name "stack", value (tas-tape stack.source));
+            ;input(type "hidden", name "owner", value (scow %p owner.scope.source));
+            ;input(type "hidden", name "stack", value (tas-tape stack.scope.source));
             ;input(type "hidden", name "card", value card-value);
             ;input(type "hidden", name "kind", value "clay");
             ;input(type "hidden", name "locator", value (trip loc));
@@ -4821,6 +5395,7 @@
         |=  [question-id=@tas job=card-question]
         (question-row question-id job return)
       ==
+      ;+  (scope-learning-panel [%stack owner stack-name `item-name])
       ;+
       ?~  available-models
         ?:  =('review' return)
@@ -4838,6 +5413,9 @@
         ;input(type "hidden", name "item", value (tas-tape item-name));
         ;input(type "hidden", name "return", value (trip return));
         ;+  (context-picker prompt-sources)
+        ;+  packet-budget-fields
+        ;p.muted: The selected provider receives the frozen card, request, and authorized excerpts. Ask is read-only; Edit authorizes one revision-fenced change to this card, not a plan awaiting approval.
+        ;p.muted: A provider invocation may be billable. Unsupported provider adapters fail closed; account sign-in alone does not establish safe generation support.
         ;div.ai-form-row
           ;label
             ;span: action
@@ -4866,7 +5444,7 @@
               ==
             ==
           ==
-          ;button(type "submit"): Send
+          ;button(type "submit"): Send · potentially billable
         ==
       ==
     ==
@@ -4878,12 +5456,14 @@
       ;div.hidden;
     =/  count=@ud  (lent rows)
     ;fieldset.context-picker
-      ;legend: Use context · {<count>} ready
+      ;legend: Select evidence · {<count>} available sources
       ;div.context-choice-list
         ;*
         %+  turn  rows
         |=  [context-id=@tas source=context-source]
-        =/  scope=tape  ?~(card.source "stack" "card")
+        =/  scope=tape
+          ?.  ?=(%stack -.scope.source)  (trip -.scope.source)
+          ?~(card.scope.source "stack" "card")
         =/  choice-attrs=mart
           :~  [%type "checkbox"]
               [%name (weld "context-" (tas-tape context-id))]
@@ -4894,6 +5474,7 @@
           ;+  [[%input choice-attrs] ~]
           ;span: {(trip label.source)}
           ;span.context-scope: {scope}
+          ;span.context-scope: {(context-status-name status.source)}
         ==
       ==
     ==
@@ -4905,8 +5486,10 @@
       ?|  =(%pending status.job)
           =(%working status.job)
       ==
-    =/  context-count=@ud
-      (lent (fall (~(get by question-contexts) question-id) ~))
+    =/  packet=(unit context-packet)
+      ?~  packet.job  ~
+      (~(get by packets.evidence) u.packet.job)
+    =/  context-count=@ud  ?~(packet 0 (lent entries.u.packet))
     =/  question-tape=tape  (tas-tape question-id)
     =/  context-meta=tape
       ?:  =(context-count 0)  ""
@@ -4924,9 +5507,12 @@
       =class  ?:(active "ai-turn is-thinking" "ai-turn")
       ;div.ai-head
         ;div.meta: {head-meta}
-        ;span(class ?:(active "pill thinking-pill" "pill")): {(trip status.job)}
+        ;span(class ?:(active "pill thinking-pill" "pill")): {?:(=(%answered status.job) "answer-ready · inspect receipt for effects" (trip status.job))}
       ==
       ;div.ai-question: {(trip prompt.job)}
+      ;+  (work-panel [%question our %root question-id] return)
+      ;+  (packet-panel packet.job citations.job)
+      ;+  (learning-panel [%stack owner.job stack.job `card.job] prompt.job provider.profile.job)
       ;+
       ?-  status.job
         %pending
@@ -4963,6 +5549,7 @@
         %failed
           ;div
             ;div.proposal-conflict: {(trip response.job)}
+            ;p.muted: Reconcile the receipt first. A new attempt is not a replay and may repeat billable work when the external outcome is unknown.
             ;div.item-actions
               ;form.inline
                 =method   "post"
@@ -4973,7 +5560,7 @@
                 ;input(type "hidden", name "owner", value (scow %p owner.job));
                 ;input(type "hidden", name "stack", value (tas-tape stack.job));
                 ;input(type "hidden", name "return", value (trip return));
-                ;button.secondary(type "submit"): Try again
+                ;button.secondary(type "submit"): Start new attempt · potentially billable
               ==
               ;form.inline
                 =method   "post"
@@ -5009,14 +5596,11 @@
     =/  matched=(list [@tas context-source])
       %+  skim  ~(tap by contexts)
       |=  [context-id=@tas source=context-source]
+      ?.  ?=(%stack -.scope.source)  %.n
       ?&  active.source
-          =(owner owner.source)
-          =(stack-name stack.source)
           ?:  exact
-            =(card card.source)
-          ?|  ?=(~ card.source)
-              =(card card.source)
-          ==
+            =([%stack owner stack-name card] scope.source)
+          (scope-applies:ev scope.source [%stack owner stack-name card])
       ==
     %+  sort  matched
     |=  [a=[@tas context-source] b=[@tas context-source]]
@@ -5027,9 +5611,7 @@
   ++  prompt-contexts
     |=  [owner=@p stack-name=@tas item-name=@tas]
     ^-  (list [@tas context-source])
-    %+  skim  (scope-contexts owner stack-name `item-name %.n)
-    |=  [context-id=@tas source=context-source]
-    =(%ready status.source)
+    (scope-contexts owner stack-name `item-name %.n)
   ::
   ++  contexts-waiting
     |=  rows=(list [@tas context-source])

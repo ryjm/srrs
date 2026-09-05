@@ -5,40 +5,13 @@
 |%
 +$  card  card:shoe
 ::
-+$  versioned-state
-  $%  state-0
-      state-1
-  ==
-::
-+$  state-1
-  $:  %1
-      ::  display width
-      ::
-      width=@ud
-      ::  sole sessions
-      ::
++$  cli-state
+  $:  width=$~(80 @ud)
       sessions=(map sole-id session)
-      ::  entropy
-      ::
-      eny=@uvJ
-  ==
-::
-+$  state-0
-  $:  %0
-      ::  active targets
-      ::
-      audience=(set target)
-      ::  display width
-      ::
-      width=@ud
-      ::  entropy
-      ::
       eny=@uvJ
   ==
 ::
 +$  session  version=@ud
-::
-+$  target  [in-group=? [=ship =path]]
 ::
 +$  command
   $%
@@ -60,7 +33,7 @@
   ==
 ::
 --
-=|  state-1
+=|  cli-state
 =*  state  -
 ::
 %-  agent:dbug
@@ -78,22 +51,15 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    =^  cards  state  (prep:sc ~)
-    [cards this]
+    [~[connect:sc] this(eny.state eny.bowl)]
   ::
   ++  on-save  !>(state)
   ::
   ++  on-load
     |=  =vase
     ^-  (quip card _this)
-    =/  maybe-old=(each p=versioned-state tang)
-      (mule |.(!<(versioned-state vase)))
-    =/  [old=versioned-state bad=?]
-      ?.  ?=(%| -.maybe-old)  [p &]:p.maybe-old
-      =;  [sta=versioned-state ba=?]  [sta ba]
-      ~&  >  %bad-load  [state &]
-    =^  cards  state  (prep:sc `old)
-    [cards this]
+    ~|  'seer-cli-state-shape-changed: nuke %seer-cli and revive %seer'
+    [~ this(state !<(cli-state vase))]
   ::
   ++  on-poke
     |=  [=mark =vase]
@@ -112,7 +78,10 @@
     ^-  (quip card _this)
     =^  cards  state
       ?-    -.sign
-        %poke-ack   [- state]:(on-agent:def wire sign)
+          %poke-ack
+        ?.  ?=([%cli-command @ @ @ @ ~] wire)
+          [- state]:(on-agent:def wire sign)
+        (command-result:sc wire)
         %watch-ack  [- state]:(on-agent:def wire sign)
       ::
           %kick
@@ -144,6 +113,12 @@
   ::
   ++  on-command
     |=  [=sole-id =command]
+    ?>  =(our.bowl src.bowl)
+    ?>  ?|  =(/gall/hood sap.bowl)
+            =(/gall/dojo sap.bowl)
+            =(/dill sap.bowl)
+            =(/eyre sap.bowl)
+        ==
     =^  cards  state
       (work:(make:sh:sc sole-id) command)
     [cards this]
@@ -158,23 +133,6 @@
   --
 ::
 |_  =bowl:gall
-::  +prep: setup & state adapter
-::
-++  prep
-  |=  old=(unit versioned-state)
-  ^-  (quip card _state)
-  =;  migrate
-    ?~  old  migrate
-    ?-  -.u.old
-      %0  migrate
-      %1  [~ u.old]
-    ==
-  =^  cards  state
-    :-  ~[connect]
-    %_  state
-      width  80
-    ==
-  [cards state]
 ::  +connect: connect to seer
 ::
 ++  connect
@@ -195,6 +153,37 @@
   ?:  ?=(%connect a)
     [[connect ~] state]
   [~ state]
+::
+++  command-result
+  |=  wire=path
+  ^-  (quip card _state)
+  ?>  ?=([%cli-command @ @ @ @ ~] wire)
+  =/  epoch  (slav %da i.t.t.wire)
+  =/  operation  i.t.t.t.wire
+  =/  session-id  (need ((soft sole-id) (cue (slav %uv i.t.t.t.t.wire))))
+  =/  query  (scot %uv (jam [epoch operation *(unit @ux)]))
+  =/  result=(each json tang)
+    %-  mule
+    |.
+    .^  json
+      %gx
+      (scot %p our.bowl)
+      %seer
+      (scot %da now.bowl)
+      /operation-result/[query]/json
+    ==
+  =/  message=tape
+    ?:  ?=(%| -.result)  "receipt unavailable; reconcile before retrying"
+    ?.  ?=(%o -.p.result)  "invalid receipt; reconcile before retrying"
+    =/  status  (~(get by p.p.result) 'status')
+    =/  reason  (~(get by p.p.result) 'reason')
+    ?.  ?&(?=([~ %s *] status) ?=([~ %s *] reason))
+      "invalid receipt; reconcile before retrying"
+    "{(trip p.u.status)}: {(trip p.u.reason)}"
+  :_  state
+  :~  (print:(make:sh-out session-id) message)
+      (print:(make:sh-out session-id) "operation {(trip operation)}; epoch {(scow %da epoch)}")
+  ==
 ::  +handle-delta: casts primary-delta to something printable
 ::
 ++  handle-delta
@@ -345,14 +334,21 @@
     ::  +act: build action card
     ::
     ++  act
-      |=  [what=term app=term =cage]
-      ^-  card
-      :*  %pass
-          /cli-command/[what]
-          %agent
-          [our-self app]
-          %poke
-          cage
+      |=  [what=term mutation=action]
+      ^-  (quip card _state)
+      =/  epoch  (scry-for @da %seer /idempotency-epoch)
+      =/  operation  (scot %uv (shax (jam [eny now.bowl sole-id mutation])))
+      =/  session-ref  (scot %uv (jam sole-id))
+      :_  state
+      :~  (print:sh-out "submitting {(trip operation)}")
+          :*  %pass
+              /cli-command/[what]/(scot %da epoch)/[operation]/[session-ref]
+              %agent
+              [our-self %seer]
+              %poke
+              %seer-action
+              (command-vase epoch operation mutation)
+          ==
       ==
     ::
     ++  show-settings
@@ -364,20 +360,12 @@
     ++  delete-item
       |=  [stack=@tas item=@t]
       ^-  (quip card _state)
-      =-  [[- ~] state]
-      %^  act  %delete-item  %seer
-      :-  %seer-action
-      !>  ^-  action
-      [%delete-item stack item]
+      (act %delete-item [%delete-item stack item])
     ::
     ++  delete-stack
       |=  [stack=@tas who=(unit @p)]
       ^-  (quip card _state)
-      =-  [[- ~] state]
-      %^  act  %delete-stack  %seer
-      :-  %seer-action
-      !>  ^-  action
-      [%delete-stack (fall who our-self) stack]
+      (act %delete-stack [%delete-stack (fall who our-self) stack])
     ::
     ::    +add-stack: add a stack
     ::
@@ -386,38 +374,22 @@
     ++  add-stack
       |=  stack=@tas
       ^-  (quip card _state)
-      =-  [[- ~] state]
-      %^  act  %add-stack  %seer
-      :-  %seer-action
-      !>  ^-  action
-      [%new-stack stack stack ~]
+      (act %add-stack [%new-stack stack stack ~])
     ::
     ++  import
       |=  [who=@p stack=@t]
       ^-  (quip card _state)
-      =-  [[- ~] state]
-      %^  act  %import  %seer
-      :-  %seer-action
-      !>  ^-  action
-      [%import who (string-to-symbol (trip stack))]
+      (act %import [%import who (string-to-symbol (trip stack))])
     ::
     ++  copy-stack
       |=  [who=@p stack=@t keep-learned=?]
       ^-  (quip card _state)
-      =-  [[- ~] state]
-      %^  act  %copy-stack  %seer
-      :-  %seer-action
-      !>  ^-  action
-      [%copy-stack who (string-to-symbol (trip stack)) keep-learned]
+      (act %copy-stack [%copy-stack who (string-to-symbol (trip stack)) keep-learned])
     ::
     ++  import-file
       |=  =path
       ^-  (quip card _state)
-      =-  [[- ~] state]
-      %^  act  %import-file  %seer
-      :-  %seer-action
-      !>  ^-  action
-      [%import-file path]
+      (act %import-file [%import-file path])
     ::
     ::  +set-width: configure cli printing width
     ::
@@ -438,18 +410,13 @@
     ::
     ++  all-reviews
       ^-  (quip card _state)
-      =,  html
       =/  reviews  (scry-for (list review) %seer /review)
       =/  json
         :-  %a
         %+  turn  reviews
         review-to-json
       =/  print-card=card
-        (print:sh-out "review: {(en-json json)}")
-      ::  =^  say-cards  state
-      ::    (say `letter:chat-store`[%text (crip "review: {(en-json json)}")])
-      ::  [(flop (snoc say-cards print-card)) state]
-      ::
+        (print:sh-out "review: {(trip (en:json:html json))}")
       [print-card^~ state]
     ::
     ::  +help: print (link to) usage instructions

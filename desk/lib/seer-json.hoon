@@ -59,6 +59,30 @@
     ==
   ==
 ::
+++  json-to-command
+  |=  jon=json
+  ^-  command
+  ?>  ?=(%o -.jon)
+  =/  version  (~(get by p.jon) 'schema_version')
+  ~|  'unsupported-seer-schema'
+  ?>  =(`[%n '2'] version)
+  =/  epoch-text  (~(get by p.jon) 'idempotency_epoch')
+  =/  operation-text  (~(get by p.jon) 'operation_id')
+  ?>  ?=([~ %s *] epoch-text)
+  ?>  ?=([~ %s *] operation-text)
+  =/  epoch  (need (slaw %da p.u.epoch-text))
+  ?>  =(p.u.epoch-text (scot %da epoch))
+  =/  operation  p.u.operation-text
+  ?>  ?&((gth (met 3 operation) 0) (lte (met 3 operation) 128))
+  =/  payload  (~(get by p.jon) 'payload')
+  ?>  ?=(^ payload)
+  =/  result  (make-command epoch operation (json-to-action u.payload))
+  =/  digest  (~(get by p.jon) 'payload_digest')
+  ?~  digest  result
+  ?>  ?=(%s -.u.digest)
+  ?>  =((need (slaw %ux p.u.digest)) digest.result)
+  result
+::
 ++  json-to-action
   |=  jon=json
   =,  dejs:format
