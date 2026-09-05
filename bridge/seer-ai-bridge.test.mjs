@@ -1,9 +1,13 @@
 import assert from "node:assert/strict";
 import { createHash, createHmac } from "node:crypto";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   callTool, cancelWork, createBridgeReadState, createReadScan, ensureBridgeProtocol,
+  discoverModelProfiles,
   extractMcpCookie, fetchWebContext, isPrivateContextAddress, libraryObservations, loadLibraryContext,
   nextReadJob, normalizeContextContent, parseClaudeAuthChallenge, parseCodexDeviceAuth,
   parseEditResult, parseStatePlan, poll, processChange, processQuestion,
@@ -26,6 +30,19 @@ const page = (collection, rows, query = {}, extra = {}) => ({
   limits: { limit: Number(query.limit || READ_CAPS.pageRows), max_bytes: Number(query.max_bytes || READ_CAPS.pageBytes) },
   ...(collection ? { [collection]: rows } : {}), ...extra,
 });
+
+async function catalogCli(t, paddingBytes) {
+  const directory = await mkdtemp(join(tmpdir(), "seer-catalog-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const command = join(directory, "codex");
+  const models = ["luna", "terra", "sol"].map((tier) => ({
+    slug: `gpt-5.6-${tier}`, visibility: "list",
+  }));
+  await writeFile(command, `#!${process.execPath}
+process.stdout.write(JSON.stringify({models:${JSON.stringify(models)},metadata:"x".repeat(${paddingBytes})}));
+`, { mode: 0o700 });
+  return command;
+}
 
 async function localMcp(t, handle, handleNative) {
   const requests = [];
@@ -120,6 +137,21 @@ function workRuntime(fixture, runProvider, override = {}) {
   };
   return { calls, runtime };
 }
+
+test("model catalog discovery accepts metadata larger than an answer", { skip: process.platform === "win32" }, async (t) => {
+  const codex = await catalogCli(t, 131_072);
+  const profiles = await discoverModelProfiles({ codex }, { timeoutMs: 5000 });
+  assert.deepEqual(profiles.map(({ role, model }) => [role, model]), [
+    ["smol", "gpt-5.6-luna"],
+    ["default", "gpt-5.6-terra"],
+    ["slow", "gpt-5.6-sol"],
+  ]);
+});
+
+test("model catalog discovery rejects oversized metadata", { skip: process.platform === "win32" }, async (t) => {
+  const codex = await catalogCli(t, 1_048_576);
+  await assert.rejects(discoverModelProfiles({ codex }, { timeoutMs: 5000 }), { code: "PROCESS_STDOUT_LIMIT" });
+});
 
 test("MCP cookies remain endpoint-specific and environment-backed", () => {
   const toml = `[mcp_servers.other]\nurl = "http://other/mcp"\nhttp_headers = { "Cookie" = "wrong" }\n

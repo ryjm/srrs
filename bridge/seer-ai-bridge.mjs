@@ -774,13 +774,14 @@ export async function ensureBridgeProtocol(config, cookie, dependencies = {}) {
 }
 
 
-async function discoverModelProfiles(providers, config) {
+export async function discoverModelProfiles(providers, config) {
   const profiles = [];
   if (providers.codex) {
     const env = providerEnvironment();
     const { stdout } = await runBoundedProcess(providers.codex, ["debug", "models"], {
       env,
       timeoutMs: Math.min(config.timeoutMs || 180_000, 45_000),
+      maxStdoutBytes: 1_048_576,
     });
     const codexProfiles = codexProfilesFromCatalog(JSON.parse(stdout));
     if (codexProfiles.length !== 3) {

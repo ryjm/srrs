@@ -534,6 +534,8 @@ Copy `bridge/ai-bridge.example.json` to `~/.config/seer/ai-bridge.json`. Set a c
 `contextFetchTimeoutMs` bounds each fetch (20,000 ms). Process defaults are
 180,000 ms, 65,536 stdout bytes, 16,384 stderr bytes, and 262,144 stdin bytes;
 the source work budget or a particular operation may impose a tighter bound.
+Codex model-catalog discovery has a separate 1,048,576-byte stdout limit;
+that metadata allowance does not increase provider-generation output bounds.
 
 Pair the bridge with Seer before enabling frontend sign-in. Generate a
 high-entropy shared secret on the bridge host:
