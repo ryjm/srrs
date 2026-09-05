@@ -2454,7 +2454,8 @@
                  justify-content: space-between;
                  padding: 1.15rem;
                }
-               .capture-copy { display: grid; gap: .35rem; min-width: 0; }
+               .capture-head > .inline { flex: none; }
+               .capture-copy { display: grid; gap: .35rem; min-width: 0; overflow-wrap: anywhere; }
                .capture-meta {
                  align-items: center;
                  color: var(--muted);
@@ -3330,6 +3331,7 @@
       ?:  =(created-at.+.row created-at.+.i.rows)
         (aor -.row -.i.rows)
       (gth created-at.+.row created-at.+.i.rows)
+    ::  ?~ narrowed rows to nonempty; scag's ^+ b result may still be empty.
     ?:  before  [row (scag (dec limit) ^-((list [@tas capture]) rows))]
     [i.rows $(rows t.rows, limit (dec limit))]
   ::
