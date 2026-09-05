@@ -4,6 +4,11 @@ These notes record the 2021 Seer desk setup. They do not describe the current
 Zuse 408 application. Use =README.md= for current installation and development
 instructions.
 
+The current system direction is in [[file:SYSTEM_DESIGN.md][SYSTEM_DESIGN.md]].
+Implementation status and dependencies live in Beads, beginning with
+=bd show srrs-login-epic-lyy=. The TODO/NEXT markers below are historical
+annotations, not actionable project tasks.
+
 * Archived tasks
 ** TODO Migrate the legacy Seer desk
 
