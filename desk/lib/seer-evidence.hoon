@@ -509,7 +509,7 @@
     %*  .  *context-packet
       request         request
       created-at      now
-      prompt-version  1
+      prompt-version  2
       schema-version  2
     ==
   ?.  ?&((request-valid request) =(our owner.work.request))

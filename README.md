@@ -285,6 +285,9 @@ failed, stale, excluded, listing-only, purged, and budget-omitted states.
 UTF-8 excerpts expose exact ranges. Citation validation checks selected
 snapshots, boundaries, and quoted bytes—not whether the quotation entails a
 generated claim. Identical scoped bodies are stored once across observations.
+Canonical packets use `prompt_version: 2`; input and output schemas remain at
+version 2. The frozen work record carries the packet's prompt version, and the
+bridge rejects prompt version 1 even when its packet and work versions agree.
 
 ### Share ship files with other ships
 
@@ -328,8 +331,9 @@ For a new stack plus cards, stage one atomic `seer/propose-change` plan rather
 than using a direct-write shortcut. `seer/create-stack` and `seer/add-card`
 are removed, with no compatibility aliases. Native manual creation and the
 operator's narrow **Edit** authorization remain available.
-Reuse the same capture and attached evidence for this branch; do not create a
-second capture for the atomic plan.
+The plan retains change-plan provenance, not a typed association to the capture
+or its evidence. A capture ID in summary text is not an enforceable provenance
+link. Do not stage duplicate proposals or create a second capture for the plan.
 
 ### MCP tools
 
@@ -449,6 +453,18 @@ The frozen library input retains the worker's `read_report` alongside
 source-authored `source_coverage` counts. Invalid or expired scans stop before
 dispatch. Partial discovery remains explicit; it is not proof that no relevant
 card exists, and a report cannot claim completeness over unobserved entities.
+Preparation accepts only this ship's stack/card observations. Cached remote
+references are read-only: the bridge excludes them from preparation and records
+`remote-read-only` omissions in `read_report`, rather than supplying foreign
+fences or treating the remote material as absent.
+
+Library reads share a 98,304-byte total budget and a 40-MCP-call ceiling.
+Stack discovery follows at most four metadata pages. Up to six exact stack
+metadata lookups share a 65,536-byte allowance with those discovery pages.
+Card metadata and selected detail reads also count against the total byte/call
+budgets. Selection remains limited to six stacks, 24 cards overall, and eight
+cards per stack. Hitting a discovery, selection, byte, or call cap leaves
+explicit omissions; it does not authorize a broader scan or prove completeness.
 
 Plans are limited to 64 operations, 131,072 operation-text bytes, and 256
 affected entities. Preview discloses before/after text and review effects.

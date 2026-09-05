@@ -252,6 +252,7 @@ export const READ_CAPS = Object.freeze({
   contextSources: 8, contextBytes: 64_000, sourceBytes: 24_000,
   libraryStacks: 6, libraryCards: 24, cardsPerStack: 8, libraryBytes: 98_304,
   libraryMetadataRows: 100, libraryMetadataBytes: 32_768,
+  libraryDiscoveryPages: 4, libraryDiscoveryBytes: 65_536, libraryCalls: 40,
 });
 const READ_COLLECTIONS = {
   "seer/list-context-sources": ["contexts", "context_id"],
@@ -298,7 +299,8 @@ export async function readBoundedPage(config, cookie, tool, scope = {}, dependen
       || (rows !== undefined && (!Array.isArray(rows) || rows.length > query.limit
         || rows.some((row) => !row || typeof row[idKey] !== "string" || !row[idKey]
           || (READ_COLLECTIONS[tool] && (typeof row.status !== "string" || (query.status && row.status !== query.status))))
-        || new Set(rows.map((row) => row[idKey])).size !== rows.length))
+        || new Set(rows.map((row) => tool === "seer/state-context"
+          ? `${row.ref?.owner}/${row.ref?.scope}/${row[idKey]}` : row[idKey])).size !== rows.length))
       || (page.status !== "ok" && rows?.length)
       || (query.id && rows?.some((row) => row[idKey] !== query.id))) {
       throw new Error(`Invalid ${collection} page from ${tool}`);
@@ -408,93 +410,164 @@ function explicitLibraryStacks(prompt) {
 
 
 export async function loadLibraryContext(config, cookie, job, dependencies = {}) {
-  const context = { stacks: [], complete: false, omissions: [] };
+  const context = { ship: null, stacks: [], complete: false, omissions: [] };
   let bytes = 0;
+  let discoveryBytes = 0;
+  let calls = 0;
   let cards = 0;
-  const candidates = new Map();
-  const key = (row) => `${row.ref?.owner || ""}/${row.stack_id}`;
-  const explicit = explicitLibraryStacks(job.prompt);
-  if (explicit.capped) context.omissions.push({ reason: "library-explicit-stack-cap" });
-  // Exact metadata reads precede discovery and body expansion. At most six
-  // targets cost at most 24 KiB, independent of the library's page count.
-  for (const target of explicit.targets) {
-    const exact = await readBoundedPage(config, cookie, "seer/state-context", {
-      ...target, limit: 1, max_bytes: 4096,
-    }, dependencies);
-    bytes += jsonBytes(exact);
-    context.omissions.push(...readOmissions(exact, { stack_id: target.id, ...(target.owner ? { owner: target.owner } : {}) }));
-    if (exact.status !== "ok") continue;
-    if (exact.complete && exact.stacks.length !== 1) {
-      throw Object.assign(new Error("Incomplete stack metadata read: exact stack omitted"), {
-        code: "INCOMPLETE_LIBRARY_METADATA",
-      });
+  const read = async (scope, discovery = false) => {
+    const page = await readBoundedPage(config, cookie, "seer/state-context", scope, dependencies);
+    calls += 1;
+    const size = jsonBytes(page);
+    bytes += size;
+    if (discovery) discoveryBytes += size;
+    if (typeof page.ship !== "string" || !/^~[a-z]+(?:-+[a-z]+)*$/u.test(page.ship)) {
+      throw bridgeError("INCOMPLETE_LIBRARY_METADATA");
     }
-    for (const row of exact.stacks) candidates.set(key(row), { row, owner: target.owner, epoch: exact.idempotency_epoch });
-  }
-  const page = await readBoundedPage(config, cookie, "seer/state-context", {
-    limit: READ_CAPS.libraryMetadataRows,
-    max_bytes: Math.min(READ_CAPS.libraryMetadataBytes, READ_CAPS.libraryBytes - bytes),
-  }, dependencies);
-  bytes += jsonBytes(page);
-  context.omissions.push(...readOmissions(page, "stacks"));
-  // Search only the bounded discovery page; its continuation/omissions remain
-  // visible even when every explicitly requested stack was resolved.
+    if (context.ship !== null && context.ship !== page.ship) throw bridgeError("INCOMPLETE_LIBRARY_READ");
+    context.ship = page.ship;
+    return page;
+  };
+  const localRows = (page, scope, omissions) => {
+    const kind = scope.stack_id ? "card" : "stack";
+    const rows = page.status === "ok" ? page[`${kind}s`] : [];
+    let excluded = 0;
+    const local = rows.filter((row) => {
+      observedPrecondition(row.ref, true);
+      if (row.ref.kind !== kind || row.ref.id !== row[`${kind}_id`]
+        || (scope.stack_id && row.ref.scope !== scope.stack_id)
+        || (row.owner !== undefined && row.owner !== row.ref.owner)) throw bridgeError("INVALID_OBSERVATION");
+      if (row.ref.owner === context.ship && (!scope.owner || scope.owner === context.ship)) return true;
+      excluded += 1;
+      return false;
+    });
+    if (excluded) omissions.push({ reason: "remote-read-only", excluded_count: excluded });
+    return local;
+  };
   const instruction = job.prompt.toLowerCase();
   const words = new Set(instruction.split(/[^a-z0-9-]+/u));
   const relevance = (row, id) => Number(words.has(row[id].toLowerCase())) * 2
     + Number(row.title.toLowerCase().split(/[^a-z0-9-]+/u).some((word) => word.length > 3 && words.has(word)));
-  const discovered = page.status === "ok"
-    ? [...page.stacks].sort((a, b) => relevance(b, "stack_id") - relevance(a, "stack_id")) : [];
-  for (const row of discovered) {
-    if (!candidates.has(key(row))) candidates.set(key(row), { row, epoch: page.idempotency_epoch });
+  // Retain only the best six candidates across all pages, with exact hits first.
+  const candidates = new Map();
+  let stackCapped = false;
+  const retain = (row, page, exact = false) => {
+    const previous = candidates.get(row.stack_id);
+    if (previous) {
+      if (previous.epoch !== page.idempotency_epoch
+        || ["incarnation", "content_revision"].some((field) => previous.row.ref[field] !== row.ref[field])) {
+        context.omissions.push({ stack_id: row.stack_id, reason: "snapshot-changed" });
+      }
+      return;
+    }
+    candidates.set(row.stack_id, { row, epoch: page.idempotency_epoch,
+      score: exact ? 4 : relevance(row, "stack_id") });
+    if (candidates.size <= READ_CAPS.libraryStacks) return;
+    const ranked = [...candidates.values()].sort((a, b) => b.score - a.score);
+    candidates.delete(ranked.at(-1).row.stack_id);
+    stackCapped = true;
+  };
+  const explicit = explicitLibraryStacks(job.prompt);
+  if (explicit.capped) context.omissions.push({ reason: "library-explicit-stack-cap" });
+  // Exact metadata reads precede discovery and body expansion. Their bytes also
+  // count toward the discovery budget, leaving at least 32 KiB for card reads.
+  for (const target of explicit.targets) {
+    if (context.ship !== null && target.owner && target.owner !== context.ship) {
+      context.omissions.push({ reason: "remote-read-only", owner: target.owner, stack_id: target.id });
+      continue;
+    }
+    const exact = await read({ ...target, limit: 1, max_bytes: 4096 }, true);
+    context.omissions.push(...readOmissions(exact, { stack_id: target.id, ...(target.owner ? { owner: target.owner } : {}) }));
+    if (target.owner && target.owner !== context.ship) {
+      context.omissions.push({ reason: "remote-read-only", owner: target.owner, stack_id: target.id });
+      continue;
+    }
+    if (exact.status === "ok" && exact.complete && exact.stacks.length !== 1) {
+      throw Object.assign(new Error("Incomplete stack metadata read: exact stack omitted"), {
+        code: "INCOMPLETE_LIBRARY_METADATA",
+      });
+    }
+    for (const row of localRows(exact, target, context.omissions)) retain(row, exact, true);
   }
-  const stacks = [...candidates.values()];
-  for (const { row: stack, owner, epoch } of stacks.slice(0, READ_CAPS.libraryStacks)) {
-    const scope = { stack_id: stack.stack_id, ...(owner ? { owner } : {}) };
+  let cursor;
+  let snapshot;
+  let discoveryComplete = false;
+  // Source binds cursor fingerprints to max_bytes: never shrink a continuation
+  // query. Reserve an equal allowance for every possible discovery page.
+  const discoveryPageBytes = Math.min(READ_CAPS.libraryMetadataBytes,
+    Math.floor((READ_CAPS.libraryDiscoveryBytes - discoveryBytes) / READ_CAPS.libraryDiscoveryPages));
+  for (let pageCount = 0; ; pageCount += 1) {
+    const remainingBytes = Math.min(READ_CAPS.libraryDiscoveryBytes - discoveryBytes, READ_CAPS.libraryBytes - bytes);
+    const cap = pageCount >= READ_CAPS.libraryDiscoveryPages ? "library-discovery-page-cap"
+      : calls >= READ_CAPS.libraryCalls ? "library-call-cap"
+        : discoveryPageBytes < 1024 || remainingBytes < discoveryPageBytes ? "library-discovery-byte-cap" : null;
+    if (cap) {
+      context.omissions.push({ scope: "stacks", reason: cap, next_cursor: cursor || null });
+      break;
+    }
+    const page = await read({ limit: READ_CAPS.libraryMetadataRows, max_bytes: discoveryPageBytes,
+      ...(cursor ? { cursor } : {}) }, true);
+    const continuing = page.status === "ok" && page.next_cursor !== null;
+    // A successfully consumed continuation is not a permanent omission.
+    context.omissions.push(...(continuing ? page.omissions : readOmissions(page, "stacks")));
+    if (snapshot && (snapshot.watermark !== page.watermark || snapshot.epoch !== page.idempotency_epoch)) {
+      context.omissions.push({ scope: "stacks", reason: "snapshot-changed" });
+      break;
+    }
+    snapshot ||= { watermark: page.watermark, epoch: page.idempotency_epoch };
+    for (const row of localRows(page, {}, context.omissions)) retain(row, page);
+    discoveryComplete = page.status === "ok" && page.complete;
+    if (!continuing) break;
+    cursor = page.next_cursor;
+  }
+  const stacks = [...candidates.values()].sort((a, b) => b.score - a.score);
+  for (const { row: stack, epoch } of stacks) {
+    const scope = { stack_id: stack.stack_id, owner: context.ship };
     const selected = { stack_id: stack.stack_id, title: stack.title, ref: stack.ref, cards: [], cards_complete: false };
     context.stacks.push(selected);
-    if (cards >= READ_CAPS.libraryCards || READ_CAPS.libraryBytes - bytes < 1024) {
+    if (cards >= READ_CAPS.libraryCards || READ_CAPS.libraryBytes - bytes < 1024 || calls >= READ_CAPS.libraryCalls) {
       context.omissions.push({ stack_id: stack.stack_id, reason: "library-cap" });
       continue;
     }
-    const cardPage = await readBoundedPage(config, cookie, "seer/state-context", {
+    const cardPage = await read({
       ...scope, limit: READ_CAPS.libraryMetadataRows,
       max_bytes: Math.min(READ_CAPS.libraryMetadataBytes, READ_CAPS.libraryBytes - bytes),
-    }, dependencies);
-    bytes += jsonBytes(cardPage);
+    });
     const omissions = readOmissions(cardPage, { stack_id: stack.stack_id });
     if (cardPage.idempotency_epoch !== epoch) {
       omissions.push({ stack_id: stack.stack_id, reason: "snapshot-changed" });
     }
     if (cardPage.status === "ok") {
-      const candidates = [...cardPage.cards].sort((a, b) => relevance(b, "card_id") - relevance(a, "card_id"));
+      const localCards = localRows(cardPage, scope, omissions);
+      const candidates = localCards.sort((a, b) => relevance(b, "card_id") - relevance(a, "card_id"));
       const selectedCards = candidates.slice(0, Math.min(READ_CAPS.cardsPerStack, READ_CAPS.libraryCards - cards));
       if (selectedCards.length < candidates.length) {
         omissions.push({ stack_id: stack.stack_id, reason: "library-card-cap" });
       }
       for (const card of selectedCards) {
         const maxBytes = Math.min(16_384, READ_CAPS.libraryBytes - bytes);
-        if (maxBytes < 1024) {
-          omissions.push({ stack_id: stack.stack_id, reason: "library-byte-cap" });
+        if (maxBytes < 1024 || calls >= READ_CAPS.libraryCalls) {
+          omissions.push({ stack_id: stack.stack_id, reason: maxBytes < 1024 ? "library-byte-cap" : "library-call-cap" });
           break;
         }
         cards += 1;
-        const detail = await readBoundedDetail(config, cookie, "seer/state-context", card.card_id, {
-          ...scope, max_bytes: maxBytes,
-        }, dependencies);
-        bytes += jsonBytes(detail.page);
-        omissions.push(...readOmissions(detail.page, { stack_id: stack.stack_id, card_id: card.card_id }));
-        if (detail.page.idempotency_epoch !== cardPage.idempotency_epoch
-          || (detail.row && (!card.ref || !detail.row.ref
-            || ["kind", "owner", "scope", "id", "incarnation", "content_revision"].some((key) => card.ref[key] !== detail.row.ref[key])))) {
+        const detailPage = await read({ ...scope, id: card.card_id, projection: "detail", limit: 1, max_bytes: maxBytes });
+        omissions.push(...readOmissions(detailPage, { stack_id: stack.stack_id, card_id: card.card_id }));
+        if (detailPage.status === "ok" && detailPage.complete && detailPage.cards.length !== 1) {
+          throw bridgeError("DETAIL_UNAVAILABLE");
+        }
+        const detail = localRows(detailPage, scope, omissions)[0];
+        const returnedRef = detailPage.cards?.[0]?.ref;
+        if (detailPage.idempotency_epoch !== cardPage.idempotency_epoch
+          || (returnedRef && ["kind", "owner", "scope", "id", "incarnation", "content_revision"].some((key) => card.ref[key] !== returnedRef[key]))) {
           omissions.push({ stack_id: stack.stack_id, card_id: card.card_id, reason: "snapshot-changed" });
         }
-        if (!detail.row) continue;
-        requireDetailFields(detail.row, ["title", "front", "back"], "card");
-        selected.cards.push(detail.row);
+        if (!detail || !detailPage.complete) continue;
+        requireDetailFields(detail, ["title", "front", "back"], "card");
+        selected.cards.push(detail);
       }
       const loaded = new Set(selected.cards.map((card) => card.card_id));
-      selected.card_index = cardPage.cards.map((card) => ({
+      selected.card_index = localCards.map((card) => ({
         card_id: card.card_id, title: card.title, ref: card.ref, content_loaded: loaded.has(card.card_id),
       }));
     }
@@ -502,16 +575,20 @@ export async function loadLibraryContext(config, cookie, job, dependencies = {})
       && omissions.length === 0 && selected.cards.length === cardPage.cards.length;
     context.omissions.push(...omissions);
   }
-  if (stacks.length > READ_CAPS.libraryStacks) context.omissions.push({ reason: "library-stack-cap" });
-  context.complete = page.status === "ok" && page.complete && context.omissions.length === 0;
+  if (stackCapped) context.omissions.push({ reason: "library-stack-cap" });
+  context.complete = discoveryComplete && context.omissions.length === 0;
   return context;
 }
 
 export function libraryObservations(context) {
   const observations = [];
   for (const stack of context.stacks) {
+    if (!context.ship || stack.ref?.owner !== context.ship) throw bridgeError("INVALID_OBSERVATION");
     observations.push(observedPrecondition(stack.ref, true));
-    for (const card of stack.cards) observations.push(observedPrecondition(card.ref, true));
+    for (const card of stack.cards) {
+      if (card.ref?.owner !== context.ship) throw bridgeError("INVALID_OBSERVATION");
+      observations.push(observedPrecondition(card.ref, true));
+    }
   }
   if (observations.length > 128) throw bridgeError("OBSERVATION_LIMIT");
   return observations;
@@ -1372,7 +1449,7 @@ export function validateContextPacket(packet, job) {
     || packet.input_bytes > Math.min(work.max_input_bytes, 131_072)
     || packet.input_bytes !== work.input_bytes || !Array.isArray(packet.entries) || packet.entries.length > 32
     || typeof packet.complete !== "boolean"
-    || !Number.isSafeInteger(packet.prompt_version) || packet.prompt_version !== work.prompt_version
+    || packet.prompt_version !== 2 || packet.prompt_version !== work.prompt_version
     || !profile || profile.provider !== job.provider || profile.provider !== work.provider
     || typeof profile.profile_id !== "string" || typeof profile.selector !== "string"
     || !["smol", "default", "slow"].includes(profile.role)

@@ -199,7 +199,7 @@
   =.  core  (do core [%issue-bridge-nonce nonce])
   (do-command core (bridge-command core act nonce))
 ::
-::  A bounded read report survives freezing; it cannot overstate coverage.
+::  Freeze only local observations; remote omissions do not grant authority.
 ::
 ++  test-library-read-report-is-authoritative-and-proof-bound
   ^-  tang
@@ -208,6 +208,17 @@
   =.  core  (do core [%new-stack %unseen 'Unseen' ~])
   =.  core  (do core [%new-item ~zod ~zod %selected %c1 'Selected card' *perm-config 'Q' 'A'])
   =.  core  (do core [%new-item ~zod ~zod %unseen %c2 'Unseen card' *perm-config 'Other' 'Answer'])
+  ::  Cached remote entities deliberately share the local IDs. Their current
+  ::  versions must not authorize preparation under the foreign owner.
+  =/  local-bowl  bol
+  =/  peer  ~(. seer-agent local-bowl(our ~nec, src ~nec))
+  =.  peer  (do peer [%new-stack %selected 'Remote selected' ~])
+  =.  peer  (do peer [%new-item ~nec ~nec %selected %c1 'Remote card' *perm-config 'Remote Q' 'Remote A'])
+  =/  source  (need (peek-stack peer %selected))
+  =/  incoming  ~(. seer-agent local-bowl(src ~nec))
+  =.  incoming  +:(on-load:incoming on-save:core)
+  =.  incoming  +:(on-agent:incoming /import/~nec/selected [%fact %seer-stack !>(source)])
+  =.  core  +:(on-load:ag on-save:incoming)
   =.  core  (do-bridge core [%replace-assistant-models 'worker-1' ~[fixture-model]] 'report-catalog')
   =/  profile  (~(got by models:(peek-ai core)) %test-model)
   =.  core  (do core [%request-change %coverage %library profile 'Rename selected stack' %.n])
@@ -217,13 +228,25 @@
     :~  [[%stack ~zod %root %selected] (peek-version core %stack ~zod %root %selected) %.y %.n]
         [[%card ~zod %selected %c1] (peek-version core %card ~zod %selected %c1) %.y %.n]
     ==
+  =/  remote-stack  (need (peek-version core %stack ~nec %root %selected))
+  =/  remote-card  (need (peek-version core %card ~nec %selected %c1))
+  =/  remote-observations=(list entity-precondition)
+    :~  [[%stack ~nec %root %selected] `remote-stack %.y %.n]
+        [[%card ~nec %selected %c1] `remote-card %.y %.n]
+    ==
+  =/  foreign  (weld observations remote-observations)
   =/  full  '{"scope":"local-library","complete":true,"omissions":[]}'
-  =/  partial  '{"scope":"local-library","complete":false,"omissions":[{"scope":"stacks","reason":"page-incomplete","next_cursor":"more-stacks"}]}'
+  =/  partial  '{"scope":"local-library","complete":false,"omissions":[{"scope":"stacks","reason":"page-incomplete","next_cursor":"more-stacks"},{"owner":"~nec","stack_id":"selected","reason":"remote-read-only"}]}'
   =.  core  (do core [%issue-bridge-nonce 'report-full'])
   =/  overstated
     (bridge-command core [%prepare-change-packet %coverage 'worker-1' observations full ~ 65.536 24.000] 'report-full')
   =.  core  (do-command core overstated)
   =/  blocked  (need (peek-work core %change %root %coverage))
+  =.  core  (do core [%issue-bridge-nonce 'report-foreign'])
+  =/  foreign-command
+    (bridge-command core [%prepare-change-packet %coverage 'worker-1' foreign partial ~ 65.536 24.000] 'report-foreign')
+  =.  core  (do-command core foreign-command)
+  =/  rejected  (need (peek-work core %change %root %coverage))
   =.  core  (do core [%issue-bridge-nonce 'report-tamper'])
   =/  signed
     (bridge-command core [%prepare-change-packet %coverage 'worker-1' observations partial ~ 65.536 24.000] 'report-tamper')
@@ -235,8 +258,10 @@
   =/  forged
     (make-command epoch.signed operation.signed outer(payload inner(read-report changed)))
   =.  core  (do-command core forged)
-  =.  core
-    (do-bridge core [%prepare-change-packet %coverage 'worker-1' observations partial ~ 65.536 24.000] 'report-freeze')
+  =.  core  (do core [%issue-bridge-nonce 'report-freeze'])
+  =/  freeze
+    (bridge-command core [%prepare-change-packet %coverage 'worker-1' observations partial ~ 65.536 24.000] 'report-freeze')
+  =.  core  (do-command core freeze)
   =/  work  (need (peek-work core %change %root %coverage))
   =/  packet  (peek-packet core (need packet.work))
   =/  library  (need (de:json:html (json-text (json-field packet 'card') 'front')))
@@ -246,7 +271,16 @@
     (expect-eq !>('incomplete-library-observation') !>((json-text (peek-receipt core overstated) 'reason')))
     (expect-eq !>(~) !>(packet.blocked))
     (expect-eq !>(0) !>(invocations.blocked))
+    (expect-eq !>('conflict') !>((json-text (peek-receipt core foreign-command) 'status')))
+    (expect-eq !>('stale-observation') !>((json-text (peek-receipt core foreign-command) 'reason')))
+    (expect-eq !>(~) !>(packet.rejected))
+    (expect-eq !>(%none) !>(checkpoint.rejected))
     (expect-eq !>('unauthorized') !>((json-text (peek-receipt core forged) 'status')))
+    (expect-eq !>('ok') !>((json-text (peek-receipt core freeze) 'status')))
+    (expect-eq !>(%context-frozen) !>(checkpoint.work))
+    (expect-eq !>(2) !>(prompt-version.work))
+    (expect-eq !>(2) !>(schema-version.work))
+    (expect-eq !>(n+'2') !>((json-field packet 'prompt_version')))
     (expect-eq !>(b+%.n) !>((json-field coverage 'complete')))
     (expect-eq !>(n+'1') !>((json-field coverage 'unobserved_stack_count')))
     (expect-eq !>(n+'1') !>((json-field coverage 'unobserved_card_count')))

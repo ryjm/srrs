@@ -34,6 +34,25 @@
   (~(got by p.value) key)
 ++  published
   (publish-snapshot:ev ~zod fixed-now source 'aéz' %full 'local note' ~ %note *evidence-state)
+::  A contract revision changes the provider-bound input and packet identity,
+::  even when the request and evidence bytes are otherwise identical.
+++  test-prompt-version-binds-packet-identity
+  =/  first  published
+  =/  sources  (~(put by *(map @tas context-source)) %note source.first)
+  =/  built  (build-packet:ev ~zod fixed-now request sources store.first)
+  =/  packet  packet.built
+  =/  legacy
+    (store-packet:ev ~zod fixed-now packet(prompt-version 1) sources store.built)
+  =/  current  (packet-projection:ev packet sources store.built 32.768)
+  =/  previous  (packet-projection:ev packet.legacy sources store.legacy 32.768)
+  ;:  weld
+    (expect-eq !>(n+'2') !>((field current 'prompt_version')))
+    (expect-eq !>(n+'2') !>((field current 'schema_version')))
+    (expect-eq !>(n+'2') !>((field current 'output_schema_version')))
+    (expect-eq !>(%.n) !>(=((field current 'packet_ref') (field previous 'packet_ref'))))
+    (expect-eq !>(%.n) !>(=((field current 'input_digest') (field previous 'input_digest'))))
+    (expect-eq !>(%.n) !>(=((field current 'prompt_digest') (field previous 'prompt_digest'))))
+  ==
 ::  Repeated identical refreshes are distinct immutable observations, but
 ::  share one scoped body. Archive affects selection, not pinned dispatch.
 ++  test-refresh-archive-revocation-and-purge

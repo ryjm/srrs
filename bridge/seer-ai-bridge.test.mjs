@@ -24,7 +24,7 @@ const receipt = (action, args, extra = {}) => ({ schema_version: 2, action,
   idempotency_epoch: args.idempotency_epoch, operation_id: args.operation_id,
   payload_digest: "0xabcd", status: "ok", effect: "none", ...extra });
 const page = (collection, rows, query = {}, extra = {}) => ({
-  schema_version: 2, status: "ok", state_revision: 1, observed_at: epoch,
+  schema_version: 2, status: "ok", ship: "~zod", state_revision: 1, observed_at: epoch,
   idempotency_epoch: epoch, watermark: "scope-watermark", projection: query.projection || "metadata",
   complete: true, next_cursor: null, omissions: [],
   limits: { limit: Number(query.limit || READ_CAPS.pageRows), max_bytes: Number(query.max_bytes || READ_CAPS.pageBytes) },
@@ -101,7 +101,7 @@ function packetFixture(kind = "question", mode = "ask", library) {
   const input = JSON.stringify({ schema_version: 2, objective: "Explain é", entries: [],
     card: { title: "", front: mode === "library" ? JSON.stringify(library) : "", back: "" } });
   const prompt = `Source-authored contract\nBEGIN UNTRUSTED INPUT JSON\n${input}\nEND UNTRUSTED INPUT JSON\n`;
-  const packet = { schema_version: 2, output_schema_version: 2, prompt_version: 1,
+  const packet = { schema_version: 2, output_schema_version: 2, prompt_version: 2,
     packet_ref: "0xa", canonical_prompt: prompt, prompt_digest: promptDigest(prompt),
     input_digest: promptDigest(input), input_bytes: Buffer.byteLength(prompt),
     blocked_reason: null, complete: false, entries: [], profile, mode, objective: "Explain é",
@@ -115,7 +115,7 @@ function packetFixture(kind = "question", mode = "ask", library) {
       lease_until_ms: Date.now() + 40_000, packet_ref: packet.packet_ref,
       packet_digest: packet.prompt_digest, input_bytes: packet.input_bytes,
       max_input_bytes: 131072, max_output_bytes: 65536, max_operations: 64,
-      max_invocations: 1, invocations: 0, prompt_version: 1, policy_version: 1,
+      max_invocations: 1, invocations: 0, prompt_version: 2, policy_version: 1,
       provider: profile.provider, model_id: profile.profile_id, model_revision: 1 } };
   return { packet, job };
 }
@@ -292,34 +292,117 @@ test("bounded continuation retains discovered IDs and resets expired cursors exp
   assert.equal(queries[2].cursor, undefined);
 });
 
-test("explicit stack references resolve beyond discovery with owner-scoped bodies and truthful omissions", async () => {
+test("explicit local references precede discovery without following remote URLs", async () => {
   const ids = ["buried-one", "buried-two", "buried-three", "buried-four", "buried-five", "buried-six"];
-  const owners = ids.map((id) => id === "buried-five" ? "~nec" : "~zod");
+  const localIds = ids.filter((id) => id !== "buried-five");
+  let discoveryPages = 0;
   const prompt = 'Compare stack_id=buried-one, stack identifier buried-two, "buried-three", `buried-four`, '
     + "https://ship.example/apps/seer/stack/~nec/buried-five and stack buried-six.";
   const context = await loadLibraryContext({}, "", { prompt }, {
     callTool: async (_c, _k, _n, query) => {
+      assert.notEqual(query.id, "buried-five", "known remote URLs need no local exact fallback");
       if (query.stack_id) {
-        const index = ids.indexOf(query.stack_id);
-        assert.notEqual(index, -1, "explicit targets must precede unrelated discovery candidates");
-        const owner = query.owner || "~zod";
-        const card = { card_id: "evidence", title: "Evidence",
-          ref: { ...ref("card", "evidence", query.stack_id), owner } };
+        assert.notEqual(query.stack_id, "buried-five", "remote metadata cannot dispatch bodies");
+        assert.equal(query.owner, "~zod");
+        const card = { card_id: "evidence", title: "Evidence", ref: ref("card", "evidence", query.stack_id) };
         return page("cards", [query.projection === "detail"
-          ? { ...card, front: `${owner}/${query.stack_id}`, back: "Exact target body" } : card], query);
+          ? { ...card, front: query.stack_id, back: "Exact target body" } : card], query);
       }
-      if (query.id) return page("stacks", [{ stack_id: query.id, title: query.id,
-        ref: { ...ref("stack", query.id), owner: query.owner || "~zod" } }], query);
-      return page("stacks", Array.from({ length: READ_CAPS.libraryMetadataRows }, (_, index) => ({
-        stack_id: `unrelated-${index}`, title: "Other", ref: ref("stack", `unrelated-${index}`),
-      })), query, { complete: false, next_cursor: "more-library-metadata" });
+      if (query.id) return page("stacks", [{ stack_id: query.id, title: query.id, ref: ref("stack", query.id) }], query);
+      discoveryPages += 1;
+      return page("stacks", Array.from({ length: 10 }, (_, index) => ({
+        stack_id: `unrelated-${discoveryPages}-${index}`, title: "Other", ref: ref("stack", `unrelated-${discoveryPages}-${index}`),
+      })), query, { complete: false, next_cursor: `page-${discoveryPages}` });
     },
   });
-  assert.deepEqual(context.stacks.map((stack) => stack.stack_id), ids);
-  assert.deepEqual(context.stacks.map((stack) => stack.cards[0].front), ids.map((id, index) => `${owners[index]}/${id}`));
+  assert.deepEqual(context.stacks.slice(0, localIds.length).map((stack) => stack.stack_id), localIds);
+  assert.deepEqual(context.stacks.slice(0, localIds.length).map((stack) => stack.cards[0].front), localIds);
   assert.equal(context.complete, false);
-  assert.ok(context.omissions.some((row) => row.reason === "page-incomplete" && row.next_cursor === "more-library-metadata"));
+  assert.ok(context.omissions.some((row) => row.reason === "remote-read-only" && row.owner === "~nec" && row.stack_id === "buried-five"));
+  assert.ok(context.omissions.some((row) => row.reason === "library-discovery-page-cap" && row.next_cursor === "page-4"));
   assert.ok(context.omissions.some((row) => row.reason === "library-stack-cap"));
+});
+
+test("later-page title hits outrank early metadata but never displace exact prefetch priority", async () => {
+  const queried = [];
+  const context = await loadLibraryContext({}, "", { prompt: "Compare astronomy with stack_id=pinned" }, {
+    callTool: async (_c, _k, _n, query) => {
+      queried.push(query);
+      if (query.stack_id) return page("cards", [], query);
+      if (query.id) return page("stacks", [{ stack_id: "pinned", title: "Pinned", ref: ref("stack", "pinned") }], query);
+      if (query.cursor) {
+        assert.equal(query.cursor, "second");
+        return page("stacks", [{ stack_id: "buried", title: "Astronomy notes", ref: ref("stack", "buried") }], query);
+      }
+      return page("stacks", Array.from({ length: 6 }, (_, index) => ({
+        stack_id: `early-${index}`, title: "Other", ref: ref("stack", `early-${index}`),
+      })), query, { complete: false, next_cursor: "second" });
+    },
+  });
+  assert.deepEqual(context.stacks.slice(0, 2).map((stack) => stack.stack_id), ["pinned", "buried"]);
+  assert.equal(context.stacks.some((stack) => stack.stack_id === "early-5"), false);
+  assert.equal(queried[0].id, "pinned");
+  assert.equal(context.omissions.some((row) => row.reason === "page-incomplete"), false);
+  assert.ok(context.omissions.some((row) => row.reason === "library-stack-cap"));
+});
+
+test("consumed continuations restore completeness without dropping real source omissions", async () => {
+  for (const omissions of [[], [{ reason: "row-too-large", fields: ["title"] }]]) {
+    const context = await loadLibraryContext({}, "", { prompt: "Compare astronomy" }, {
+      callTool: async (_c, _k, _n, query) => {
+        if (query.stack_id) return page("cards", [], query);
+        if (query.cursor) return page("stacks", [{ stack_id: "later", title: "Astronomy", ref: ref("stack", "later") }], query);
+        return page("stacks", [], query, { complete: false, next_cursor: "second", omissions });
+      },
+    });
+    assert.deepEqual(context.stacks.map((stack) => stack.stack_id), ["later"]);
+    assert.equal(context.complete, omissions.length === 0);
+    assert.deepEqual(context.omissions, omissions);
+  }
+});
+
+test("discovery and expansion share hard metadata, page, byte and invocation budgets", async () => {
+  const ids = Array.from({ length: 6 }, (_, index) => `target-${index}`);
+  let calls = 0;
+  let discoveryPages = 0;
+  let discoveryBytes = 0;
+  let totalBytes = 0;
+  let cursorPageBytes;
+  const context = await loadLibraryContext({}, "", { prompt: ids.map((id) => `\`${id}\``).join(" ") }, {
+    callTool: async (_c, _k, _n, query) => {
+      calls += 1;
+      let result;
+      if (!query.stack_id) {
+        if (query.id) {
+          result = page("stacks", [{ stack_id: query.id, title: query.id, ref: ref("stack", query.id) }], query);
+        } else {
+          discoveryPages += 1;
+          cursorPageBytes ??= query.max_bytes;
+          assert.equal(query.max_bytes, cursorPageBytes, "Source cursor fingerprints bind max_bytes");
+          result = page("stacks", [], query, { complete: false, next_cursor: `page-${discoveryPages}` });
+        }
+        result.padding = "";
+        result.padding = "x".repeat(Number(query.max_bytes) - Buffer.byteLength(JSON.stringify(result)));
+        discoveryBytes += Buffer.byteLength(JSON.stringify(result));
+      } else {
+        const rows = Array.from({ length: 4 }, (_, index) => ({
+          card_id: `card-${index}`, title: "Card", ref: ref("card", `card-${index}`, query.stack_id),
+        }));
+        result = page("cards", query.projection === "detail"
+          ? [{ ...rows.find((row) => row.card_id === query.id), front: "Question", back: "Answer" }] : rows, query);
+      }
+      totalBytes += Buffer.byteLength(JSON.stringify(result));
+      assert.ok(totalBytes <= READ_CAPS.libraryBytes);
+      assert.ok(calls <= READ_CAPS.libraryCalls);
+      return result;
+    },
+  });
+  assert.equal(discoveryPages, 4);
+  assert.equal(calls, 40);
+  assert.ok(discoveryBytes <= 65_536);
+  assert.equal(context.stacks.flatMap((stack) => stack.cards).length, 24);
+  assert.equal(context.complete, false);
+  assert.ok(context.omissions.some((row) => row.reason === "library-discovery-page-cap" && row.next_cursor === "page-4"));
 });
 
 test("explicit misses, incomplete reads, and excess targets cannot become whole-library completeness", async () => {
@@ -428,6 +511,15 @@ test("packet verification preserves exact source bytes and checks both digests",
   assert.equal(BigInt(promptDigest("é").replaceAll(".", "")), BigInt(`0x${expected}`));
 });
 
+test("matching obsolete packet and work prompt versions never reach a provider", async () => {
+  const fixture = packetFixture();
+  fixture.packet.prompt_version = 1;
+  fixture.job.work.prompt_version = 1;
+  const { runtime, calls } = workRuntime(fixture, async () => assert.fail("obsolete prompts must not be dispatched"));
+  await assert.rejects(processQuestion(config, "", { codex: "/exact" }, fixture.job, runtime), { code: "PACKET_MISMATCH" });
+  assert.equal(calls.some(({ name, args }) => name === "seer/checkpoint-work" && args.stage === "provider-started"), false);
+});
+
 test("source checkpoint rejection prevents provider dispatch", async () => {
   const fixture = packetFixture();
   const { runtime, calls } = workRuntime(fixture, async () => assert.fail("provider must not be reached"), {
@@ -469,6 +561,108 @@ test("a failed library scan cannot freeze a packet or start a provider", async (
   });
   await assert.rejects(processChange(config, "", { codex: "/exact" }, fixture.job, runtime),
     { code: "INCOMPLETE_LIBRARY_READ" });
+  assert.equal(calls.some(({ name, args }) => name === "seer/checkpoint-work" && args.stage === "provider-started"), false);
+});
+
+test("later discovery source, snapshot and metadata failures block packet preparation", async () => {
+  const cases = [
+    { extra: { status: "invalid-query", complete: false, omissions: [{ reason: "invalid-query" }] }, code: "INVALID_BOUNDED_QUERY" },
+    { extra: { status: "limit-exceeded", complete: false, omissions: [{ reason: "row-too-large" }] }, code: "INCOMPLETE_LIBRARY_READ" },
+    { extra: { status: "snapshot-expired", complete: false }, code: "INCOMPLETE_LIBRARY_READ" },
+    { extra: { watermark: "changed-snapshot" }, code: "INCOMPLETE_LIBRARY_READ" },
+    { extra: { idempotency_epoch: "~2026.9.5..00.00.00..0000" }, code: "INCOMPLETE_LIBRARY_READ" },
+    { extra: { ship: "" }, code: "INCOMPLETE_LIBRARY_METADATA" },
+    { extra: { ship: "~nec" }, code: "INCOMPLETE_LIBRARY_READ" },
+    { rows: [{ stack_id: "malformed", title_omitted: true, title: "", ref: ref("stack", "malformed") }],
+      code: "INCOMPLETE_LIBRARY_METADATA" },
+  ];
+  for (const { extra, rows = [], code } of cases) {
+    const fixture = packetFixture("change", "library");
+    fixture.job.work.packet_ref = null;
+    let pages = 0;
+    const { runtime, calls } = workRuntime(fixture, async () => assert.fail("failed continuation must not reach a provider"), {
+      "seer/state-context": (args) => {
+        pages += 1;
+        if (pages === 1) return page("stacks", [], args, { complete: false, next_cursor: "second" });
+        assert.equal(args.cursor, "second");
+        return page("stacks", rows, args, extra);
+      },
+      "seer/prepare-change-packet": () => assert.fail("failed continuation must not be frozen"),
+    });
+    await assert.rejects(processChange(config, "", { codex: "/exact" }, fixture.job, runtime), { code });
+    assert.equal(pages, 2);
+    assert.equal(calls.some(({ name, args }) => name === "seer/checkpoint-work" && args.stage === "provider-started"), false);
+  }
+});
+
+test("library preparation excludes remote URLs and cached metadata using the page ship", async () => {
+  const fixture = packetFixture("change", "library");
+  fixture.job.prompt = "Compare https://ship.example/apps/seer/stack/~nec/shared with astronomy";
+  fixture.job.work.packet_ref = null;
+  const ship = "~bus";
+  const localRef = (kind, id, scope = "") => ({ ...ref(kind, id, scope), owner: ship });
+  let prepared = false;
+  const { runtime, calls } = workRuntime(fixture, async () => assert.fail("no provider invocation is needed"), {
+    "seer/state-context": (args) => {
+      if (!args.stack_id) {
+        if (args.id) {
+          assert.equal(args.owner, "~nec");
+          // Even an incorrectly scoped remote exact response must not turn its
+          // slug into a local target.
+          return page("stacks", [{ stack_id: "shared", title: "Remote URL collision", ref: localRef("stack", "shared") }], args, { ship });
+        }
+        return page("stacks", [
+          { stack_id: "local", title: "Astronomy", ref: { ...ref("stack", "local"), owner: "~nec" } },
+          { stack_id: "local", title: "Astronomy", ref: localRef("stack", "local") },
+        ], args, { ship });
+      }
+      assert.equal(args.stack_id, "local", "a remote URL cannot become a local exact target");
+      assert.equal(args.owner, ship, "body scope comes from page.ship, not the job or a remote ref");
+      const card = { card_id: "evidence", title: "Evidence", ref: localRef("card", "evidence", "local") };
+      if (args.projection === "detail") {
+        assert.equal(args.id, "evidence", "remote card metadata cannot dispatch detail reads");
+        return page("cards", [{ ...card, front: "Question", back: "Answer" }], args, { ship });
+      }
+      return page("cards", [card, { card_id: "foreign", title: "Astronomy",
+        ref: { ...ref("card", "foreign", "local"), owner: "~nec" } }], args, { ship });
+    },
+    "seer/list-context-sources": (args) => page("contexts", [], args),
+    "seer/prepare-change-packet": (args) => {
+      const report = JSON.parse(args.read_report);
+      assert.equal(report.complete, false);
+      assert.ok(report.omissions.some((row) => row.reason === "remote-read-only" && row.owner === "~nec" && row.stack_id === "shared"));
+      assert.deepEqual(args.observations.map(({ ref }) => [ref.owner, ref.kind, ref.id]),
+        [[ship, "stack", "local"], [ship, "card", "evidence"]]);
+      const frozen = packetFixture("change", "library", {
+        observations: args.observations, read_report: report,
+        source_coverage: { scope: "local-library", owner: ship, complete: true },
+      });
+      fixture.packet = frozen.packet;
+      Object.assign(fixture.job.work, { packet_ref: frozen.packet.packet_ref,
+        packet_digest: frozen.packet.prompt_digest, input_bytes: frozen.packet.input_bytes });
+      prepared = true;
+      return { schema_version: 2, status: "ok", effect: "none" };
+    },
+  });
+  runtime.inspectProvider = async () => ({ supported: false });
+  await assert.rejects(processChange(config, "", { codex: "/exact" }, fixture.job, runtime), { code: "PROVIDER_UNSUPPORTED" });
+  assert.equal(prepared, true);
+  assert.equal(calls.some(({ name, args }) => name === "seer/checkpoint-work" && args.stage === "provider-started"), false);
+});
+
+test("a detail that changes ownership stays a snapshot failure, not a usable foreign observation", async () => {
+  const fixture = packetFixture("change", "library");
+  fixture.job.work.packet_ref = null;
+  const { runtime, calls } = workRuntime(fixture, async () => assert.fail("stale detail must not reach a provider"), {
+    "seer/state-context": (args) => {
+      if (!args.stack_id) return page("stacks", [{ stack_id: "local", title: "Local", ref: ref("stack", "local") }], args);
+      const card = { card_id: "evidence", title: "Evidence", ref: ref("card", "evidence", "local") };
+      return page("cards", [args.projection === "detail"
+        ? { ...card, ref: { ...card.ref, owner: "~nec" }, front: "Changed owner", back: "Answer" } : card], args);
+    },
+    "seer/prepare-change-packet": () => assert.fail("foreign detail cannot be frozen"),
+  });
+  await assert.rejects(processChange(config, "", { codex: "/exact" }, fixture.job, runtime), { code: "INCOMPLETE_LIBRARY_READ" });
   assert.equal(calls.some(({ name, args }) => name === "seer/checkpoint-work" && args.stage === "provider-started"), false);
 });
 
@@ -539,13 +733,15 @@ test("catalog replacement is one mutation and signs every profile definition", a
 });
 
 test("library observations use source identity and separate content/review revisions", () => {
-  const observations = libraryObservations({ stacks: [{ ref: ref("stack", "s"), cards: [{ ref: ref("card", "c", "s") }] }] });
+  const observations = libraryObservations({ ship: "~zod", stacks: [{ ref: ref("stack", "s"), cards: [{ ref: ref("card", "c", "s") }] }] });
   assert.equal(observations[1].ref.scope, "s");
   assert.equal(observations[1].version.content_revision, 2);
   assert.equal(observations[1].version.review_revision, 3);
   assert.equal(observations[1].content, true);
   assert.equal(observations[1].review, false);
   assert.throws(() => libraryObservations({ stacks: [{ cards: [] }] }));
+  assert.throws(() => libraryObservations({ ship: "~nec", stacks: [{ ref: ref("stack", "s"), cards: [] }] }),
+    { code: "INVALID_OBSERVATION" });
 });
 
 test("slow work does not block other queue classes or consume unbounded pages", async () => {

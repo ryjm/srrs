@@ -590,11 +590,12 @@
           3. Begin exactly one capture. Attach the required evidence and call
              seer/prepare-capture with the selected model before generating.
              Reuse an existing stack and stage supported proposals there.
-          4. If a new stack is needed, retain that same capture and evidence
-             record, but put the stack and cards together in one
+          4. If a new stack is needed, put the stack and cards together in one
              seer/propose-change plan with explicit absence preconditions.
-             Reference the capture ID in the plan summary. Do not also stage
-             duplicate card proposals or begin a second capture.
+             This records plan provenance, not a typed association to the
+             capture or its evidence. A capture ID in summary text is not an
+             enforceable provenance link. Do not also stage duplicate card
+             proposals or begin a second capture.
           5. Draft only useful, supported, nonduplicate cards with explicit
              sources and caveats. Test one important idea per card.
           6. Stay within the source-advertised row, byte, invocation and
