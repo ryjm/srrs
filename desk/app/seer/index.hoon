@@ -487,7 +487,7 @@
             !=(%unknown effect.work)
         ==
       ;span.hidden;
-    ;div.work-status
+    ;div.work-status(data-key-actions "")
       ;+  ?~  stop-reason.work  ;span.hidden;
           ;p.proposal-conflict: {(trip (problem-description:seer u.stop-reason.work))}
       ;+  ?.  =(%unknown effect.work)  ;span.hidden;
@@ -561,6 +561,7 @@
         ;div.disclosure-body
           ;p.muted: Use an operation ID from your assistant or the technical details of an action.
           ;form
+            =data-key-form  ""
             =method  "get"
             =action  "/apps/seer/activity"
             ;label
@@ -599,7 +600,7 @@
   ++  receipt-row
     |=  receipt=operation-receipt
     ^-  manx
-    ;details.activity-row
+    ;details.activity-row(data-key-item "receipt|{(scow %da epoch.receipt)}|{(trip id.receipt)}", tabindex "-1")
       ;summary
         ;span.activity-copy
           ;strong: {(trip (operation-title:seer action.receipt))}
@@ -612,7 +613,7 @@
           ;span.activity-toggle: Details
         ==
       ==
-      ;div.activity-detail
+      ;div.activity-detail(data-key-actions "")
         ;+  ?~  work.receipt
               ;div.action-row
                 ;*  %+  turn  (scag 3 after.receipt)
@@ -965,6 +966,7 @@
         ;div.disclosure-body
           ;p.muted: Finish running requests first. This clears the action history and invalidates old forms. Reload other open tabs afterward.
           ;form
+            =data-key-form  ""
             =method   "post"
             =action   "/apps/seer/actions/retire-operation-epoch"
             =hx-post  "/apps/seer/actions/retire-operation-epoch"
@@ -1003,6 +1005,7 @@
               ;p: {(trip label.source)}
           ;+  ?~  orphans  ;span.hidden;
           ;form.inline
+            =data-key-form  ""
             =method   "post"
             =action   "/apps/seer/actions/archive-orphan-contexts"
             =hx-post  "/apps/seer/actions/archive-orphan-contexts"
@@ -1010,6 +1013,7 @@
           ==
           ;p.muted: Saved copies older than 30 days can be removed if nothing still uses them. Archiving alone does not delete text.
           ;form.inline
+            =data-key-form  ""
             =method   "post"
             =action   "/apps/seer/actions/collect-retained"
             =hx-post  "/apps/seer/actions/collect-retained"
@@ -1025,6 +1029,7 @@
               ;p: There are no saved copies to delete.
           ;+  ?~  snapshots  ;span.hidden;
               ;form
+                =data-key-form  ""
                 =method   "post"
                 =action   "/apps/seer/actions/purge-evidence"
                 =hx-post  "/apps/seer/actions/purge-evidence"
@@ -1048,6 +1053,7 @@
             ;summary: Delete a copy that is not listed
             ;p.muted: Enter the full saved-copy reference, beginning with 0x.
             ;form
+              =data-key-form  ""
               =method   "post"
               =action   "/apps/seer/actions/purge-evidence"
               =hx-post  "/apps/seer/actions/purge-evidence"
@@ -1103,11 +1109,15 @@
                     ".stack-link",
                     "details > summary",
                     "[data-review-card]",
+                    "[data-key-item]",
+                    "[data-key-form]",
                     ".form-panel form",
                     ".compose-body form",
                     ".ai-form",
                     ".command-form"
                   ].join(",");
+                  var lastItemIndex = 0;
+                  var hintTimer = null;
                   function move() { return mq.matches ? "auto" : "smooth"; }
                   function q(s) { return document.querySelector(s); }
                   function qa(s) {
@@ -1127,8 +1137,21 @@
                       ? t.closest("button, a, summary")
                       : null;
                   }
+                  function inClosedDetails(el) {
+                    var node = el;
+                    while (node && node !== document.body) {
+                      var parent = node.parentElement;
+                      if (parent && parent.tagName === "DETAILS" && !parent.open
+                        && node.tagName !== "SUMMARY") {
+                        return true;
+                      }
+                      node = parent;
+                    }
+                    return false;
+                  }
                   function visible(el) {
-                    if (!el || el.hidden || el.closest("[hidden]")) {
+                    if (!el || el.hidden || el.closest("[hidden]")
+                      || inClosedDetails(el)) {
                       return false;
                     }
                     var r = el.getBoundingClientRect();
@@ -1150,8 +1173,67 @@
                     }
                     return q("[data-vim-active]");
                   }
+                  // The review card keeps its own keys (space, 1-4, esc);
+                  // it is never part of the item ring or item actions.
+                  // Marked forms (Settings maintenance, Activity lookup) ride the
+                  // same ring as items so j/k can reach them on those pages.
+                  function items() {
+                    return qa(
+                      "[data-key-item]:not([data-review-card]), [data-key-form]"
+                    ).filter(visible);
+                  }
+                  function ringOwner(el) {
+                    if (!el) { return null; }
+                    if (el.matches("[data-key-form]")) { return el; }
+                    return itemOf(el);
+                  }
+                  function itemOf(el) {
+                    return el && el.closest
+                      ? el.closest("[data-key-item]")
+                      : null;
+                  }
+                  function keyItem(el) {
+                    var item = itemOf(el);
+                    return item && !item.matches("[data-review-card]")
+                      ? item
+                      : null;
+                  }
+                  function selectedItem() {
+                    var t = activeTarget();
+                    return t && t.matches("[data-key-item]")
+                      && !t.matches("[data-review-card]") ? t : null;
+                  }
+                  function nearestIndex(list) {
+                    var anchor = window.innerHeight * .34;
+                    return list.reduce(function (best, el, i) {
+                      return Math.abs(
+                        el.getBoundingClientRect().top - anchor
+                      ) < Math.abs(
+                        list[best].getBoundingClientRect().top - anchor
+                      ) ? i : best;
+                    }, 0);
+                  }
+                  function hint(text) {
+                    var old = q("[data-key-chord]");
+                    if (old) { old.remove(); }
+                    var hud = document.createElement("div");
+                    hud.className = "vim-chord";
+                    hud.setAttribute("data-key-chord", "");
+                    hud.setAttribute("role", "status");
+                    hud.textContent = text;
+                    document.body.appendChild(hud);
+                    clearTimeout(hintTimer);
+                    hintTimer = setTimeout(function () {
+                      var shown = q("[data-key-chord]");
+                      if (shown && shown.textContent === text) { shown.remove(); }
+                    }, 1_600);
+                  }
                   function targetKey(el) {
                     if (!el) { return ""; }
+                    var item = itemOf(el);
+                    if (item) {
+                      return "item:" + item.getAttribute("data-key-item");
+                    }
                     var persistent = el.closest("[data-persist]");
                     if (persistent) {
                       return "persist:"
@@ -1176,7 +1258,7 @@
                       old.removeAttribute("data-vim-selected");
                     });
                   }
-                  function focusTarget(el) {
+                  function focusTarget(el, quiet) {
                     if (!el) { return; }
                     clearTarget();
                     el.setAttribute("data-vim-active", "");
@@ -1190,8 +1272,20 @@
                       el.tabIndex = -1;
                     }
                     el.focus({ preventScroll: true });
-                    el.scrollIntoView({ block: "nearest", behavior: move() });
+                    if (!quiet) {
+                      el.scrollIntoView({ block: "nearest", behavior: move() });
+                    }
                     lastTargetKey = targetKey(el);
+                    if (el.matches("[data-key-item], [data-key-form]")) {
+                      lastItemIndex = Math.max(0, items().indexOf(el));
+                    }
+                  }
+                  function itemHint(item) {
+                    if (item.querySelector("[data-key-actions]")) {
+                      return "Enter decisions · Tab next control · o details";
+                    }
+                    if (item.matches("a[href]")) { return "Enter open"; }
+                    return "o toggle";
                   }
                   function moveTarget(step) {
                     var cards = qa(".item-list .item-summary").filter(visible);
@@ -1203,6 +1297,16 @@
                       focusTarget(cards[cardIndex]);
                       return;
                     }
+                    var rows = items();
+                    if (rows.length) {
+                      var rowIndex = rows.indexOf(ringOwner(activeTarget()));
+                      rowIndex = rowIndex < 0
+                        ? nearestIndex(rows)
+                        : (rowIndex + step + rows.length) % rows.length;
+                      focusTarget(rows[rowIndex]);
+                      hint(itemHint(rows[rowIndex]));
+                      return;
+                    }
                     var all = targets();
                     if (!all.length) {
                       window.scrollBy({ top: step * 140, behavior: move() });
@@ -1211,14 +1315,7 @@
                     var current = activeTarget();
                     var index = all.indexOf(current);
                     if (index < 0) {
-                      var anchor = window.innerHeight * .34;
-                      index = all.reduce(function (best, el, i) {
-                        return Math.abs(
-                          el.getBoundingClientRect().top - anchor
-                        ) < Math.abs(
-                          all[best].getBoundingClientRect().top - anchor
-                        ) ? i : best;
-                      }, 0);
+                      index = nearestIndex(all);
                     } else {
                       index =
                         Math.max(0, Math.min(all.length - 1, index + step));
@@ -1230,6 +1327,16 @@
                     if (!target) { return null; }
                     if (target.matches("summary")) {
                       return target.parentElement;
+                    }
+                    if (target.matches("[data-key-item]:not([data-review-card])")) {
+                      if (target.matches("details")) { return target; }
+                      var folds = Array.prototype.slice.call(
+                        target.querySelectorAll("details")
+                      ).filter(visible);
+                      var preview = folds.find(function (d) {
+                        return !d.matches(".technical");
+                      });
+                      return preview || folds[0] || null;
                     }
                     return target.closest("details");
                   }
@@ -1244,7 +1351,10 @@
                     return true;
                   }
                   function setAllFolds(opened) {
-                    qa("main details").filter(visible).forEach(function (d) {
+                    // Nested folds count too: their parents open in the same pass.
+                    qa("main details").filter(function (d) {
+                      return !d.hidden && !d.closest("[hidden]");
+                    }).forEach(function (d) {
                       d.open = opened;
                     });
                   }
@@ -1257,6 +1367,32 @@
                     if (!form) { return false; }
                     var field = form.querySelector(
                       "textarea, input:not([type=hidden]), select, button"
+                    );
+                    if (field) { field.focus(); return true; }
+                    return false;
+                  }
+                  function firstControl(scope, selector) {
+                    var candidates = scope.matches(selector) ? [scope] : [];
+                    return candidates.concat(Array.prototype.slice.call(
+                      scope.querySelectorAll(selector)
+                    )).find(function (c) { return visible(c) && !c.disabled; });
+                  }
+                  function focusActions(item) {
+                    var boxes = Array.prototype.slice.call(
+                      item.querySelectorAll("[data-key-actions]")
+                    );
+                    for (var i = 0; i < boxes.length; i++) {
+                      var control = firstControl(
+                        boxes[i],
+                        "textarea, input:not([type=hidden]), select, button, a[href]"
+                      );
+                      if (control) { control.focus(); return true; }
+                    }
+                    return false;
+                  }
+                  function focusItemField(item) {
+                    var field = firstControl(
+                      item, "textarea, input:not([type=hidden])"
                     );
                     if (field) { field.focus(); return true; }
                     return false;
@@ -1657,8 +1793,18 @@
                   document.addEventListener("htmx:afterSwap", function () {
                     sync();
                     requestAnimationFrame(function () {
+                      if (typing(document.activeElement)) { return; }
                       var restored = findTarget(lastTargetKey);
-                      if (restored) { focusTarget(restored); return; }
+                      if (restored) { focusTarget(restored, true); return; }
+                      if (lastTargetKey.indexOf("item:") === 0) {
+                        var rows = items();
+                        if (rows.length) {
+                          focusTarget(
+                            rows[Math.min(lastItemIndex, rows.length - 1)], true
+                          );
+                          return;
+                        }
+                      }
                       var card = q("[data-review-card]");
                       if (card && (document.activeElement === null
                         || document.activeElement === document.body)) {
@@ -1666,14 +1812,23 @@
                       }
                     });
                   });
+                  document.addEventListener("click", function (e) {
+                    var opener = e.target && e.target.closest
+                      ? e.target.closest("[data-key-help-open]")
+                      : null;
+                    if (opener) { e.preventDefault(); help(true); }
+                  });
                   document.addEventListener("keydown", function (e) {
                     if (e.ctrlKey || e.metaKey || e.altKey) { return; }
                     var t = e.target;
                     if (typing(t)) {
                       if (e.key === "Escape") {
                         var form = t.closest("form");
+                        var owner = keyItem(t);
                         t.blur();
-                        if (form && form.matches(TARGETS)) {
+                        if (owner) {
+                          focusTarget(owner, true);
+                        } else if (form && form.matches(TARGETS)) {
                           focusTarget(form);
                         }
                       }
@@ -1775,6 +1930,13 @@
                       return;
                     }
                     if (key === "Escape") {
+                      var ae = document.activeElement;
+                      var host = keyItem(ae);
+                      if (host && ae !== host) {
+                        e.preventDefault();
+                        focusTarget(host, true);
+                        return;
+                      }
                       if (setFold("close")) { e.preventDefault(); }
                       else {
                         var selected = q("[data-vim-active]");
@@ -1782,13 +1944,29 @@
                       }
                       return;
                     }
-                    if (key === "Enter" && activeTarget()
-                      && activeTarget().matches("form")) {
-                      e.preventDefault();
-                      focusForm();
+                    if (key === "Enter") {
+                      var row = selectedItem();
+                      var focused = document.activeElement;
+                      var inside = row && focused && focused !== row
+                        && row.contains(focused);
+                      if (row && !inside) {
+                        if (focusActions(row)) { e.preventDefault(); return; }
+                        if (row.matches("a[href]")) { return; }
+                        if (setFold("toggle")) { e.preventDefault(); }
+                        return;
+                      }
+                      if (activeTarget() && activeTarget().matches("form")) {
+                        e.preventDefault();
+                        focusForm();
+                      }
                       return;
                     }
                     if (key === "i") {
+                      var picked = selectedItem();
+                      if (picked && focusItemField(picked)) {
+                        e.preventDefault();
+                        return;
+                      }
                       if (focusForm()) { e.preventDefault(); return; }
                       if (openAssistant()) { e.preventDefault(); }
                       return;
@@ -2940,6 +3118,20 @@
                }
                .item-summary[data-vim-active] { outline: none; }
                form[data-vim-active] { border-radius: 4px; }
+               [data-key-item]:not([data-review-card])[data-vim-active] {
+                 border-color: var(--line-strong);
+                 box-shadow: var(--shadow);
+                 outline: none;
+                 position: relative;
+               }
+               [data-key-item]:not([data-review-card])[data-vim-active]::before {
+                 background: var(--focus);
+                 border-radius: 2px;
+                 content: "";
+                 inset: .8rem auto .8rem .35rem;
+                 position: absolute;
+                 width: 3px;
+               }
                .vim-chord {
                  backdrop-filter: blur(12px);
                  -webkit-backdrop-filter: blur(12px);
@@ -3618,6 +3810,21 @@
                  color: var(--ink);
                }
                .utility-nav a[aria-current="page"] { font-weight: 650; }
+               .key-hint-button {
+                 align-items: center;
+                 background: transparent;
+                 border: 0;
+                 border-radius: 4px;
+                 color: var(--muted);
+                 cursor: pointer;
+                 display: flex;
+                 font: inherit;
+                 font-size: .875rem;
+                 gap: .5rem;
+                 padding: .45rem .6rem;
+                 text-align: left;
+               }
+               .key-hint-button:hover { background: var(--surface); color: var(--ink); }
                .quiet-link { color: var(--muted); text-underline-offset: .2em; }
                .quiet-link:hover { color: var(--ink); }
                .disclosure-body {
@@ -3757,6 +3964,9 @@
                .account-list > article > h3 { font-size: 1rem; }
                .account-list > form > button { justify-self: start; }
                .settings-page .login-panel { margin-top: 0; }
+               /* Fragment polls replace these subtrees; without this Chrome anchors
+                  the scroll to the focused row and jumps when the old copy is removed. */
+               #change-requests, #login-panel { overflow-anchor: none; }
                .proposal-conflict { font-size: .875rem; line-height: 1.6; }
                .proposal .decision-row { align-items: end; margin-top: 1rem; }
                .task-sources { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
@@ -3776,6 +3986,7 @@
                    z-index: 31;
                  }
                  .utility-nav a { align-items: center; display: flex; font-size: .8125rem; min-height: 2.9rem; padding: .5rem .65rem; }
+                 .key-hint-button { display: none; }
                  .activity-row > summary { grid-template-columns: minmax(0, 1fr); gap: .5rem; padding: 1.1rem 0; }
                  .activity-state { display: flex; gap: 1rem; justify-content: space-between; text-align: left; }
                  .activity-detail { padding-left: 0; padding-right: 0; }
@@ -3857,6 +4068,10 @@
                 =href          "/apps/seer/settings"
                 =aria-current  ?:(settings-active "page" "false")
                 Settings
+              ==
+              ;button.key-hint-button(type "button", data-key-help-open "", aria-label "Keyboard shortcuts")
+                ;kbd.key: ?
+                ; Keys
               ==
             ==
             ;div.sidebar-foot: {(scow %p our)}
@@ -4095,7 +4310,9 @@
         "capture change-request is-thinking"
       "capture change-request"
     ;article
-      =class  row-class
+      =class          row-class
+      =data-key-item  "change|{change-tape}"
+      =tabindex       "-1"
       ;div.capture-head
         ;div.capture-copy
           ;h3: {(trip prompt.request)}
@@ -4118,6 +4335,7 @@
               ;p.muted: Add any sources the assistant should use, then ask it to prepare the changes. You will review the result before it changes your library.
               ;+  (work-context-panel [%change change-id])
               ;form.inline
+                =data-key-actions  ""
                 =method   "post"
                 =action   "/apps/seer/actions/start-change"
                 =hx-post  "/apps/seer/actions/start-change"
@@ -4125,6 +4343,7 @@
                 ;button(type "submit"): Prepare changes
               ==
               ;form.inline
+                =data-key-actions  ""
                 =method   "post"
                 =action   "/apps/seer/actions/reject-change"
                 =hx-post  "/apps/seer/actions/reject-change"
@@ -4149,7 +4368,7 @@
               ==
               ;p.muted: Check the request activity before trying again. A second request may incur another charge.
               ;+  (work-context-panel [%change change-id])
-              ;div.decision-row
+              ;div.decision-row(data-key-actions "")
                 ;form.inline
                   =method   "post"
                   =action   "/apps/seer/actions/retry-change"
@@ -4204,7 +4423,7 @@
               ==
             ;span.hidden;
           ;p.proposal-conflict: This preview no longer matches the proposed change. Reject it and request an updated plan.
-      ;div.decision-row
+      ;div.decision-row(data-key-actions "")
         ;form.inline
           =method   "post"
           =action   "/apps/seer/actions/reject-change"
@@ -4237,7 +4456,7 @@
       ;p.muted: {label}
       ;+  ?:  =('' summary.request)  ;span.hidden;
           ;div.proposal-answer: {(trip summary.request)}
-      ;div.decision-row
+      ;div.decision-row(data-key-actions "")
         ;form.inline
           =method   "post"
           =action   "/apps/seer/actions/delete-change"
@@ -4252,7 +4471,12 @@
     |=  [capture-id=@tas session=capture]
     ^-  manx
     =/  drafts=(list [@tas proposal])  ~(tap by proposals.session)
-    ;article.capture
+    =/  attrs=mart
+      :*  [%class "capture"]
+          ?^(drafts ~ ~[[%data-key-item "capture|{(tas-tape capture-id)}"] [%tabindex "-1"]])
+      ==
+    :-  [%article attrs]
+    :~
       ;div.capture-head
         ;div.capture-copy
           ;h3: {(trip title.session)}
@@ -4263,7 +4487,7 @@
                 ;span: {<approved.session>} added to library
           ==
         ==
-        ;form.inline(hx-confirm "Discard this draft and its remaining card suggestions? Approved cards stay in your library.")
+        ;form.inline(hx-confirm "Discard this draft and its remaining card suggestions? Approved cards stay in your library.", data-key-actions "")
           =method   "post"
           =action   "/apps/seer/actions/discard-capture"
           =hx-post  "/apps/seer/actions/discard-capture"
@@ -4316,7 +4540,7 @@
     =/  conflict=?
       ?|(!=(%ok status.preview) !(projection-complete projection))
     =/  proposal-tape=tape  (tas-tape proposal-id)
-    ;article.proposal
+    ;article.proposal(data-key-item "proposal|{(tas-tape capture-id)}|{proposal-tape}", tabindex "-1")
       ;div.proposal-head
         ;div.capture-copy
           ;h3: {(trip title.draft)}
@@ -4345,7 +4569,7 @@
             =/  packet  (~(get by packets.evidence) u.packet.draft)
             ?~  packet  ;div.hidden;
             (learning-panel [%capture capture-id] objective.draft provider.profile.request.u.packet)
-        ;div.decision-row
+        ;div.decision-row(data-key-actions "")
           ;form.inline
             =method   "post"
             =action   "/apps/seer/actions/reject-proposal"
@@ -4378,7 +4602,7 @@
     |=  [capture-id=@tas session=capture]
     ^-  manx
     =/  history-meta=tape  (display-time created-at.session)
-    ;article.stack-row
+    ;article.stack-row(data-key-item "capture-history|{(tas-tape capture-id)}", tabindex "-1")
       ;div.stack-link
         ;div.stack-name
           ;h3: {(trip title.session)}
@@ -4386,7 +4610,7 @@
         ==
         ;div.row-end
           ;span: {<approved.session>} approved · {<rejected.session>} rejected
-          ;form.inline(hx-confirm "Remove this completed draft from history? Approved cards stay in your library.")
+          ;form.inline(hx-confirm "Remove this completed draft from history? Approved cards stay in your library.", data-key-actions "")
             =method   "post"
             =action   "/apps/seer/actions/delete-capture"
             =hx-post  "/apps/seer/actions/delete-capture"
@@ -4478,6 +4702,7 @@
       ;article.review-card
         =data-review-card  ""
         =tabindex          "-1"
+        =data-key-item     "review|{(scow %p who.rev)}|{(tas-tape stack.rev)}|{(tas-tape item.rev)}"
         =aria-label        (trip title.content.current)
         ;header.review-top
           ;div.review-origin
@@ -4546,98 +4771,64 @@
       ==
     ==
   ::
+  ++  key-row
+    |=  [keys=(list tape) text=tape]
+    ^-  manx
+    ;div.key-row
+      ;dt
+        ;*  %+  turn  keys
+            |=  key=tape
+            ;kbd.key: {key}
+      ==
+      ;dd: {text}
+    ==
+  ::
+  ::  Every page gets the shared keys; the page section lists only what
+  ::  that page supports. No key applies, rejects or deletes: those need
+  ::  Enter or Space on the focused button.
   ++  key-help
     ^-  manx
+    =/  page-rows=(list manx)
+      ?-  -.page
+          %review
+        :~  (key-row ~["space"] "Show the answer, then grade Good")
+            (key-row ~["1" "2" "3" "4"] "Again · Hard · Good · Easy")
+        ==
+          %inbox
+        :~  (key-row ~["enter"] "Focus the selected item's decisions; Tab moves between Reject and Apply. Applying or rejecting always needs Enter or Space on the focused button.")
+            (key-row ~["o"] "Preview the selected proposal or change")
+            (key-row ~["i"] "Reason field of the selected item")
+        ==
+          %settings
+        :~  (key-row ~["enter"] "Focus the selected account's actions: Sign in, Sign out, Cancel, or the code field")
+        ==
+          %activity
+        :~  (key-row ~["o"] "Expand the selected action")
+            (key-row ~["enter"] "Focus the selected action's links, or the search form")
+        ==
+          ?(%stacks %subscriptions)
+        :~  (key-row ~["enter"] "Open the selected stack")
+        ==
+          ?(%stack %stack-browse)
+        :~  (key-row ~["o" "l" "h"] "Toggle · open · close the selected card")
+            (key-row ~["i"] "Ask the assistant about the selected card")
+        ==
+      ==
     ;dialog.key-help
       =data-key-help  ""
       =aria-label     "Keyboard shortcuts"
       ;h2.key-title: Keyboard
       ;dl.key-list
-        ;div.key-row
-          ;dt
-            ;kbd.key: space
-          ==
-          ;dd: Show the answer, then grade Good
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: 1
-            ;kbd.key: 2
-            ;kbd.key: 3
-            ;kbd.key: 4
-          ==
-          ;dd: Again · Hard · Good · Easy
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: j
-            ;kbd.key: k
-          ==
-          ;dd: Next · previous item or disclosure
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: l
-            ;kbd.key: h
-            ;kbd.key: o
-          ==
-          ;dd: Open · close · toggle focused disclosure
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: J
-            ;kbd.key: K
-            ;kbd.key: d
-            ;kbd.key: u
-          ==
-          ;dd: Scroll line · half page
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: g g
-            ;kbd.key: g b
-            ;kbd.key: G
-          ==
-          ;dd: Jump to top · bottom
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: g r
-            ;kbd.key: g i
-            ;kbd.key: g l
-            ;kbd.key: g s
-          ==
-          ;dd: Review · Inbox · Library · Shared
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: z a
-            ;kbd.key: z o
-            ;kbd.key: z c
-            ;kbd.key: z R
-            ;kbd.key: z M
-          ==
-          ;dd: Toggle · open · close · expand all · collapse all
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: i
-            ;kbd.key: g a
-          ==
-          ;dd: Enter focused form · open Assistant
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: esc
-          ==
-          ;dd: Hide answer · leave a field
-        ==
-        ;div.key-row
-          ;dt
-            ;kbd.key: ?
-          ==
-          ;dd: Open · close this help
-        ==
+        ;*  page-rows
+        ;+  (key-row ~["j" "k"] "Next · previous item")
+        ;+  (key-row ~["l" "h" "o"] "Open · close · toggle the focused disclosure")
+        ;+  (key-row ~["J" "K" "d" "u"] "Scroll line · half page")
+        ;+  (key-row ~["g g" "g b" "G"] "Jump to top · bottom")
+        ;+  (key-row ~["g r" "g i" "g l" "g s"] "Review · Inbox · Library · Shared")
+        ;+  (key-row ~["z a" "z o" "z c" "z R" "z M"] "Toggle · open · close · expand all · collapse all")
+        ;+  (key-row ~["i" "g a"] "Enter the focused form · open the Assistant")
+        ;+  (key-row ~["esc"] "Back to the selected item · leave a field · hide the answer")
+        ;+  (key-row ~["?"] "Open · close this help")
       ==
       ;form.key-close(method "dialog")
         ;button.secondary(type "submit"): Close
@@ -4722,7 +4913,7 @@
     |=  [provider=ai-provider label=tape return=@t]
     ^-  manx
     =/  connected=?  (provider-connected provider)
-    ?.  paired  (login-unpaired-card label connected)
+    ?.  paired  (login-unpaired-card provider label connected)
     ?:  connected  (login-connected-card provider label)
     (login-start-card provider label return)
   ::
@@ -4743,20 +4934,23 @@
   ++  login-start-card
     |=  [provider=ai-provider label=tape return=@t]
     ^-  manx
-    ;form
-      =method   "post"
-      =action   "/apps/seer/actions/request-login"
-      =hx-post  "/apps/seer/actions/request-login"
-      =hx-swap  "outerHTML"
-      ;input(type "hidden", name "provider", value (trip provider));
-      ;input(type "hidden", name "return", value (trip return));
-      ;button(type "submit"): Sign in to {label}
+    ;article.panel(data-key-item "login|{(trip provider)}", tabindex "-1")
+      ;form
+        =data-key-actions  ""
+        =method   "post"
+        =action   "/apps/seer/actions/request-login"
+        =hx-post  "/apps/seer/actions/request-login"
+        =hx-swap  "outerHTML"
+        ;input(type "hidden", name "provider", value (trip provider));
+        ;input(type "hidden", name "return", value (trip return));
+        ;button(type "submit"): Sign in to {label}
+      ==
     ==
   ::
   ++  login-unpaired-card
-    |=  [label=tape connected=?]
+    |=  [provider=ai-provider label=tape connected=?]
     ^-  manx
-    ;article.panel
+    ;article.panel(data-key-item "login|{(trip provider)}", tabindex "-1")
       ;h3: {label}
       ;p.muted: {?:(connected "Signed in. Sign-out is available once the bridge is paired." "Available once the bridge is paired.")}
     ==
@@ -4788,10 +4982,11 @@
   ++  login-connected-card
     |=  [provider=ai-provider label=tape]
     ^-  manx
-    ;article.panel
+    ;article.panel(data-key-item "login|{(trip provider)}", tabindex "-1")
       ;h3: {label}
       ;p.muted: Signed in
       ;form
+        =data-key-actions  ""
         =method   "post"
         =action   "/apps/seer/actions/request-logout"
         =hx-post  "/apps/seer/actions/request-logout"
@@ -4806,6 +5001,7 @@
     |=  [req=login-request return=@t label=tape]
     ^-  manx
     ;form
+      =data-key-actions  ""
       =method   "post"
       =action   "/apps/seer/actions/cancel-login"
       =hx-post  "/apps/seer/actions/cancel-login"
@@ -4818,7 +5014,7 @@
   ++  login-waiting-card
     |=  [label=tape req=login-request return=@t logout=?]
     ^-  manx
-    ;article.panel
+    ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
       ;h3: {label}
       ;p.muted: {?:(logout "Waiting for the bridge to sign out." "Waiting for the bridge on your computer to pick this up.")}
       ;p: The bridge must be running and paired with this ship. Once it picks this up, {?:(logout "this account will show as signed out." "a sign-in link and code will appear here.")} Keep this page open; it updates on its own.
@@ -4832,7 +5028,7 @@
   ++  login-status-card
     |=  [label=tape req=login-request return=@t message=tape]
     ^-  manx
-    ;article.panel
+    ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
       ;h3: {label}
       ;p.muted: {message}
       ;p.muted: Keep this page open; it updates on its own.
@@ -4863,10 +5059,11 @@
   ++  login-failed-card
     |=  [label=tape req=login-request return=@t logout=?]
     ^-  manx
-    ;article.panel
+    ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
       ;h3: {label}
       ;p.proposal-conflict: {(login-failure-tape label req logout)}
       ;form
+        =data-key-actions  ""
         =method   "post"
         =action   "/apps/seer/actions/retry-login"
         =hx-post  "/apps/seer/actions/retry-login"
@@ -4888,10 +5085,11 @@
   ++  codex-login-challenge
     |=  [label=tape req=login-request return=@t]
     ^-  manx
-    ;article.panel
+    ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
       ;h3: {label}
       ;p.muted: Open the sign-in page, enter this one-time code, and approve access. This page updates when {label} confirms.
       ;a.button.secondary
+        =data-key-actions  ""
         =href    (trip auth-url.req)
         =target  "_blank"
         =rel     "noopener noreferrer"
@@ -4899,6 +5097,7 @@
       ==
       ;div.meta: {(trip user-code.req)}
       ;form
+        =data-key-actions  ""
         =method   "post"
         =action   "/apps/seer/actions/cancel-login"
         =hx-post  "/apps/seer/actions/cancel-login"
@@ -4926,16 +5125,18 @@
           [%spellcheck "false"]
           [%placeholder "Paste the one-time code"]
       ==
-    ;article.panel
+    ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
       ;h3: {label}
       ;p.muted: {authorize-copy}
       ;a.button.secondary
+        =data-key-actions  ""
         =href    (trip auth-url.req)
         =target  "_blank"
         =rel     "noopener noreferrer"
         Open sign-in page
       ==
       ;form
+        =data-key-actions  ""
         =method   "post"
         =action   "/apps/seer/actions/submit-login-code"
         =hx-post  "/apps/seer/actions/submit-login-code"
@@ -4949,6 +5150,7 @@
         ;button(type "submit"): Complete sign-in
       ==
       ;form
+        =data-key-actions  ""
         =method   "post"
         =action   "/apps/seer/actions/cancel-login"
         =hx-post  "/apps/seer/actions/cancel-login"
@@ -5080,7 +5282,7 @@
     |=  [owner=@p name=@tas =stack owned=?]
     ^-  manx
     ;article.stack-row
-      ;a.stack-link(href (stack-url owner name))
+      ;a.stack-link(href (stack-url owner name), data-key-item "stack|{(scow %p owner)}|{(tas-tape name)}")
         ;div.stack-name
           ;h2: {(stack-title stack)}
           ;div.meta: /{(tas-tape name)}
