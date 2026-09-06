@@ -3,6 +3,421 @@
 ::
 ++  seer-schema-version  2
 ::
+::  Display text only; action tags and receipts remain the machine contract.
+++  operation-title
+  |=  tag=@tas
+  ^-  @t
+  ?+  tag  'Action'
+    %new-stack                'Create stack'
+    %new-item                 'Create card'
+    %schedule-item            'Schedule card'
+    %raise-item               'Add card to review'
+    %answered-item            'Record review answer'
+    %review-stack             'Add stack to review'
+    %delete-stack             'Delete stack'
+    %delete-item              'Delete card'
+    %edit-stack               'Rename stack'
+    %edit-item                'Edit card'
+    %read                     'Read card'
+    %update-review            'Update review queue'
+    %import                   'Import stack'
+    %import-file              'Import file'
+    %copy-stack               'Copy stack'
+    %begin-capture            'Start card draft'
+    %prepare-capture          'Prepare draft sources'
+    %stage-card               'Save suggested card'
+    %approve-proposal         'Add suggested card'
+    %reject-proposal          'Discard suggested card'
+    %discard-capture          'Discard draft'
+    %delete-capture           'Remove draft from history'
+    %purge-evidence           'Delete saved source text'
+    %collect-retained         'Clean up unused history'
+    %retire-operation-epoch   'Clear activity history'
+    %add-context-source       'Add source'
+    %set-context-egress       'Change source permissions'
+    %rename-context-source    'Rename source'
+    %archive-orphan-contexts  'Archive unused sources'
+    %remove-context-source    'Remove source'
+    %claim-context-source     'Start loading source'
+    %finish-context-source    'Save loaded source'
+    %fail-context-source      'Record source loading problem'
+    %retry-context-source     'Try loading source again'
+    %refresh-context-source   'Refresh source'
+    %ask-card                 'Request AI help'
+    %replace-assistant-models  'Update available AI models'
+    %claim-card-question      'Start AI request'
+    %answer-card-question     'Save AI answer'
+    %apply-card-edit          'Save AI card edit'
+    %fail-card-question       'Record AI request problem'
+    %retry-card-question      'Try AI request again'
+    %delete-card-question     'Delete AI conversation'
+    %request-change           'Request AI changes'
+    %claim-change             'Start preparing changes'
+    %start-change             'Queue AI changes'
+    %prepare-change-packet    'Prepare change sources'
+    %propose-change           'Record proposed changes'
+    %finish-change            'Save proposed changes'
+    %fail-change              'Record change request problem'
+    %apply-change             'Approve library changes'
+    %reject-change            'Close change request'
+    %retry-change             'Try change request again'
+    %delete-change            'Delete change request'
+    %request-login            'Start provider sign-in'
+    %issue-bridge-nonce       'Prepare connection verification'
+    %set-bridge-capability    'Change AI connection settings'
+    %claim-login              'Start sign-in through the bridge'
+    %post-login-challenge     'Show provider sign-in instructions'
+    %submit-login-code        'Submit sign-in code'
+    %finish-login             'Complete provider sign-in'
+    %fail-login               'Record sign-in problem'
+    %retry-login              'Try provider sign-in again'
+    %cancel-login             'Close sign-in request'
+    %consume-login-code       'Clear delivered sign-in code'
+    %share-clay-context       'Share source file'
+    %unshare-clay-context     'Stop sharing source file'
+    %fetch-remote-manifest    'Request shared source list'
+    %bridge-action            'Process bridge update'
+    %checkpoint-work          'Record task progress'
+    %heartbeat-work           'Keep task connection active'
+    %recover-work             'Recover interrupted task'
+    %cancel-work              'Cancel task'
+  ==
+::
+++  operation-background
+  |=  receipt=operation-receipt
+  ^-  ?
+  ?.  ?&  =(%ok status.receipt)
+          !=(%unknown effect.receipt)
+          !=(%outcome-unknown reason.receipt)
+      ==
+    %.n
+  ?:  ?=(?(%read %answered-item %update-review) action.receipt)  %.y
+  ?&  !=(%operator authority.receipt)
+      ?=(?(%collect-retained %archive-orphan-contexts %replace-assistant-models %issue-bridge-nonce %claim-context-source %claim-card-question %claim-change %claim-login %prepare-change-packet %consume-login-code %checkpoint-work %heartbeat-work) action.receipt)
+  ==
+::
+++  problem-description
+  |=  reason=@tas
+  ^-  @t
+  ?+  reason  'Seer could not complete this action. Open its technical details to see the error code.'
+    %no-change
+      'No change was needed.'
+    %receipt-not-found
+      'No saved result was found. This does not show whether the action ran. Check the related item before submitting it again.'
+    %operation-epoch-expired
+      'This result belongs to activity history that was cleared. Its outcome cannot be confirmed here. Check the related item before submitting it again.'
+    %outcome-unknown
+      'An external request may have run, but Seer cannot confirm its result. Check the provider and the related task before considering another attempt.'
+    %receipt-limit
+      'Activity history is full, and no saved result is available for this request. Review outstanding tasks before clearing activity history in Settings.'
+    %operation-digest-conflict
+      'This request reference belongs to different submitted content. Check the original activity result; it does not confirm this submission.'
+    %plan-digest-mismatch
+      'The changes no longer match the preview you approved. Open the latest preview and review it before approving.'
+    ?(%stale-precondition %stale-observation %content-conflict %original-mismatch)
+      'The card or library changed after this request was prepared. Review the current content and prepare updated changes before approving.'
+    ?(%missing-precondition %duplicate-precondition %precondition-domain %unversioned-entity %subject-version-unavailable)
+      'Seer could not verify the current card or library version. Open the current item and prepare a fresh preview before approving changes.'
+    ?(%stack-id-in-use %stack-exists)
+      'A stack already uses this identifier. Open that stack, or choose a different identifier for the new stack.'
+    ?(%card-id-in-use %card-exists)
+      'A card already uses this identifier in the stack. Open that card, or choose a different identifier for the new card.'
+    %change-id-in-use
+      'A change request already uses this identifier. Open the existing request before creating another.'
+    ?(%missing-stack %missing-card %subject-not-found %not-found)
+      'The requested card or stack was not found. Open Library and select an item that is still available.'
+    %invalid-stack
+      'This stack cannot accept the requested changes. Open Library and choose an editable stack.'
+    %wrong-owner
+      'This action requires an item owned by your ship. Open your own copy before making changes.'
+    ?(%change-not-found %capture-not-found %work-not-found)
+      'The related request was not found. Check Activity and the current task list before starting new work.'
+    ?(%change-not-draft %capture-complete %work-already-settled %work-not-queued %action-not-applicable)
+      'This action is not available in the current state. Open the related item to see its latest status and available actions.'
+    ?(%model-unavailable %model-changed)
+      'The selected AI model is no longer available with these settings. Check the AI connection in Settings and choose an available model.'
+    %provider-unavailable
+      'The assistant was unavailable. Check its service status and your connection in Settings before starting more work.'
+    %provider-unsupported
+      'The bridge does not support this assistant. Choose a supported assistant in Settings.'
+    %unsupported-isolation
+      'This bridge cannot run AI requests with the required privacy controls. You can still add and review cards manually.'
+    %login-failed
+      'Provider sign-in did not complete. Open Settings to check the sign-in request and provider instructions.'
+    %invalid-login-code
+      'Seer could not accept this sign-in code. Paste only the code from the provider, without line breaks.'
+    %invalid-login-challenge
+      'The bridge returned sign-in instructions Seer could not accept. Check the sign-in request in Settings.'
+    ?(%login-code-changed %login-version-unavailable)
+      'The sign-in request changed before the code could be consumed. Check its current status in Settings before submitting another code.'
+    %delivery-unavailable
+      'No sign-in code is available to deliver. It may already have been consumed. Check the sign-in status in Settings.'
+    ?(%paired-bridge-required %invalid-bridge-proof %invalid-bridge-capability)
+      'Seer could not verify the bridge connection. Check the bridge configuration on the computer running it.'
+    ?(%operator-entrypoint-required %worker-action-required %worker-mismatch %invalid-worker %work-scope-mismatch %catalog-claim-required)
+      'This request does not have the required permission. Use Seer for manual actions and check the bridge connection in Settings.'
+    ?(%invalid-command %invalid-worker-action %invalid-nonce)
+      'Seer could not accept the request format. Reopen the page and check that the connected tools are up to date.'
+    %action-trapped
+      'Seer encountered an error while handling this action. Check the related item and Activity details before starting another attempt.'
+    ?(%work-fenced %lease-expired %lease-unavailable)
+      'This bridge worker no longer has permission to update the task. Check its current status before recovering it; an external request may already have started.'
+    %lease-not-expired
+      'The task connection is still active. Check its progress before attempting recovery.'
+    ?(%work-deadline %deadline-expired %deadline-unavailable)
+      'The task cannot continue within its recorded time limit. Check its status and any external result before starting another attempt.'
+    ?(%checkpoint-order %source-owned-checkpoint %output-checkpoint-required %provider-checkpoint-required %packet-already-frozen %work-required)
+      'This task update is not valid at the current stage. Check task progress and the bridge before starting more work.'
+    %worker-failed
+      'The bridge could not finish this request. Open the error details for more information.'
+    ?(%invalid-provider-output %invalid-change-output)
+      'The AI result could not be accepted. Review the request and its sources before deciding whether to ask for a new result.'
+    %source-fetch-failed
+      'The source could not be loaded. Open the related draft or stack and check its address and access permissions in the source list.'
+    %clay-unavailable
+      'The source file could not be read from this ship. Check that the file exists and its path is correct.'
+    %remote-file-required
+      'A shared source must point to a file, not a directory. Choose a file shared by the other ship.'
+    ?(%missing %missing-source)
+      'A source needed by this request was not found. Open the related draft or card and choose an available source.'
+    %egress-denied
+      'A source is not permitted to be sent to this assistant. Open the related draft or card and check its sharing permissions, or leave it out of the request.'
+    %policy-changed
+      'Source permissions changed after this request was prepared. Review the permissions and prepare a new request with the sources you intend to share.'
+    %out-of-scope
+      'A reference does not belong to this request or its selected sources. Choose sources attached to the relevant card, stack, or request.'
+    %archived
+      'A required source is archived. Choose an active source before preparing a new request.'
+    ?(%not-ready %source-not-ready %failed)
+      'A required source is not ready to use. Check its loading status in the source list on the related draft or card.'
+    ?(%stale %stale-snapshot %stale-generation)
+      'A source changed after this request was prepared. Review the current source and prepare a new request.'
+    %purged
+      'The saved source text was deleted. Add an available source and prepare a new request.'
+    %listing-only
+      'The selected source contains a file list, not file contents. Select a source file to use as a reference.'
+    %excluded
+      'A required source was excluded from the request. Review the source selection before continuing.'
+    ?(%invalid-selection %invalid-range %duplicate-selection)
+      'The source selection is invalid or repeated. Choose valid excerpts from the available sources.'
+    ?(%packet-unavailable %missing-packet)
+      'The saved sources for this request are unavailable. Open the related draft or card, check its source list, and prepare a new request.'
+    ?(%packet-blocked %blocked-packet)
+      'The selected sources cannot be used for this request. Open the related draft or card and check their availability and sharing permissions.'
+    ?(%packet-mismatch %provider-mismatch %capture-mismatch)
+      'The saved references do not match this request. Review the request, model, and selected sources before preparing it again.'
+    ?(%citation-mismatch %invalid-citation-range %unselected-citation %uncited-proposal)
+      'The result is missing valid source references. Ask for a result supported by exact excerpts from the selected sources.'
+    ?(%missing-learning-objective %missing-capture-goal)
+      'The card draft needs a learning goal. Describe what you want to learn before preparing drafts.'
+    %missing-supported-claim
+      'The card draft needs a claim supported by its sources. Review the draft and add a supported claim.'
+    %missing-why-new
+      'The card draft needs an explanation of what it adds to your library. Review existing cards before proposing it.'
+    %duplicate-live-card
+      'This card is already in your library. Use the existing card instead of adding a duplicate.'
+    %duplicate-proposal
+      'An equivalent card draft is already recorded. Review the existing draft instead of adding another.'
+    %rejected-identical
+      'This same card draft was already rejected. Review that decision; new wording alone does not make it a new draft.'
+    %superseded-identical
+      'This card draft has been replaced by a newer version. Review the newer draft.'
+    %decision-conflict
+      'This draft already has a different review decision. Open its current result before making another decision.'
+    ?(%artifact-unavailable %missing-artifact)
+      'The saved draft or AI result is unavailable. Check the current request before preparing a replacement.'
+    %approved-card-dependency
+      'An approved card still uses this source copy. Seer has kept it so the card retains its references.'
+    ?(%snapshot-limit %packet-limit %artifact-limit %storage-limit %learning-storage-limit)
+      'Retained history has reached its storage limit. Review cleanup options in Settings; references used by approved cards must be kept.'
+    ?(%blob-conflict %snapshot-conflict %artifact-conflict %artifact-index-conflict)
+      'Seer found conflicting retained records. Review Activity details before creating or deleting related history.'
+    ?(%operation-limit %affected-limit %precondition-limit %observation-limit)
+      'This request covers too many changes or library items. Split it into smaller requests.'
+    ?(%operation-text-limit %output-budget-exhausted %artifact-too-large)
+      'The proposed result is too large to save. Ask for fewer changes or a shorter result.'
+    ?(%budget-exhausted %observation-byte-limit %library-read-report-limit)
+      'The request and its references exceed the size limit. Narrow the request or select shorter source excerpts.'
+    %source-too-large
+      'The source text is too large to save. Add a smaller file or a shorter excerpt.'
+    ?(%metadata-too-large %caveat-too-large %decision-reason-too-large)
+      'The description is too long to save. Shorten the text before submitting it.'
+    %invalid-utf8
+      'The source is not valid UTF-8 text. Save it as UTF-8 before adding it.'
+    %selection-limit
+      'Too many source excerpts were selected. Choose fewer references for this request.'
+    %citation-limit
+      'The result contains too many source references. Ask for a shorter, more focused result.'
+    %purge-limit
+      'Too many retained references were selected for deletion. Select a smaller group.'
+    %invocation-limit
+      'This task has used its allowed AI requests. Review its progress and any existing result before starting more work.'
+    ?(%model-limit %invalid-model-catalog)
+      'Seer could not accept the list of AI models. Check the bridge and its model settings.'
+    %nonce-limit
+      'Too many connection checks are outstanding. Check the bridge connection before sending more requests.'
+    ?(%invalid-capture %invalid-proposal %invalid-request)
+      'The draft or request is missing required information or contains invalid content. Review its goal, text, and selected sources.'
+    %invalid-change-prompt
+      'The change request is empty, too long, or contains invalid text. Enter a clear, shorter description of the changes you want.'
+    %invalid-change-summary
+      'The proposed changes need a valid request and summary. Review both before submitting the proposal.'
+    ?(%invalid-plan %operation-shape %ambiguous-operations)
+      'The proposed changes are incomplete or conflict with one another. Prepare a clear, non-overlapping set of changes.'
+    %empty-plan
+      'The proposal contains no library changes. Review the request before preparing a new proposal.'
+    %desk-brief-required
+      'Ask for a written proposal describing the intended app improvements.'
+    ?(%unobserved-plan-target %incomplete-library-observation %incomplete-library-metadata %incomplete-library-read)
+      'The bridge did not read all library information needed for these changes. Narrow the request or complete that review before preparing changes.'
+    ?(%invalid-read-report %invalid-library-read-report %invalid-bounded-query %duplicate-observation)
+      'The bridge could not provide a valid record of the library it reviewed. Check the bridge before preparing new changes.'
+    %no-supported-candidate
+      'The assistant found no suitable result supported by the selected sources. Review the learning goal and choose more relevant sources.'
+    %cancelled
+      'The task was cancelled in Seer. This does not confirm that an external request was stopped.'
+    ?(%capability-rotated %epoch-retired)
+      'Connection settings or activity history changed, interrupting this task. Check its current status before starting more work.'
+    %lease-recovered
+      'The interrupted task was returned to the queue.'
+  ==
+::
+++  operation-state
+  |=  receipt=operation-receipt
+  ^-  @t
+  ?:  ?=(?(%receipt-not-found %operation-epoch-expired) reason.receipt)
+    'Result unavailable'
+  ?:  ?|  =(%unknown effect.receipt)
+          =(%outcome-unknown status.receipt)
+          =(%outcome-unknown reason.receipt)
+      ==
+    'Outcome uncertain'
+  ?.  =(%ok status.receipt)
+    ?+  status.receipt  'Needs attention'
+      %conflict          'Needs review'
+      %invalid           'Not accepted'
+      %unauthorized      'Permission needed'
+      %budget-exhausted  'Limit reached'
+      %replay-expired    'Result unavailable'
+    ==
+  ?:  =(%no-change reason.receipt)  'No change needed'
+  ?:  =(%staged effect.receipt)  'Needs review'
+  ?:  =(%committed effect.receipt)  'Completed'
+  ?+  action.receipt  'Completed'
+    %begin-capture       'Draft recorded'
+    ?(%ask-card %retry-card-question %request-change)
+      'Request recorded'
+    ?(%start-change %retry-change %request-login %retry-login %retry-context-source %recover-work)
+      'Queued'
+    ?(%claim-card-question %claim-change %claim-context-source %claim-login)
+      'Started'
+    %post-login-challenge  'Sign-in needed'
+    %submit-login-code     'Code recorded'
+  ==
+::
+++  operation-outcome
+  |=  receipt=operation-receipt
+  ^-  @t
+  ::  Missing history is not evidence of failure or of an external request.
+  ?:  ?=(?(%receipt-not-found %operation-epoch-expired) reason.receipt)
+    (problem-description reason.receipt)
+  ?:  ?|  =(%unknown effect.receipt)
+          =(%outcome-unknown status.receipt)
+          =(%outcome-unknown reason.receipt)
+      ==
+    (problem-description %outcome-unknown)
+  ?.  =(%ok status.receipt)  (problem-description reason.receipt)
+  ?:  =(%no-change reason.receipt)  (problem-description %no-change)
+  ?+  action.receipt
+    ?:  =(%staged effect.receipt)
+      'A result was saved for review. It has not been applied to your library.'
+    ?:  =(%committed effect.receipt)  'The library changes were saved.'
+    'The action was recorded.'
+    %new-stack          'The stack was created in your library.'
+    %new-item           'The card was added to your library.'
+    %edit-stack         'The stack name was saved.'
+    ?(%edit-item %apply-card-edit)
+      'The card edits were saved to your library.'
+    %delete-stack       'The stack was removed from your library.'
+    %delete-item        'The card was removed from your library.'
+    %copy-stack         'A copy of the stack was saved to your library.'
+    %raise-item         'The card was added to the review queue.'
+    %review-stack       'The stack was added to the review queue.'
+    %answered-item      'Your recall rating was saved.'
+    %update-review      'The review queue was updated.'
+    %import             'The stack import was requested. Check Library for the result.'
+    %import-file        'The file import was requested. Check Library for the result.'
+    %begin-capture
+      'The card draft was created. Add sources to prepare it for your assistant.'
+    %prepare-capture
+      'The selected sources are ready for your assistant to use.'
+    %stage-card
+      'The card draft was saved for review. Approve it to add the card to your library.'
+    %approve-proposal   'The approved card was added to your library.'
+    %reject-proposal    'The card suggestion was rejected.'
+    %discard-capture
+      'The remaining drafts were discarded. Previously approved cards are unchanged.'
+    %delete-capture
+      'The completed draft was removed from history. Approved cards remain in your library.'
+    %add-context-source
+      'The source was added. Check its loading status in the draft or card.'
+    %set-context-egress  'The source permissions were saved.'
+    %rename-context-source  'The source name was saved.'
+    %remove-context-source
+      'The source was removed. Copies used by earlier requests are kept in history.'
+    %archive-orphan-contexts  'Sources belonging to removed items were archived.'
+    %finish-context-source  'The loaded source text was saved.'
+    %refresh-context-source
+      'The source refresh was accepted. Open the related draft or card and check the source list for the loading result.'
+    %retry-context-source
+      'The source was queued for another loading attempt. Follow its progress in the source list on the related draft or card.'
+    ?(%ask-card %retry-card-question)
+      'The AI request was accepted. Open the card to see its result or current progress.'
+    %answer-card-question  'The AI answer was saved. Open the card to read it.'
+    %delete-card-question  'The AI conversation was deleted. Saved card edits are unchanged.'
+    %request-change
+      'The change request was saved. Open it in Inbox to see the next step.'
+    ?(%start-change %retry-change)
+      'The change request was queued. Any proposed library changes still need your approval.'
+    %prepare-change-packet
+      'The library information and selected references were saved for this change request.'
+    ?(%propose-change %finish-change)
+      'The proposed changes are ready to review in Inbox.'
+    %apply-change       'The approved changes were saved to your library.'
+    %reject-change      'The change request was closed without applying changes.'
+    %delete-change     'The change request was deleted. Any previously applied library changes remain.'
+    ?(%request-login %retry-login)
+      'The sign-in request was queued for the bridge. Open Settings for the next sign-in step.'
+    %post-login-challenge
+      'Provider sign-in instructions are ready. Open Settings to continue.'
+    %submit-login-code
+      'The sign-in code was submitted. Check Settings for the result.'
+    %finish-login       'The bridge reported that sign-in completed.'
+    %cancel-login
+      'The sign-in request was closed in Seer. This does not sign you out of the provider.'
+    %consume-login-code  'The delivered sign-in code was cleared from Seer.'
+    %set-bridge-capability
+      'AI connection settings were saved. Existing tasks may need attention; review them before starting more work.'
+    %retire-operation-epoch
+      'Activity history was cleared. Review interrupted AI tasks before starting more work.'
+    %purge-evidence      'The selected saved source text was deleted.'
+    %collect-retained    'Unused source copies were removed.'
+    %replace-assistant-models  'The list of available AI models was updated.'
+    %share-clay-context   'The source file is now shared with other ships.'
+    %unshare-clay-context  'The source file is no longer shared with other ships.'
+    %fetch-remote-manifest
+      'The shared source list was requested. Open the related stack and check its source file picker for the result.'
+    %issue-bridge-nonce  'A one-time connection check was prepared.'
+    ?(%claim-card-question %claim-change %claim-context-source %claim-login)
+      'The bridge accepted the task and marked it as started.'
+    %checkpoint-work    'Task progress was recorded.'
+    %heartbeat-work     'The task connection was renewed.'
+    %recover-work
+      'The interrupted task was returned to the queue before a provider request was recorded as started.'
+    %cancel-work
+      'Cancellation was recorded in Seer. This does not confirm that an external request was stopped.'
+  ==
+::
 ++  make-command
   |=  [epoch=@da operation=@t act=action]
   ^-  command

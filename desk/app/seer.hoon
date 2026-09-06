@@ -683,6 +683,26 @@
   ?+  request-line
     (respond-payload eyre-id not-found:gen)
   ::  canonical browser routes.
+      [[~ [%apps %seer %activity ~]] *]
+    =/  operation  (get-arg args.request-line 'operation-id')
+    ?~  operation  (respond-page eyre-id [%activity ~] ~)
+    ?.  ?&(!=('' u.operation) (bounded-text:ev u.operation 128))
+      (respond-page eyre-id [%activity ~] `'Enter an operation ID of 1 to 128 characters. You can copy one from Activity.')
+    =/  epoch
+      (slaw %da (fall (get-arg args.request-line 'idempotency-epoch') (scot %da epoch.operating.state)))
+    ?~  epoch
+      (respond-page eyre-id [%activity ~] `'The history date is not valid. Copy it from the operation details, or open Activity to search current history.')
+    =/  expected  (get-arg args.request-line 'digest')
+    =.  expected  ?~(expected ~ ?:(=('' u.expected) ~ expected))
+    =/  digest=(unit @ux)  ?~(expected ~ (slaw %ux u.expected))
+    ?:  ?&(?=(^ expected) ?=(~ digest))
+      (respond-page eyre-id [%activity ~] `'The request fingerprint is not valid. Copy it from the operation details, or leave it out of the lookup.')
+    =/  receipt  (operation-receipt-at:effects operating.state u.epoch u.operation digest)
+    (respond-page eyre-id [%activity `receipt] ~)
+  ::
+      [[~ [%apps %seer %settings ~]] ~]
+    (respond-page eyre-id [%settings ~] ~)
+  ::
       [[~ [%apps %seer %operation-result ~]] *]
     =/  epoch  (slaw %da (fall (get-arg args.request-line 'idempotency-epoch') ''))
     =/  operation  (fall (get-arg args.request-line 'operation-id') '')
@@ -775,17 +795,17 @@
     %:  apply-web-action  eyre-id
       [%begin-capture (form-id 'capture') (form-got fields 'title') (form-got fields 'goal') (form-got fields 'source') 'operator']
       [%inbox ~]
-      `'Capture opened. Attach sources, then freeze its packet.'
+      `'Card draft created. Add sources, then prepare it for the assistant.'
     ==
       [[~ [%apps %seer %actions %start-change ~]] ~]
-    (apply-web-action eyre-id [%start-change (slav %tas (form-got fields 'change-id'))] [%inbox ~] `'Planning queued.')
+    (apply-web-action eyre-id [%start-change (slav %tas (form-got fields 'change-id'))] [%inbox ~] `'Change request queued. The assistant will prepare the changes for your review.')
       [[~ [%apps %seer %actions %prepare-capture ~]] ~]
     =/  id  (slav %tas (form-got fields 'capture'))
     =/  model  (~(got by models.state) (slav %tas (form-got fields 'model')))
     %:  apply-web-action  eyre-id
       [%prepare-capture id model (form-selections fields [%capture id]) (need (rush (form-got fields 'max-bytes') dim:ag)) (need (rush (form-got fields 'excerpt-bytes') dim:ag))]
       [%inbox ~]
-      `'Capture packet frozen. Inspect exact provider input.'
+      `'Sources prepared. Review the exact text before sending it to the assistant.'
     ==
       [[~ [%apps %seer %actions %rename-context-source ~]] ~]
     (apply-web-action eyre-id [%rename-context-source (slav %tas (form-got fields 'context-id')) (form-got fields 'label')] (form-return fields) `'Source renamed.')
@@ -793,21 +813,21 @@
     =/  providers=(set ai-provider)  ~
     =?  providers  =('1' (form-got fields 'codex'))  (~(put in providers) %codex)
     =?  providers  =('1' (form-got fields 'claude'))  (~(put in providers) %claude)
-    (apply-web-action eyre-id [%set-context-egress (slav %tas (form-got fields 'context-id')) providers] (form-return fields) `'Source egress policy updated.')
+    (apply-web-action eyre-id [%set-context-egress (slav %tas (form-got fields 'context-id')) providers] (form-return fields) `'Source sharing permissions updated.')
       [[~ [%apps %seer %actions %cancel-work ~]] ~]
     =/  key=entity-key
       %-  need
       %-  (soft entity-key)
       [(slav %tas (form-got fields 'work-kind')) (slav %p (form-got fields 'work-owner')) (slav %tas (form-got fields 'work-scope')) (slav %tas (form-got fields 'work-id'))]
-    (apply-web-action eyre-id [%cancel-work key] (form-return fields) `'Work cancelled. Late worker results are fenced.')
+    (apply-web-action eyre-id [%cancel-work key] (form-return fields) `'Work cancelled. Later results will not be applied.')
       [[~ [%apps %seer %actions %archive-orphan-contexts ~]] ~]
-    (apply-web-action eyre-id [%archive-orphan-contexts ~] [%inbox ~] `'Orphan sources archived. History is retained.')
+    (apply-web-action eyre-id [%archive-orphan-contexts ~] [%settings ~] `'Unlinked sources archived. History is retained.')
       [[~ [%apps %seer %actions %collect-retained ~]] ~]
-    (apply-web-action eyre-id [%collect-retained ~] [%inbox ~] `'Unused retained evidence collected.')
+    (apply-web-action eyre-id [%collect-retained ~] [%settings ~] `'Unused saved source text removed.')
       [[~ [%apps %seer %actions %retire-operation-epoch ~]] ~]
-    (apply-web-action eyre-id [%retire-operation-epoch ~] [%inbox ~] `'Operation epoch retired. Reload forms before new commands.')
+    (apply-web-action eyre-id [%retire-operation-epoch ~] [%settings ~] `'Operation history cleared. Older forms can no longer submit actions.')
       [[~ [%apps %seer %actions %purge-evidence ~]] ~]
-    (apply-web-action eyre-id [%purge-evidence (silt ~[(slav %ux (form-got fields 'snapshot-ref'))])] [%inbox ~] `'Evidence purged; dependent retained text is unavailable.')
+    (apply-web-action eyre-id [%purge-evidence (silt ~[(slav %ux (form-got fields 'snapshot-ref'))])] [%settings ~] `'Saved source text deleted. Requests that relied on it can no longer use that text.')
       [[~ [%apps %seer %actions %new-stack ~]] ~]
     =/  name   (slav %tas (form-got fields 'name'))
     =/  title  (form-got fields 'title')
@@ -877,7 +897,7 @@
       eyre-id
       [%delete-capture capture-id]
       [%inbox ~]
-      `'Capture history removed.'
+      `'Card draft history removed.'
     ==
   ::
       [[~ [%apps %seer %actions %review-stack ~]] ~]
@@ -923,7 +943,7 @@
       eyre-id
       [%request-change change-id target u.maybe-profile prompt %.n]
       [%inbox ~]
-      `'Draft created. Attach evidence, then start planning.'
+      `'Draft created. Add sources, then choose Prepare changes.'
     ==
   ::
       [[~ [%apps %seer %actions %apply-change ~]] ~]
@@ -941,7 +961,7 @@
       eyre-id
       [%reject-change change-id]
       [%inbox ~]
-      `'Change request rejected.'
+      `'Request closed. No proposed changes were applied.'
     ==
   ::
       [[~ [%apps %seer %actions %retry-change ~]] ~]
@@ -973,7 +993,7 @@
     %:  apply-web-action  eyre-id
       [%add-context-source (form-id 'ctx') scope kind label locator (form-got fields 'content')]
       (form-return fields)
-      `'Source recorded. Inspect its acquisition status.'
+      `'Source added. Check whether its text is ready.'
     ==
   ::
       [[~ [%apps %seer %actions %remove-context-source ~]] ~]
@@ -982,7 +1002,7 @@
       eyre-id
       [%remove-context-source context-id]
       (form-return fields)
-      `'Context removed from future prompts.'
+      `'Source removed from future requests.'
     ==
   ::
       [[~ [%apps %seer %actions %retry-context-source ~]] ~]
@@ -1106,6 +1126,8 @@
     =/  login-id=@tas
       ?:(=(%claude provider) %login-claude %login-codex)
     =/  target-page=page:index
+      ?:  =('settings' (form-got fields 'return'))
+        [%settings ~]
       ?:  =('inbox' (form-got fields 'return'))
         [%inbox ~]
       [%review ~]
@@ -1122,10 +1144,16 @@
       ?:(=('claude' provider-raw) %claude %codex)
     =/  request-id=@tas
       ?:(=(%claude provider) %logout-claude %logout-codex)
+    =/  target-page=page:index
+      ?:  =('settings' (form-got fields 'return'))
+        [%settings ~]
+      ?:  =('review' (form-got fields 'return'))
+        [%review ~]
+      [%inbox ~]
     %:  apply-web-action
       eyre-id
       [%request-login request-id provider]
-      [%inbox ~]
+      target-page
       ~
     ==
   ::
@@ -1133,6 +1161,8 @@
     =/  login-id  (slav %tas (form-got fields 'login-id'))
     =/  code      (form-got fields 'code')
     =/  target-page=page:index
+      ?:  =('settings' (form-got fields 'return'))
+        [%settings ~]
       ?:  =('inbox' (form-got fields 'return'))
         [%inbox ~]
       [%review ~]
@@ -1146,6 +1176,8 @@
       [[~ [%apps %seer %actions %cancel-login ~]] ~]
     =/  login-id  (slav %tas (form-got fields 'login-id'))
     =/  target-page=page:index
+      ?:  =('settings' (form-got fields 'return'))
+        [%settings ~]
       ?:  =('inbox' (form-got fields 'return'))
         [%inbox ~]
       [%review ~]
@@ -1159,6 +1191,8 @@
       [[~ [%apps %seer %actions %retry-login ~]] ~]
     =/  login-id  (slav %tas (form-got fields 'login-id'))
     =/  target-page=page:index
+      ?:  =('settings' (form-got fields 'return'))
+        [%settings ~]
       ?:  =('inbox' (form-got fields 'return'))
         [%inbox ~]
       [%review ~]
@@ -1277,6 +1311,7 @@
   =/  target  (form-got fields 'return')
   ?:  =('inbox' target)  [%inbox ~]
   ?:  =('review' target)  [%review ~]
+  ?:  =('settings' target)  [%settings ~]
   =/  owner  (slaw %p (form-got fields 'owner'))
   =/  stack  (slaw %tas (form-got fields 'stack'))
   ?~  owner  [%inbox ~]
@@ -1297,9 +1332,9 @@
   ^-  (quip card _state)
   =/  epoch  (slaw %da (form-got form-fields 'idempotency-epoch'))
   =/  operation  (form-got form-fields 'operation-id')
-  ?~  epoch  (respond-page eyre-id page `'Missing or invalid operation epoch. Reload before trying again.')
+  ?~  epoch  (respond-page eyre-id page `'This page is out of date. Reload it before trying again.')
   ?.  ?&(!=('' operation) (bounded-text:ev operation 128))
-    (respond-page eyre-id page `'Missing or invalid operation identity. Reload before trying again.')
+    (respond-page eyre-id page `'This page is out of date. Reload it before trying again.')
   =/  cmd  (make-command u.epoch operation act)
   =^  action-cards  state  (apply-command(operator-authorized %.y) cmd)
   =/  receipt  (operation-receipt-at:effects operating.state u.epoch operation `digest.cmd)
@@ -1307,7 +1342,7 @@
     ?:  =(%ok status.receipt)
       ?:  =(%no-change reason.receipt)  `'No change was needed.'
       notice
-    `(crip "{(trip status.receipt)}: {(trip reason.receipt)}. Inspect the operation receipt before a new attempt.")
+    `(operation-outcome receipt)
   :_  state
   %+  weld  action-cards
   %+  give-simple-payload:app  eyre-id
@@ -1330,6 +1365,8 @@
     %inbox          '/apps/seer/inbox'
     %stacks         '/apps/seer/stacks'
     %subscriptions  '/apps/seer/subscriptions'
+    %activity       '/apps/seer/activity'
+    %settings       '/apps/seer/settings'
     %stack
       %-  crip
       "/apps/seer/stack/{(scow %p owner.page)}/{(trip name.page)}"
@@ -1394,6 +1431,7 @@
     desks
     operating.state
     learning.state
+    !=('' bridge-secret.state)
   ==
 ::
 ++  get-arg
@@ -3303,6 +3341,7 @@
     ?~  maybe-request  [~ state]
     =/  request  u.maybe-request
     ?.  ?|  =(%ready status.request)
+            =(%draft status.request)
             =(%failed status.request)
         ==
       [~ state]

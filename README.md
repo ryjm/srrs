@@ -4,6 +4,28 @@ Seer is a spaced-repetition application for Urbit. It stores local stacks, subsc
 
 The browser interface uses server-rendered Hoon and HTMX 2.0.2, vendored into the desk and served by the agent itself; pages load with no external requests. Seer has no React build, JavaScript bundle, or client-side state store. The review page adds one inline script for keyboard review and session progress; every action still works without it.
 
+## Browser workflows
+
+- **Review** is for studying due cards; **Library** is for managing stacks.
+- **Inbox** is for card drafts and proposed changes. Review the actual card
+  content before approving it. Preparing draft sources does not invoke AI:
+  continue in an assistant connected to Seer using the message shown in the draft,
+  then return to Inbox to review its suggestions.
+- **Activity** at `/apps/seer/activity` shows actions and their results.
+  Routine study events stay under Background updates; failures and uncertain
+  outcomes remain in the main list. Technical details stay collapsed. The lookup
+  form can find an action by operation ID. Missing history does not mean an
+  action failed or make a retry safe.
+- **Settings** at `/apps/seer/settings` holds assistant sign-in, source storage,
+  and activity-history controls. Sign-in runs through the paired local bridge;
+  the panel says what it is waiting for and refreshes only itself. Each
+  source's sharing permissions remain beside that source, where you can review
+  the text before allowing access.
+  The deletion picker lists the newest 100 saved copies. Use “Delete a copy that
+  is not listed” to delete a copy by its exact reference.
+
+The machine-readable `/apps/seer/operation-result` endpoint is unchanged.
+
 ## Documentation and planning
 
 - This README is the operating guide for the shipped system. Start with the [agent operating guide](#agent-operating-guide) when driving Seer through MCP.
@@ -236,8 +258,8 @@ Use `seer/get-operation-result` after response loss. `outcome-unknown` and
 `retry_authorized: false` never authorize another provider invocation.
 
 The source retains at most 4,096 receipts per epoch and stops admitting new
-commands rather than silently evicting replay protection. The Inbox exposes
-explicit epoch retirement after reconciliation; retired epochs reject replay.
+commands rather than silently evicting replay protection. Settings exposes
+explicit history clearing (epoch retirement) after reconciliation; retired epochs reject replay.
 Reload forms after retirement. Native forms carry the same command identity,
 including when JavaScript is disabled.
 
@@ -263,7 +285,7 @@ observation; old selected packets retain their exact source/range identity.
 Remote directory/desk acquisition is not supported. The picker also works
 without JavaScript through its Load files control and server-side filter.
 
-The `×` beside a source removes it from future prompts.
+**Remove** beside a source excludes it from future prompts.
 
 Notes, local files, and Clay files are stored immediately. Web sources enter a
 durable queue; the bridge rejects private-network destinations, follows only
@@ -273,8 +295,9 @@ without breaking the context snapshot selected by an already-queued request.
 Claims and completions are leased and generation-fenced. A late completion
 cannot reactivate an archived source. Deleting a stack archives sources by
 exact owner/stack identity, leaving other owners and stacks untouched.
-Inbox maintenance can archive older orphans and collect unreferenced bodies;
-retained request/provenance dependencies prevent blind deletion.
+Settings can archive sources whose cards, stacks, or drafts were removed and
+collect unreferenced copies older than 30 days. Retained request/provenance
+dependencies prevent blind deletion.
 Archived sources remain inspectable through `seer/list-context-sources`:
 `status: archived` is separate from `acquisition_status`, and `active: false`
 keeps them out of acquisition queues. Their snapshot references remain usable
@@ -524,7 +547,7 @@ checkpoint, invocation/output consumption, and stop reason. An unavailable
 usage or billed-cost measurement stays unknown. Completed proposals, stored
 answers, and committed library effects have separate dispositions.
 
-The Inbox has provider-specific sign-in controls. Sign-in is a separate
+Settings has provider-specific sign-in controls. Sign-in is a separate
 interactive flow; one-shot paste-back codes are cleared on consumption and
 never returned by ordinary read tools. A lost code-consumption reply is not
 retried or reconstructed.

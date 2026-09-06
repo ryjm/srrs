@@ -800,6 +800,42 @@
     (expect-eq !>(%.y) !>((~(has by items.local) %remote)))
   ==
 ::
+++  test-unsent-change-can-be-discarded
+  ^-  tang
+  =/  core  (do-noun ag [%set-bridge-capability bridge-test-secret])
+  =.  core  (do-bridge core [%replace-assistant-models 'worker-1' ~[fixture-model]] 'draft-model')
+  =/  profile  (~(got by models:(peek-ai core)) %test-model)
+  =.  core  (do core [%request-change %unsent %library profile 'Add a card' %.n])
+  =/  discarded  (do core [%reject-change %unsent])
+  =/  after-start  (do discarded [%start-change %unsent])
+  ;:  weld
+    (expect-eq !>(%rejected) !>(status:(~(got by changes:(peek-ai discarded)) %unsent)))
+    (expect-eq !>(%rejected) !>(status:(~(got by changes:(peek-ai after-start)) %unsent)))
+  ==
+::
+++  test-activity-keeps-important-outcomes-visible
+  ^-  tang
+  =/  receipt
+    %*  .  *operation-receipt
+      authority  %operator
+      status     %ok
+      effect     %none
+    ==
+  =/  rows=(list operation-receipt)
+    :~  receipt(id 'read', action %read)
+        receipt(id 'answer', action %answered-item)
+        receipt(id 'queue', action %update-review)
+        receipt(id 'create', action %new-stack)
+        receipt(id 'cleanup', action %collect-retained)
+        receipt(id 'blocked-review', action %read, status %blocked)
+        receipt(id 'unknown-work', action %heartbeat-work, authority %worker, effect %unknown)
+        receipt(id 'heartbeat', action %heartbeat-work, authority %worker)
+    ==
+  =/  visible
+    %+  turn  (skip rows operation-background)
+    |=(record=operation-receipt id.record)
+  (expect-eq !>(~['create' 'cleanup' 'blocked-review' 'unknown-work']) !>(visible))
+::
 ++  test-browser-source-preparation-accepts-decimal-budgets
   ^-  tang
   =/  core  (do-noun ag [%set-bridge-capability bridge-test-secret])
@@ -822,6 +858,82 @@
   =/  browser  +:(on-load:shell on-save:core)
   =/  prepared  +:(on-poke:browser %handle-http-request !>(['web-check' request]))
   (expect-eq !>('ok') !>((json-text (peek-receipt prepared cmd) 'status')))
+::
+++  settings-html
+  |=  core=agent:gall
+  ^-  tape
+  =/  request=inbound-request:eyre
+    %*  .  *inbound-request:eyre
+      authenticated  %.y
+      request  [%'GET' '/apps/seer/settings' ~ ~]
+    ==
+  =/  web-bowl  bol
+  =/  shell  ~(. seer-agent web-bowl(sap /eyre))
+  =/  browser  +:(on-load:shell on-save:core)
+  =/  cards  -:(on-poke:browser %handle-http-request !>(['settings-check' request]))
+  |-  ^-  tape
+  ?~  cards  ~
+  ?.  ?=([%give %fact * [%http-response-data *]] i.cards)  $(cards t.cards)
+  =/  body  ((soft ,(unit octs)) q.q.cage.p.i.cards)
+  ?~  body  $(cards t.cards)
+  ?~  u.body  $(cards t.cards)
+  (trip q.u.u.body)
+::
+++  count-sub
+  |=  [needle=tape haystack=tape]
+  ^-  @ud
+  =/  n=@ud  0
+  |-
+  =/  at  (find needle haystack)
+  ?~  at  n
+  $(n +(n), haystack (slag (add u.at (lent needle)) haystack))
+::
+::  The settings poller must replace only the account panel, never the app
+::  shell, and must keep going through the gap between the bridge's
+::  confirmation and its catalog publication.
+::
+++  test-sign-in-polls-only-the-account-panel-until-the-catalog-arrives
+  ^-  tang
+  =/  unpaired  (settings-html ag)
+  =/  core  (do-noun ag [%set-bridge-capability bridge-test-secret])
+  =/  idle  (settings-html core)
+  =.  core  (do core [%request-login %login-codex %codex])
+  =/  queued  (settings-html core)
+  =.  core  (do-bridge core [%claim-login %login-codex 'worker-1'] 'login-claim')
+  =.  core  (do-bridge core [%checkpoint-work [%login ~zod %root %login-codex] 'worker-1' %provider-started] 'login-started')
+  =.  core  (do-bridge core [%post-login-challenge %login-codex 'worker-1' 'https://auth.openai.com/activate' 'ABCD-EFGH'] 'login-challenge')
+  =/  challenge  (settings-html core)
+  =.  core  (do-bridge core [%checkpoint-work [%login ~zod %root %login-codex] 'worker-1' %output-received] 'login-received')
+  =.  core  (do-bridge core [%finish-login %login-codex 'worker-1'] 'login-finish')
+  =/  confirmed  (settings-html core)
+  =.  core  (do-bridge core [%replace-assistant-models 'worker-1' ~[fixture-model]] 'login-catalog')
+  =/  connected  (settings-html core)
+  =.  core  (do-noun core %clear-bridge-capability)
+  =/  unpaired-connected  (settings-html core)
+  =/  polls  |=(html=tape ?=(^ (find "id=\"login-poll\"" html)))
+  =/  status-of  |=(core=agent:gall status:(~(got by (peek-logins core)) %login-codex))
+  ;:  weld
+    (expect-eq !>(%done) !>((status-of core)))
+    (expect-eq !>(%.n) !>((polls unpaired)))
+    (expect-eq !>(%.n) !>(?=(^ (find "request-login" unpaired))))
+    (expect-eq !>(%.y) !>(?=(^ (find "not paired" unpaired))))
+    (expect-eq !>(%.n) !>((polls idle)))
+    (expect-eq !>(%.y) !>(?=(^ (find "request-login" idle))))
+    (expect-eq !>(%.y) !>((polls queued)))
+    (expect-eq !>(%.y) !>(?=(^ (find "Waiting for the bridge" queued))))
+    (expect-eq !>(1) !>((count-sub "hx-target=\"#login-panel\"" queued)))
+    (expect-eq !>(1) !>((count-sub "hx-select=\"#login-panel\"" queued)))
+    (expect-eq !>(%.y) !>(?=(^ (find "hx-target=\"#seer-app\"" queued))))
+    (expect-eq !>(%.y) !>((polls challenge)))
+    (expect-eq !>(%.y) !>(?=(^ (find "ABCD-EFGH" challenge))))
+    (expect-eq !>(%.y) !>(?=(^ (find "https://auth.openai.com/activate" challenge))))
+    (expect-eq !>(%.y) !>((polls confirmed)))
+    (expect-eq !>(%.y) !>(?=(^ (find "Loading available models" confirmed))))
+    (expect-eq !>(%.n) !>((polls connected)))
+    (expect-eq !>(%.y) !>(?=(^ (find "request-logout" connected))))
+    (expect-eq !>(%.n) !>(?=(^ (find "request-logout" unpaired-connected))))
+    (expect-eq !>(%.y) !>(?=(^ (find "Sign-out is available once the bridge is paired" unpaired-connected))))
+  ==
 ::
 ::  An account already in the wanted state on the bridge host is confirmed
 ::  without a provider process: no provider checkpoint is recorded, so

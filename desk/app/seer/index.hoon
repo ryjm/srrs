@@ -11,6 +11,8 @@
       [%inbox ~]
       [%stacks ~]
       [%subscriptions ~]
+      [%activity result=(unit operation-receipt)]
+      [%settings ~]
       [%stack owner=@p name=@tas]
       [%stack-browse owner=@p name=@tas desk=@t q=@t pick=@t remote=@t]
   ==
@@ -120,6 +122,7 @@
           desks=(list @tas)
           control=agent-state
           learning=learning-state
+          paired=?
       ==
   ^-  manx
   =/  stack-count=@ud  (lent ~(tap by stacks))
@@ -153,6 +156,8 @@
   =/  review-active=?  ?=(%review -.page)
   =/  inbox-active=?  ?=(%inbox -.page)
   =/  shared-active=?  ?=(%subscriptions -.page)
+  =/  activity-active=?  ?=(%activity -.page)
+  =/  settings-active=?  ?=(%settings -.page)
   =<  (identify-posts document)
   |%
   ++  identify-posts
@@ -217,58 +222,189 @@
     ?~  complete  %.n
     =(u.complete [%b %.y])
   ::
+  ++  json-field
+    |=  [value=json key=@t]
+    ^-  json
+    ?.  ?=(%o -.value)  ~
+    (fall (~(get by p.value) key) ~)
+  ::
+  ++  display-time
+    |=  when=@da
+    ^-  tape
+    ?:  =(when *@da)  "Time unavailable"
+    =/  date  (yore when)
+    =/  months=(list tape)
+      ~["Jan" "Feb" "Mar" "Apr" "May" "Jun" "Jul" "Aug" "Sep" "Oct" "Nov" "Dec"]
+    =/  month  (snag (dec m.date) months)
+    "{<d.t.date>} {month} {(trip (decimal-text:seer y.date))}, {(two-digits h.t.date)}:{(two-digits m.t.date)} UTC"
+  ::
+  ++  two-digits
+    |=  value=@ud
+    ^-  tape
+    ?:  (lth value 10)  "0{<value>}"
+    (scow %ud value)
+  ::
   ++  effect-panel
-    |=  [preview=plan-preview projection=json]
+    |=  [preview=plan-preview projection=json headline=(unit @t)]
     ^-  manx
-    ;div.provenance
-      ;p
-        ;strong: Source-validated effects · {(trip status.preview)}
-      ==
-      ;p: {(trip reason.preview)} · {<(lent affected.preview)>} affected entities
+    =/  shared=?
+      %+  lien  diffs.preview
+      |=  diff=plan-diff
+      =/  affected  (lookup-stack our stack.operation.diff)
+      ?~  affected  %.n
+      ?=(^ subscribers.u.affected)
+    ;section.effect-preview
+      ;h4: What will change
       ;+  ?:  =(%ok status.preview)  ;span.hidden;
-          ;p.proposal-conflict: No effect is authorized. Reject this plan and review a newly generated diff; Seer will not rebase a stale approval.
+          ;p.proposal-conflict: {(trip (problem-description:seer reason.preview))}
       ;+  ?:  (projection-complete projection)  ;span.hidden;
-          ;p.proposal-conflict: This bounded preview omits effects. Approval is unavailable; split the plan into a smaller reviewable change.
-      ;p.muted: Approval is owner-only and binds this digest. Surviving cards keep learning state; no automatic recall grades are recorded.
-      ;p.muted: Changed card content follows the stack's existing sharing rules. Attached source material is not published to subscribers.
-      ;details.reveal
-        ;summary: Inspect exact before/after, review effects, and revision-bound digest
+          ;p.proposal-conflict: This change is too large to review here. Ask for a smaller plan before approving it.
+      ;+  ?.  (projection-complete projection)  ;span.hidden;
+          ;div.diff-list
+            ;*  (turn diffs.preview |=(diff=plan-diff (plan-diff-row diff headline)))
+          ==
+      ;+  ?.  (lien diffs.preview |=(diff=plan-diff ?=(?(%edit-card %rename-stack) kind.operation.diff)))  ;span.hidden;
+          ;p.muted: Editing keeps the existing cards' review progress.
+      ;+  ?.  (lien diffs.preview |=(diff=plan-diff =(%create-card kind.operation.diff)))  ;span.hidden;
+          ;p.muted: New cards enter your review queue.
+      ;+  ?.  shared  ;span.hidden;
+          ;p.muted: Subscribers to the affected stacks will see these changes.
+      ;details.technical
+        ;summary: Technical details
         ;+  (json-tree projection)
       ==
+    ==
+  ::
+  ++  plan-diff-row
+    |=  [diff=plan-diff headline=(unit @t)]
+    ^-  manx
+    =/  title=@t
+      ?~  after.diff
+        ?~(before.diff stack.operation.diff title.u.before.diff)
+      title.u.after.diff
+    =/  renamed=?
+      ?&(?=(^ before.diff) ?=(^ after.diff) !=(title.u.before.diff title.u.after.diff))
+    =/  label=tape
+      ?-  kind.operation.diff
+        %create-stack  "Create stack"
+        %rename-stack  "Rename stack"
+        %delete-stack  "Delete stack"
+        %create-card   "Add card"
+        %edit-card     "Update card"
+        %delete-card   "Delete card"
+        %queue-card    "Add to review queue"
+      ==
+    =/  heading=tape
+      ?:  ?|(renamed ?&(?=(^ headline) =(title u.headline)))  label
+      "{label} · {(trip title)}"
+    ;article.diff-row
+      ;h4: {heading}
+      ;div.diff-columns
+        ;+  ?~  before.diff  ;span.hidden;
+            (diff-version "Current" u.before.diff renamed)
+        ;+  ?~  after.diff  ;span.hidden;
+            (diff-version "After approval" u.after.diff renamed)
+      ==
+    ==
+  ::
+  ++  diff-version
+    |=  [label=tape value=[title=@t front=@t back=@t] show-title=?]
+    ^-  manx
+    ;section.diff-version
+      ;p.diff-label: {label}
+      ;+  ?.  show-title  ;span.hidden;
+          ;strong: {(trip title.value)}
+      ;+  ?:  =('' front.value)  ;span.hidden;
+          ;div
+            ;p.diff-label: Front
+            ;p.readable-text: {(trip (body-text front.value))}
+          ==
+      ;+  ?:  =('' back.value)  ;span.hidden;
+          ;div
+            ;p.diff-label: Back
+            ;p.readable-text: {(trip (body-text back.value))}
+          ==
     ==
   ::
   ++  packet-panel
     |=  [ref=(unit @ux) citations=(list evidence-citation)]
     ^-  manx
-    ?~  ref
-      ;p.muted: No frozen evidence packet. Generated text is not source evidence.
+    ?~  ref  ;span.hidden;
     =/  packet  (~(get by packets.evidence) u.ref)
     ?~  packet
-      ;p.proposal-conflict: The recorded packet is unavailable. Do not infer support from generated text.
+      ;p.proposal-conflict: The saved sources for this request are unavailable.
     =/  frozen  u.packet
     =/  projection  (packet-projection:ev frozen contexts evidence 262.144)
     =/  blocked  (packet-egress-error:ev frozen contexts evidence)
     =/  quote-error  (validate-citations:ev frozen citations evidence)
-    ;details.reveal
+    ;details.reveal.request-sources
       =data-persist  "packet|{(scow %ux u.ref)}"
-      ;summary: Inspect outgoing packet · {(trip provider.profile.request.frozen)} · {<prompt-bytes.frozen>} bytes
-      ;div.provenance
-        ;p: Exact provider/model: {(trip provider.profile.request.frozen)} / {(trip model.profile.request.frozen)}
-        ;p.muted: Only canonical_prompt below is provider-bound. It includes the frozen request and explicitly selected excerpts, not today's live source bodies.
-        ;p.muted: Source material leaves this ship only for the authorized provider. It is not shared with stack subscribers. Generated card content may be shared under existing stack permissions.
+      ;summary: Prepared sources{?~(blocked "" " · Needs attention")}
+      ;div.disclosure-body
+        ;p: Prepared for {(trip label.profile.request.frozen)} · {(display-time created-at.frozen)}
+        ;+  ?~  blocked
+              ;p.muted: Saved for the assistant to use. Check below for anything left out.
+            ;p.muted: Not ready to send. Resolve the issue below first.
         ;+  ?~  blocked  ;span.hidden;
-            ;p.proposal-conflict: Dispatch blocked · {(trip u.blocked)}. Restore source authorization if appropriate, then prepare a new packet; do not silently replace this one.
+            ;p.proposal-conflict: {(trip (problem-description:seer u.blocked))}
         ;+  ?:  (projection-complete projection)  ;span.hidden;
-            ;p.muted: Coverage is incomplete. Inspect exclusions and bounded omissions below; absent evidence must not be treated as included.
-        ;p.muted: Included ranges are UTF-8 byte offsets. Excluded, partial, listing-only, budget-omitted, and purged material is qualified in the source projection; a listing is not file contents.
-        ;+  (json-tree projection)
-        ;h4: Citation support
-        ;+  ?~  citations
-              ;p.muted: No citations. This is an unsupported generated claim, not verified source evidence.
-            ?^  quote-error
-              ;p.proposal-conflict: Citation support unavailable · {(trip u.quote-error)}
-            ;p.muted: Exact quoted bytes match the frozen selected evidence. This does not establish truth or that the evidence supports every generated claim.
-        ;+  (json-tree (citations-json:seer citations))
+            ;p.muted: Some source material was left out.
+        ;+  ?^  entries.frozen  ;span.hidden;
+            ;p.muted: No additional sources were selected.
+        ;ul.source-summary-list
+          ;*  %+  turn  entries.frozen
+              |=  entry=packet-entry
+              =/  snap
+                ?~  snapshot.entry  ~
+                (~(get by snapshots.evidence) u.snapshot.entry)
+              =/  label=tape
+                ?^  snap  (trip label.u.snap)
+                =/  source  (~(get by contexts) source.entry)
+                ?~(source "Removed source" (trip label.u.source))
+              =/  included=?  (included:ev entry)
+              =/  state=tape
+                ?:  ?&(?=(^ snap) !available.u.snap)  "Saved text deleted"
+                ?:  !included
+                  ?~  reason.entry  "Not included"
+                  ?+  u.reason.entry  "Not included"
+                    %excluded       "Not selected"
+                    %missing        "Source unavailable"
+                    %out-of-scope   "Not linked to this request"
+                    %egress-denied  "Permission needed"
+                    %archived       "Source removed"
+                    %failed         "Could not load source"
+                    %not-ready      "Not loaded yet"
+                    %stale          "Needs a fresh copy"
+                    %purged         "Saved text deleted"
+                    %invalid-range  "Excerpt selection is invalid"
+                    %budget-omitted  "Request size limit"
+                  ==
+                ?:  =(`%listing-only reason.entry)  "File names only"
+                ?:  ?=(^ reason.entry)  "Excerpt only"
+                "Included"
+              ;li
+                ;span: {label}
+                ;span.muted: {state}
+              ==
+        ==
+        ;+  ?~  citations  ;span.hidden;
+            ;section
+              ;h4: Source quotations
+              ;+  ?~  quote-error  ;span.hidden;
+                  ;p.proposal-conflict: Some quotations could not be checked against the saved sources.
+              ;*  %+  turn  citations
+                  |=  citation=evidence-citation
+                  ;blockquote.readable-text: {(trip quote.citation)}
+              ;p.muted: Check that each quotation supports the answer.
+            ==
+        ;details.reveal
+          ;summary: Full message to the assistant
+          ;+  (json-tree (json-field projection 'canonical_prompt'))
+        ==
+        ;details.technical
+          ;summary: Technical details
+          ;+  (json-tree projection)
+        ==
       ==
     ==
   ::
@@ -280,20 +416,40 @@
         scope  objective  provider  16  32.768
         contexts  evidence  versions.control  learning
       ==
+    =/  rows  (json-field projection 'artifacts')
+    ?.  ?=(%a -.rows)  ;span.hidden;
+    ?~  p.rows  ;span.hidden;
     ;details.reveal
-      ;summary: Prior learning · {(trip provider)} · inspect source qualification
-      ;p.muted: Generated memory is not primary evidence. Approval, rejection, and your recall grades describe decisions and learning, not factual truth.
-      ;p.muted: Reuse must match the exact packet and model. Unavailable or omitted bodies are not permission to reconstruct them from memory.
-      ;+  (json-tree projection)
+      ;summary: Previous answers and decisions
+      ;div.disclosure-body
+        ;p.muted: Earlier AI responses for this task. Review their sources before using them again.
+        ;*  %+  turn  p.rows
+            |=  row=json
+            =/  body  (json-field row 'body')
+            ;article.history-entry
+              ;+  (json-tree (json-field body 'objective'))
+              ;+  (json-tree (json-field body 'text'))
+              ;+  ?^  body  ;span.hidden;
+                  ;p.muted: This earlier response is unavailable for the selected assistant or sources.
+            ==
+        ;details.technical
+          ;summary: Technical details
+          ;+  (json-tree projection)
+        ==
+      ==
     ==
   ::
   ++  scope-learning-panel
     |=  scope=context-scope
     ^-  manx
-    ;details.reveal
-      ;summary: Review existing learning before a new request
-      ;+  (learning-panel scope '' %codex)
-      ;+  (learning-panel scope '' %claude)
+    =/  ids  (fall (~(get by scope-index.learning) scope) *(set @ux))
+    ;div
+      ;+  ?~  ids  ;span.hidden;
+          ;details.reveal
+            ;summary: Past AI responses
+            ;+  (learning-panel scope '' %codex)
+            ;+  (learning-panel scope '' %claude)
+          ==
       ;+  ?.  ?=(%stack -.scope)  ;span.hidden;
           ?~  card.scope  ;span.hidden;
           (observation-panel [%card owner.scope stack.scope u.card.scope])
@@ -304,16 +460,15 @@
     ^-  manx
     =/  observations
       (fall (~(get by observations.learning) key) *(list learner-observation))
+    ?~  observations  ;span.hidden;
     ;details.reveal
-      ;summary: Recorded recall observations · {<(lent observations)>}
-      ;p.muted: Only your actual grading actions are recorded. A grade measures recall of that card revision, not whether a generated claim is true.
-      ;p.muted: Showing up to 20 observations; no grades are inferred from approval, generated text, or provider usage.
-      ;*  %+  turn  (scag 20 observations)
-          |=  observation=learner-observation
-          ;div.provenance
-            ;p: {(trip grade.observation)} · {(scow %p actor.observation)} · {(scow %da at.observation)}
-            ;+  (json-tree (version-json:ev version.subject.observation))
-          ==
+      ;summary: Review history
+      ;div.disclosure-body
+        ;p.muted: Your latest 20 recall ratings for this card.
+        ;*  %+  turn  (scag 20 ^-((list learner-observation) observations))
+            |=  observation=learner-observation
+            ;p.history-entry: {(trip grade.observation)} · {(display-time at.observation)}
+      ==
     ==
   ::
   ++  work-panel
@@ -322,35 +477,23 @@
     =/  record  (~(get by jobs.control) key)
     ?~  record  ;span.hidden;
     =/  work  u.record
-    ;div.provenance
-      ;p
-        ;strong: Execution · {(trip execution.work)} / effect · {(trip effect.work)}
-      ==
-      ;p: Attempt {<attempt.work>} · checkpoint {(trip checkpoint.work)}
+    ?:  ?&  =(0 attempt.work)
+            =(%cancelled execution.work)
+            =(%none effect.work)
+        ==
+      ;span.hidden;
+    ?:  ?&  ?=(~ stop-reason.work)
+            !?=(?(%queued %running) execution.work)
+            !=(%unknown effect.work)
+        ==
+      ;span.hidden;
+    ;div.work-status
       ;+  ?~  stop-reason.work  ;span.hidden;
-          ;p.proposal-conflict: Stop reason · {(trip u.stop-reason.work)}
+          ;p.proposal-conflict: {(trip (problem-description:seer u.stop-reason.work))}
       ;+  ?.  =(%unknown effect.work)  ;span.hidden;
-          ;p.proposal-conflict: External outcome unknown. Cancellation cannot undo provider work or charges. Reconcile this receipt with the paired worker before authorizing a potentially billable new attempt.
-      ;details.reveal
-        ;summary: Inspect deadline, lease, budget, and recovery
-        ;p: Worker · {(trip worker.work)}
-        ;p: Lease until · {?~(lease-until.work "not leased" (scow %da u.lease-until.work))}
-        ;p: Hard deadline · {?~(deadline.work "not started" (scow %da u.deadline.work))}
-        ;p: Invocations · {<invocations.work>} / {<max-invocations.work>}
-        ;p: Input bytes · {<input-bytes.work>} / {<max-input-bytes.work>}
-        ;p: Output bytes · {<consumed-output-bytes.work>} / {<max-output-bytes.work>}
-        ;p: Operation budget · {<max-operations.work>}
-        ;p: Provider usage · {?~(usage.work "unknown" (scow %ud u.usage.work))}
-        ;p: Cost · {?~(cost.work "unknown" (scow %ud u.cost.work))}
-        ;p: Model · {(trip model-id.work)} · definition revision {<model-revision.work>}
-        ;p: Packet digest · {?~(packet-digest.work "not frozen" (scow %ux u.packet-digest.work))}
-        ;p: Policy {<policy-version.work>} · prompt {<prompt-version.work>} · schema {<schema-version.work>}
-        ;p: Retryable · {?:(retryable.work "yes, by explicit new attempt" "no")}
-        ;p.muted: The source clock controls expiry. Only the paired worker can recover an expired lease; before provider start it may requeue, afterward it must preserve an unknown external outcome. There is no automatic provider retry.
-      ==
+          ;p.proposal-conflict: The assistant may have run, but its result is missing. Check Activity before sending another request; it could be charged twice.
       ;+  ?.  ?|  =(%queued execution.work)
                   =(%running execution.work)
-                  =(%blocked execution.work)
               ==
             ;span.hidden;
           ;form.inline
@@ -362,72 +505,230 @@
             ;input(type "hidden", name "work-scope", value (trip scope.key));
             ;input(type "hidden", name "work-id", value (trip id.key));
             ;input(type "hidden", name "return", value (trip return));
-            ;button.danger(type "submit"): Cancel future work · does not undo charges
+            ;button.danger(type "submit"): Cancel request
           ==
     ==
   ::
-  ++  receipt-panel
+  ++  activity-page
     ^-  manx
     =/  rows
       %+  sort  ~(val by receipts.control)
       |=  [a=operation-receipt b=operation-receipt]
       ?:  =(at.a at.b)  (gth revision.a revision.b)
       (gth at.a at.b)
-    ;details.reveal
-      =data-persist  "operation-receipts"
-      ;summary: Operation receipts · {<receipt-count.control>} retained
-      ;p.muted: These are source receipts, not request acknowledgements. A missing receipt or lost connection does not prove failure or permission to retry. Refresh to reconcile before starting a new operation.
-      ;p: Current replay epoch · {(scow %da epoch.control)}
-      ;a.button.secondary(href "/apps/seer/inbox"): Refresh and reconcile
-      ;form
-        =method    "get"
-        =action    "/apps/seer/operation-result"
-        =hx-boost  "false"
-        ;label
-          ;span: operation ID to reconcile
-          ;input(name "operation-id", required "", maxlength "128");
+    =/  background  (skim rows operation-background:seer)
+    =/  actions  (skip rows operation-background:seer)
+    ;section.activity-page
+      ;header.page-head
+        ;div.page-copy
+          ;h1: Activity
+          ;p.muted: Changes to your library, drafts, and assistant requests.
         ==
-        ;label
-          ;span: idempotency epoch
-          ;input(name "idempotency-epoch", required "", value (scow %da epoch.control));
-        ==
-        ;label
-          ;span: expected payload digest · optional
-          ;input(name "digest");
-        ==
-        ;button.secondary(type "submit"): Inspect authoritative receipt
+        ;a.button.secondary(href "/apps/seer/activity"): Refresh
       ==
-      ;p.muted: Showing the latest {<(min 20 (lent rows))>} receipts.
-      ;*  %+  turn  (scag 20 rows)
-          |=  receipt=operation-receipt
-          (receipt-row receipt)
+      ;+  ?.  ?=(%activity -.page)  ;span.hidden;
+          ?~  result.page  ;span.hidden;
+          ;section.lookup-result
+            ;h2: Search result
+            ;+  ?.  ?=(?(%receipt-not-found %operation-epoch-expired) reason.u.result.page)
+                  (receipt-row u.result.page)
+                ;div
+                  ;h3: No saved result for {(trip id.u.result.page)}
+                  ;p: {(trip (operation-outcome:seer u.result.page))}
+                  ;details.technical
+                    ;summary: Search details
+                    ;p: History date searched: {(scow %da epoch.u.result.page)}
+                  ==
+                ==
+            ;a.quiet-link(href "/apps/seer/activity"): Clear search
+          ==
+      ;section.activity-section
+        ;h2: Recent actions
+        ;+  ?^  actions  ;span.hidden;
+            ;div.empty-state
+              ;h3: No activity yet
+              ;p.muted: When you add cards, review drafts, or use an assistant, the results will appear here.
+              ;a.quiet-link(href "/apps/seer/stacks"): Go to your library
+            ==
+        ;div.activity-list
+          ;*  (turn (scag 20 ^-((list operation-receipt) actions)) receipt-row)
+        ==
+        ;+  ?.  (gth (lent actions) 20)  ;span.hidden;
+            ;p.muted: Showing your latest 20 actions.
+      ==
+      ;details.reveal.activity-search
+        ;summary: Find an action by ID
+        ;div.disclosure-body
+          ;p.muted: Use an operation ID from your assistant or the technical details of an action.
+          ;form
+            =method  "get"
+            =action  "/apps/seer/activity"
+            ;label
+              ;span: Operation ID
+              ;input(name "operation-id", required "", maxlength "128", autocomplete "off", spellcheck "false");
+            ==
+            ;details.technical
+              ;summary: Advanced search
+              ;div.disclosure-body
+                ;label
+                  ;span: History date
+                  ;input(name "idempotency-epoch", value (scow %da epoch.control));
+                ==
+                ;label
+                  ;span: Request fingerprint (optional)
+                  ;input(name "digest", spellcheck "false");
+                ==
+              ==
+            ==
+            ;button.secondary(type "submit"): Find action
+          ==
+        ==
+      ==
+      ;+  ?~  background  ;span.hidden;
+          ;details.reveal
+            ;summary: Background updates · {<(lent background)>}
+            ;div.disclosure-body
+              ;p.muted: Routine study activity, model checks, and assistant progress. Showing the latest 20.
+              ;div.activity-list
+                ;*  (turn (scag 20 ^-((list operation-receipt) background)) receipt-row)
+              ==
+            ==
+          ==
     ==
   ::
   ++  receipt-row
     |=  receipt=operation-receipt
     ^-  manx
+    ;details.activity-row
+      ;summary
+        ;span.activity-copy
+          ;strong: {(trip (operation-title:seer action.receipt))}
+          ;span.activity-description: {(trip (operation-outcome:seer receipt))}
+          ;span.activity-time: {(display-time at.receipt)}
+        ==
+        ;span
+          =class  ?:(=(%ok status.receipt) "activity-state" "activity-state attention")
+          ;span: {(trip (operation-state:seer receipt))}
+          ;span.activity-toggle: Details
+        ==
+      ==
+      ;div.activity-detail
+        ;+  ?~  work.receipt
+              ;div.action-row
+                ;*  %+  turn  (scag 3 after.receipt)
+                    |=  fence=entity-precondition
+                    (related-item key.fence)
+              ==
+            (related-item u.work.receipt)
+        ;details.technical
+          ;summary: Technical details
+          ;div.disclosure-body
+            ;dl.data-grid
+              ;div
+                ;dt: Operation ID
+                ;dd: {(trip id.receipt)}
+              ==
+              ;div
+                ;dt: History date
+                ;dd: {(scow %da epoch.receipt)}
+              ==
+              ;div
+                ;dt: Request fingerprint
+                ;dd: {(scow %ux digest.receipt)}
+              ==
+              ;div
+                ;dt: Result code
+                ;dd: {(trip status.receipt)} / {(trip reason.receipt)}
+              ==
+              ;div
+                ;dt: Library effect
+                ;dd: {(trip effect.receipt)}
+              ==
+              ;div
+                ;dt: Initiated by
+                ;dd: {(trip authority.receipt)}
+              ==
+              ;div
+                ;dt: State revision
+                ;dd: {<revision.receipt>}
+              ==
+              ;div
+                ;dt: Approved plan
+                ;dd: {?~(plan.receipt "Not applicable" (scow %ux u.plan.receipt))}
+              ==
+              ;div
+                ;dt: Attempt
+                ;dd: {?~(attempt.receipt "Not applicable" (scow %ud u.attempt.receipt))}
+              ==
+            ==
+            ;+  ?~  work.receipt  ;span.hidden;
+                (work-details u.work.receipt)
+            ;details.reveal
+              ;summary: Recorded changes
+              ;h4: Before
+              ;*  (turn before.receipt precondition-row)
+              ;h4: After
+              ;*  (turn after.receipt precondition-row)
+            ==
+          ==
+        ==
+      ==
+    ==
+  ::
+  ++  related-item
+    |=  key=entity-key
+    ^-  manx
+    ?+  kind.key  ;span.hidden;
+      %stack
+        =/  stack  (lookup-stack owner.key id.key)
+        ?~  stack  ;span.hidden;
+        ;a.quiet-link(href (stack-url owner.key id.key)): {(stack-title u.stack)}
+      %card
+        =/  stack  (lookup-stack owner.key scope.key)
+        ?~  stack  ;span.hidden;
+        =/  item  (~(get by items.u.stack) id.key)
+        ?~  item  ;span.hidden;
+        ;a.quiet-link(href (stack-url owner.key scope.key)): {(trip title.content.u.item)}
+      %capture
+        =/  capture  (~(get by captures) id.key)
+        ?~  capture  ;span.hidden;
+        ;a.quiet-link(href "/apps/seer/inbox"): {(trip title.u.capture)}
+      %change
+        ;a.quiet-link(href "/apps/seer/inbox"): View change request
+      %question
+        =/  question  (~(get by questions) id.key)
+        ?~  question  ;span.hidden;
+        ;a.quiet-link(href (stack-url owner.u.question stack.u.question)): Open related card
+      %context
+        =/  source  (~(get by contexts) id.key)
+        ?~  source  ;span.hidden;
+        ?.  ?=(%stack -.scope.u.source)
+          ;a.quiet-link(href "/apps/seer/inbox"): View draft sources
+        ;a.quiet-link(href (stack-url owner.scope.u.source stack.scope.u.source)): View card sources
+      %login
+        ;a.quiet-link(href "/apps/seer/settings"): View sign-in
+    ==
+  ::
+  ++  work-details
+    |=  key=entity-key
+    ^-  manx
+    =/  record  (~(get by jobs.control) key)
+    ?~  record  ;span.hidden;
+    =/  work  u.record
     ;details.reveal
-      ;summary: {(trip action.receipt)} · {(trip status.receipt)} · effect {(trip effect.receipt)}
-      ;p: Reason · {(trip reason.receipt)}
-      ;p: Authority · {(trip authority.receipt)} · revision {<revision.receipt>}
-      ;p: Operation ID · {(trip id.receipt)}
-      ;p: Epoch · {(scow %da epoch.receipt)}
-      ;p: Payload digest · {(scow %ux digest.receipt)}
-      ;p: Plan digest · {?~(plan.receipt "none" (scow %ux u.plan.receipt))}
-      ;p: Attempt · {?~(attempt.receipt "not applicable" (scow %ud u.attempt.receipt))}
-      ;p: Observed · {(scow %da at.receipt)}
-      ;+  ?~  work.receipt  ;span.hidden;
-          (json-tree (key-json:ev u.work.receipt))
-      ;+  ?.  =(%conflict status.receipt)  ;span.hidden;
-          ;p.proposal-conflict: This operation made no changes. Review the current diff; a stale approval cannot be rebased or reused.
-      ;+  ?.  =(%unknown effect.receipt)  ;span.hidden;
-          ;p.proposal-conflict: External outcome is unknown. Inspect the work checkpoint and reconcile with the worker; a new attempt may repeat billable work.
-      ;details.reveal
-        ;summary: Inspect observed before/after revisions
-        ;h4: Before
-        ;*  (turn before.receipt precondition-row)
-        ;h4: After
-        ;*  (turn after.receipt precondition-row)
+      ;summary: Latest assistant task
+      ;div.disclosure-body
+        ;p: Attempt {<attempt.work>} · {(trip execution.work)} · {(trip checkpoint.work)}
+        ;p: Bridge worker: {(trip worker.work)}
+        ;p: Model: {(trip model-id.work)}
+        ;p: Calls: {<invocations.work>} of {<max-invocations.work>}
+        ;p: Input: {<input-bytes.work>} of {<max-input-bytes.work>} bytes
+        ;p: Output: {<consumed-output-bytes.work>} of {<max-output-bytes.work>} bytes
+        ;p: Deadline: {?~(deadline.work "Not started" (display-time u.deadline.work))}
+        ;p: Worker lease: {?~(lease-until.work "Not assigned" (display-time u.lease-until.work))}
+        ;p: Reported usage: {?~(usage.work "Unavailable" (scow %ud u.usage.work))}
+        ;p: Reported cost: {?~(cost.work "Unavailable" (scow %ud u.cost.work))}
+        ;p: Stop code: {?~(stop-reason.work "None" (trip u.stop-reason.work))}
       ==
     ==
   ::
@@ -449,18 +750,19 @@
       %+  skim  ~(tap by contexts)
       |=  [id=@tas source=context-source]
       ?&(active.source =(scope scope.source))
-    ;details.context-panel
+    ;details.context-panel.task-sources
       =data-persist  "work-context|{(trip -.scope)}|{(trip id.scope)}"
       ;summary.context-summary
-        ;span.context-title: Work-scoped sources · {<(lent rows)>}
+        ;span.context-title: Sources for this draft · {<(lent rows)>}
       ==
       ;div.context-body
-        ;p.muted: Only this {(trip -.scope)} can select these sources. Attach, inspect, and authorize provider egress before freezing a packet. Changes here never rewrite an existing packet.
-        ;a.button.secondary(href "/apps/seer/inbox"): Refresh source acquisition status
+        ;p.muted: Add the notes, files, or pages the assistant should use. Choose who may read each source before sending a request.
+        ;a.quiet-link(href "/apps/seer/inbox"): Refresh sources
         ;*  %+  turn  rows
             |=  [id=@tas source=context-source]
             (context-source-row id source *(set @t))
         ;form.context-form
+          =data-context-form  ""
           =method   "post"
           =action   "/apps/seer/actions/add-context-source"
           =hx-post  "/apps/seer/actions/add-context-source"
@@ -468,53 +770,63 @@
           ;input(type "hidden", name "scope-id", value (trip id.scope));
           ;input(type "hidden", name "return", value "inbox");
           ;label
-            ;span: source type
-            ;select(name "kind")
+            ;span: Source type
+            ;select(name "kind", data-context-type "")
               ;option(value "note"): Pasted note or local text
               ;option(value "clay"): Ship file
               ;option(value "web"): Public web page
             ==
           ==
           ;label
-            ;span: name · optional
+            ;span: Name (optional)
             ;input(name "label", maxlength "240");
           ==
-          ;label
-            ;span: text · for a note
-            ;textarea(name "content", maxlength "131072");
+          ;div.context-fields(data-context-kind "note")
+            ;label
+              ;span: Source text
+              ;textarea(name "content", maxlength "131072");
+            ==
           ==
-          ;label
-            ;span: ship file path · for a ship file
-            ;input(name "locator", maxlength "2048");
+          ;div.context-fields(data-context-kind "clay")
+            ;label
+              ;span: Ship file path
+              ;input(name "locator", maxlength "2048");
+            ==
           ==
-          ;label
-            ;span: public URL · for a web page
-            ;input(name "web-locator", type "url", maxlength "2048");
+          ;div.context-fields(data-context-kind "web")
+            ;label
+              ;span: Public web address
+              ;input(name "web-locator", type "url", maxlength "2048");
+            ==
+            ;p.muted: The bridge downloads the page and saves a copy on your ship.
           ==
-          ;p.muted: Native form: paste local text as a note. Web acquisition uses the paired bridge; provider egress is a separate authorization below each source.
-          ;button(type "submit"): Attach source
+          ;button(type "submit", data-context-submit ""): Attach source
         ==
       ==
     ==
   ::
   ++  capture-packet-form
-    |=  capture-id=@tas
+    |=  [capture-id=@tas prepared=?]
     ^-  manx
     =/  available  ordered-assistant-models
-    ?~  available  ;p.muted: Connect an available model before freezing a capture packet.
+    ?~  available
+      ;p.muted
+        ;a(href "/apps/seer/settings"): Connect an assistant
+        ; to prepare sources for this draft.
+      ==
     =/  rows
       %+  skim  ~(tap by contexts)
       |=  [id=@tas source=context-source]
       ?&(active.source =(scope.source [%capture capture-id]))
     ;details.reveal
-      ;summary: Select evidence and freeze capture packet
+      ;summary: {?:(prepared "Update prepared sources" "Prepare sources for your assistant")}
       ;form
         =method   "post"
         =action   "/apps/seer/actions/prepare-capture"
         =hx-post  "/apps/seer/actions/prepare-capture"
         ;input(type "hidden", name "capture", value (trip capture-id));
         ;label
-          ;span: exact provider/model
+          ;span: Assistant
           ;select(name "model", required "")
             ;*  %+  turn  available
                 |=  [id=@tas profile=assistant-model]
@@ -523,21 +835,24 @@
         ==
         ;+  (context-picker rows)
         ;+  packet-budget-fields
-        ;p.muted: Freezing records the outgoing evidence, not a generated answer. Inspect the immutable packet before asking an MCP client to stage proposals from it.
-        ;button(type "submit"): Freeze selected packet
+        ;p.muted: Preparing sources does not contact your assistant. To get card suggestions, continue in Codex, Claude Code, or another assistant connected to Seer.
+        ;button(type "submit"): {?:(prepared "Update prepared sources" "Prepare sources")}
       ==
     ==
   ::
   ++  packet-budget-fields
     ^-  manx
-    ;div.context-type-row
-      ;label
-        ;span: maximum prompt bytes
-        ;input(type "number", name "max-bytes", min "1024", max "131072", value "32768", required "");
-      ==
-      ;label
-        ;span: maximum bytes per excerpt
-        ;input(type "number", name "excerpt-bytes", min "1", max "131072", value "8192", required "");
+    ;details.technical
+      ;summary: Request size limits
+      ;div.context-type-row.disclosure-body
+        ;label
+          ;span: Total message limit (bytes)
+          ;input(type "number", name "max-bytes", min "1024", max "131072", value "32768", required "");
+        ==
+        ;label
+          ;span: Limit per source (bytes)
+          ;input(type "number", name "excerpt-bytes", min "1", max "131072", value "8192", required "");
+        ==
       ==
     ==
   ::
@@ -559,14 +874,24 @@
     |=  source=context-source
     ^-  manx
     ;details.reveal
-      ;summary: Inspect source snapshot and provider permissions
-      ;p.muted: This is retrieved source evidence, not an assistant summary. Retrieval does not assert that the live origin is unchanged or factually correct.
-      ;+  ?~  snapshot.source
-            ;p.muted: No immutable snapshot is available yet.
-          =/  snap  (~(get by snapshots.evidence) u.snapshot.source)
-          ?~  snap  ;p.proposal-conflict: Snapshot unavailable.
-          (json-tree (snapshot-projection:ev u.snapshot.source 0 bytes.u.snap 32.768 evidence))
-      ;p: Provider policy revision · {<policy-revision.source>}
+      ;summary: Saved text and sharing
+      ;details.reveal
+        ;summary: Read saved text
+        ;+  ?~  snapshot.source
+              ;p.muted: No saved copy is available yet.
+            =/  snap  (~(get by snapshots.evidence) u.snapshot.source)
+            ?~  snap  ;p.proposal-conflict: The saved copy is unavailable.
+            =/  projection
+              (snapshot-projection:ev u.snapshot.source 0 bytes.u.snap 32.768 evidence)
+            ;div.disclosure-body
+              ;p.muted: Saved {(display-time retrieved-at.u.snap)}. Showing up to 32 KB.
+              ;+  (json-tree (json-field projection 'text'))
+              ;details.technical
+                ;summary: Technical details
+                ;+  (json-tree projection)
+              ==
+            ==
+      ==
       ;form
         =method   "post"
         =action   "/apps/seer/actions/set-context-egress"
@@ -574,7 +899,7 @@
         ;input(type "hidden", name "context-id", value (trip id.source));
         ;*  (context-return-fields scope.source)
         ;fieldset.context-picker
-          ;legend: Allow this source to leave the ship for
+          ;legend: Allow this source to be sent to
           ;*  %+  turn  ^-((list ai-provider) ~[%codex %claude])
               |=  provider=ai-provider
               =/  attrs=mart
@@ -586,11 +911,11 @@
                 [[%checked ""] attrs]
               ;label.context-choice
                 ;+  [[%input attrs] ~]
-                ;span: {(trip provider)}
+                ;span: {?:(=(provider %codex) "Codex" "Claude")}
               ==
         ==
-        ;p.muted: Neither checked means no provider egress. Changing this policy fences previously frozen packets; it cannot recall bytes already sent externally.
-        ;button.secondary(type "submit"): Save provider permissions
+        ;p.muted: Leave both unchecked to keep this source on your ship. Permission changes apply to future requests; previously sent text cannot be recalled.
+        ;button.secondary(type "submit"): Save sharing permissions
       ==
       ;form
         =method   "post"
@@ -599,12 +924,15 @@
         ;input(type "hidden", name "context-id", value (trip id.source));
         ;*  (context-return-fields scope.source)
         ;label
-          ;span: source label
+          ;span: Source name
           ;input(name "label", value (trip label.source), maxlength "240", required "");
         ==
-        ;button.secondary(type "submit"): Rename source link
+        ;button.secondary(type "submit"): Rename source
       ==
-      ;p.muted: Removing this link excludes future selection but retains historical evidence. Use Inbox privacy maintenance for explicit irreversible purge.
+      ;p.muted
+        ; Removing a source keeps the saved copies used by earlier requests. Manage those copies in
+        ;a(href "/apps/seer/settings"): Settings.
+      ==
     ==
   ::
   ++  scope-exists
@@ -620,61 +948,120 @@
         (~(has by items.u.stack) u.card.scope)
     ==
   ::
+  ++  settings-page
+    ^-  manx
+    ;section.settings-page
+      ;header.page-head
+        ;div.page-copy
+          ;h1: Settings
+          ;p.muted: Assistant accounts and saved source material.
+        ==
+      ==
+      ;+  (login-panel 'settings')
+      ;+  maintenance-panel
+      ;h2: Activity history
+      ;details.reveal
+        ;summary: Clear activity history
+        ;div.disclosure-body
+          ;p.muted: Finish running requests first. This clears the action history and invalidates old forms. Reload other open tabs afterward.
+          ;form
+            =method   "post"
+            =action   "/apps/seer/actions/retire-operation-epoch"
+            =hx-post  "/apps/seer/actions/retire-operation-epoch"
+            ;label.context-choice
+              ;input(type "checkbox", required "");
+              ;span: I have checked my outstanding requests and want to clear this history.
+            ==
+            ;button.danger(type "submit"): Clear activity history
+          ==
+        ==
+      ==
+    ==
+  ::
   ++  maintenance-panel
     ^-  manx
     =/  orphans
       %+  skim  ~(tap by contexts)
       |=  [id=@tas source=context-source]
       ?&(active.source !(scope-exists scope.source))
-    ;details.reveal
-      =data-persist  "source-maintenance"
-      ;summary: Source privacy and orphan maintenance · {<(lent orphans)>} orphan links
-      ;p.muted: Unlinking or archiving excludes a source from future selection but retains historical evidence. Purging irreversibly removes retained bytes and invalidates dependent generated support; approved-card dependencies can block it.
-      ;*  %+  turn  (scag 20 orphans)
-          |=  [id=@tas source=context-source]
-          ;p: {(trip id)} · {(trip label.source)} · {(trip -.scope.source)} scope
-      ;p.muted: Showing up to 20 orphan links. Archive scans all active sources whose owning card, stack, capture, or change no longer exists; no selection means the full deterministic sweep, not deletion.
-      ;form.inline
-        =method   "post"
-        =action   "/apps/seer/actions/archive-orphan-contexts"
-        =hx-post  "/apps/seer/actions/archive-orphan-contexts"
-        ;button.secondary(type "submit"): Archive all orphan links
-      ==
-      ;form.inline
-        =method   "post"
-        =action   "/apps/seer/actions/collect-retained"
-        =hx-post  "/apps/seer/actions/collect-retained"
-        ;button.secondary(type "submit"): Collect unreferenced retained evidence
-      ==
+    =/  snapshots
+      %+  sort
+        %+  skim  ~(val by snapshots.evidence)
+        |=  snapshot=evidence-snapshot
+        available.snapshot
+      |=  [a=evidence-snapshot b=evidence-snapshot]
+      (gth retrieved-at.a retrieved-at.b)
+    ;section.settings-section
+      ;h2: Saved source material
+      ;p.muted: Seer keeps copies of the sources used by AI requests so you can check them later.
       ;details.reveal
-        ;summary: Purge a retained snapshot
-        ;form
-          =method   "post"
-          =action   "/apps/seer/actions/purge-evidence"
-          =hx-post  "/apps/seer/actions/purge-evidence"
-          ;label
-            ;span: exact snapshot reference · from the packet
-            ;input(name "snapshot-ref", required "", placeholder "0x…");
+        ;summary: Remove unused sources
+        ;div.disclosure-body
+          ;p: {<(lent orphans)>} {?:(=((lent orphans) 1) "source belongs" "sources belong")} to cards, stacks, or drafts that have been removed.
+          ;*  %+  turn  (scag 20 ^-((list [@tas context-source]) orphans))
+              |=  [id=@tas source=context-source]
+              ;p: {(trip label.source)}
+          ;+  ?~  orphans  ;span.hidden;
+          ;form.inline
+            =method   "post"
+            =action   "/apps/seer/actions/archive-orphan-contexts"
+            =hx-post  "/apps/seer/actions/archive-orphan-contexts"
+            ;button.secondary(type "submit"): Archive unused sources
           ==
-          ;label.context-choice
-            ;input(type "checkbox", required "");
-            ;span: I understand this permanently removes evidence bytes, not just the source link.
+          ;p.muted: Saved copies older than 30 days can be removed if nothing still uses them. Archiving alone does not delete text.
+          ;form.inline
+            =method   "post"
+            =action   "/apps/seer/actions/collect-retained"
+            =hx-post  "/apps/seer/actions/collect-retained"
+            ;button.secondary(type "submit"): Remove unused copies
           ==
-          ;button.danger(type "submit"): Purge snapshot bytes
         ==
       ==
       ;details.reveal
-        ;summary: Retire the current operation replay epoch
-        ;p.muted: Do this only after reconciling outstanding requests. Old operation identities will return replay-expired and never execute; old forms must be refreshed.
-        ;form
-          =method   "post"
-          =action   "/apps/seer/actions/retire-operation-epoch"
-          =hx-post  "/apps/seer/actions/retire-operation-epoch"
-          ;label.context-choice
-            ;input(type "checkbox", required "");
-            ;span: Outstanding operations have been reconciled.
+        ;summary: Permanently delete saved source text
+        ;div.disclosure-body
+          ;p.muted: Deleting a copy also removes retained AI text that depends on it. Copies supporting approved cards are protected.
+          ;+  ?^  snapshots  ;span.hidden;
+              ;p: There are no saved copies to delete.
+          ;+  ?~  snapshots  ;span.hidden;
+              ;form
+                =method   "post"
+                =action   "/apps/seer/actions/purge-evidence"
+                =hx-post  "/apps/seer/actions/purge-evidence"
+                ;label
+                  ;span: Saved source copy
+                  ;select(name "snapshot-ref", required "")
+                    ;option(value ""): Choose a saved copy
+                    ;*  %+  turn  (scag 100 ^-((list evidence-snapshot) snapshots))
+                        |=  snapshot=evidence-snapshot
+                        ;option(value (scow %ux id.snapshot)): {(trip label.snapshot)} · {(display-time retrieved-at.snapshot)}
+                  ==
+                ==
+                ;p.muted: Showing the latest 100 saved copies.
+                ;label.context-choice
+                  ;input(type "checkbox", required "");
+                  ;span: Permanently delete this saved text and the AI text that depends on it.
+                ==
+                ;button.danger(type "submit"): Delete saved text
+              ==
+          ;details.technical
+            ;summary: Delete a copy that is not listed
+            ;p.muted: Enter the full saved-copy reference, beginning with 0x.
+            ;form
+              =method   "post"
+              =action   "/apps/seer/actions/purge-evidence"
+              =hx-post  "/apps/seer/actions/purge-evidence"
+              ;label
+                ;span: Saved-copy reference
+                ;input(name "snapshot-ref", required "", maxlength "128", autocomplete "off", spellcheck "false");
+              ==
+              ;label.context-choice
+                ;input(type "checkbox", required "");
+                ;span: Permanently delete this saved text and the AI text that depends on it.
+              ==
+              ;button.danger(type "submit"): Delete saved text
+            ==
           ==
-          ;button.danger(type "submit"): Retire replay epoch
         ==
       ==
     ==
@@ -1046,7 +1433,7 @@
                         file: "Attach local file",
                         web: "Fetch web page"
                       };
-                      button.textContent = labels[kind] || "Add context";
+                      button.textContent = labels[kind] || "Add source";
                       var content =
                         form.querySelector("[data-context-file-content]");
                       button.disabled =
@@ -1437,8 +1824,8 @@
                  --line: #d8d8d4;
                  --line-strong: #a6a6a0;
                  --ink: #191918;
-                 --muted: #6f6f69;
-                 --soft: #9a9a93;
+                 --muted: #62625c;
+                 --soft: #6f6f69;
                  --focus: #334dde;
                  --danger: #b42318;
                  --ok: #1a7f37;
@@ -1458,7 +1845,7 @@
                    --line-strong: #666660;
                    --ink: #f0f0ed;
                    --muted: #aaa9a2;
-                   --soft: #777770;
+                   --soft: #aaa9a2;
                    --focus: #8899ff;
                    --danger: #ff8a80;
                    --ok: #7ec488;
@@ -1478,7 +1865,7 @@
                  color: var(--ink);
                  font-family: Inter, ui-sans-serif, system-ui, -apple-system,
                    BlinkMacSystemFont, "Segoe UI", sans-serif;
-                 font-size: 15px;
+                 font-size: 16px;
                }
                body {
                  margin: 0;
@@ -1486,7 +1873,7 @@
                  -webkit-font-smoothing: antialiased;
                }
                a { color: inherit; }
-               button, input, textarea { font: inherit; }
+               button, input, textarea, select { font: inherit; }
                button, .button {
                  align-items: center;
                  background: var(--ink);
@@ -1546,16 +1933,15 @@
                label {
                  color: var(--muted);
                  display: grid;
-                 font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
-                   Consolas, monospace;
-                 font-size: .75rem;
+                 font-size: .875rem;
+                 font-weight: 550;
                  gap: .4rem;
                  min-width: 0;
                }
                form { display: grid; gap: .85rem; min-width: 0; }
-               h1, h2, h3, p { margin: 0; }
+               h1, h2, h3, h4, p { margin: 0; }
                h1 {
-                 font-size: clamp(1.8rem, 4vw, 2.45rem);
+                 font-size: 2.25rem;
                  font-weight: 650;
                  letter-spacing: -.035em;
                  line-height: 1.08;
@@ -1752,9 +2138,12 @@
                  text-align: right;
                }
                .flash {
-                 background: var(--success-bg);
-                 border: 1px solid var(--success-line);
+                 background: var(--surface-2);
+                 border: 1px solid var(--line);
                  border-radius: 3px;
+                 display: grid;
+                 gap: .5rem;
+                 line-height: 1.55;
                  margin-bottom: 1rem;
                  padding: .8rem 1rem;
                }
@@ -1771,9 +2160,7 @@
                  border: 1px solid var(--line);
                  border-radius: 999px;
                  color: var(--muted);
-                 font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
-                   Consolas, monospace;
-                 font-size: .68rem;
+                 font-size: .8rem;
                  padding: .25rem .5rem;
                  white-space: nowrap;
                }
@@ -1785,7 +2172,7 @@
                }
                details.reveal > summary {
                  cursor: pointer;
-                 font-size: .86rem;
+                 font-size: .9375rem;
                  font-weight: 650;
                  list-style-position: inside;
                  padding: 1rem 1.2rem;
@@ -3213,6 +3600,197 @@
                  .context-type-row { grid-template-columns: 1fr; }
                  .item-detail > .context-panel { border-radius: 0; }
                }
+               .utility-nav {
+                 display: grid;
+                 gap: .25rem;
+                 margin-top: 2rem;
+               }
+               .utility-nav a {
+                 border-radius: 4px;
+                 color: var(--muted);
+                 font-size: .875rem;
+                 min-height: 2.75rem;
+                 padding: .7rem .75rem;
+                 text-decoration: none;
+               }
+               .utility-nav a:hover, .utility-nav a[aria-current="page"] {
+                 background: var(--surface);
+                 color: var(--ink);
+               }
+               .utility-nav a[aria-current="page"] { font-weight: 650; }
+               .quiet-link { color: var(--muted); text-underline-offset: .2em; }
+               .quiet-link:hover { color: var(--ink); }
+               .disclosure-body {
+                 display: grid;
+                 gap: 1rem;
+                 min-width: 0;
+                 padding: .25rem 0 1.25rem;
+               }
+               .disclosure-body > p { max-width: 68ch; }
+               .disclosure-body form > button { justify-self: start; }
+               .technical { color: var(--muted); min-width: 0; }
+               .technical > summary {
+                 cursor: pointer;
+                 font-size: .8125rem;
+                 min-height: 2.75rem;
+                 padding: .8rem 0;
+               }
+               .technical dl { margin: 0; }
+               .technical dd { margin: .25rem 0 0; }
+               .technical .proposal-answer { font-size: .8125rem; }
+               .technical .disclosure-body { padding-top: .5rem; }
+               .data-grid {
+                 display: grid;
+                 gap: 1rem 2rem;
+                 grid-template-columns: repeat(2, minmax(0, 1fr));
+               }
+               .data-grid dt { font-size: .8125rem; }
+               .data-grid dd {
+                 color: var(--ink);
+                 font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+                 font-size: .75rem;
+                 line-height: 1.6;
+                 overflow-wrap: anywhere;
+               }
+               .activity-section { margin-top: 2rem; }
+               .activity-section > h2, .lookup-result > h2 { margin-bottom: 1rem; }
+               .activity-list { border-top: 1px solid var(--line); }
+               .activity-row { border-bottom: 1px solid var(--line); min-width: 0; }
+               .activity-row > summary {
+                 align-items: start;
+                 cursor: pointer;
+                 display: grid;
+                 gap: 1rem;
+                 grid-template-columns: minmax(0, 1fr) auto;
+                 list-style: none;
+                 padding: 1.25rem .5rem;
+               }
+               .activity-row > summary::-webkit-details-marker { display: none; }
+               .activity-row > summary:hover { background: var(--surface-2); }
+               .activity-copy { display: grid; gap: .35rem; min-width: 0; }
+               .activity-copy strong { font-size: .9375rem; font-weight: 650; }
+               .activity-description { color: var(--muted); font-size: .875rem; line-height: 1.55; max-width: 65ch; }
+               .activity-time { color: var(--muted); font-size: .8125rem; font-variant-numeric: tabular-nums; margin-top: .2rem; }
+               .activity-state { color: var(--muted); font-size: .8125rem; line-height: 1.6; text-align: right; }
+               .activity-state.attention { color: var(--warn); font-weight: 600; }
+               .activity-toggle { color: var(--muted); display: block; font-weight: 400; text-decoration: underline; text-underline-offset: .18em; }
+               .activity-detail { display: grid; gap: .75rem; padding: 0 .5rem 1rem; }
+               .activity-search { margin-top: 2.5rem; }
+               .activity-page > details.reveal > summary,
+               .settings-section > details.reveal > summary { padding-left: 0; padding-right: 0; }
+               .lookup-result { display: grid; gap: .75rem; margin-bottom: 2.5rem; }
+               .empty-state { display: grid; gap: .75rem; line-height: 1.6; padding: 2rem 0; }
+               .inbox-empty { padding: 1rem 0 2.5rem; }
+               .inbox-section { display: grid; gap: 1rem; margin-bottom: 2rem; }
+               .inbox-compose { display: grid; gap: 0; margin-top: .5rem; }
+               .composer { border-top: 1px solid var(--line); min-width: 0; }
+               .composer:last-child { border-bottom: 1px solid var(--line); }
+               .composer > summary {
+                 cursor: pointer;
+                 display: grid;
+                 gap: .3rem;
+                 grid-template-columns: minmax(0, 1fr) auto;
+                 list-style: none;
+                 padding: 1.3rem 0;
+               }
+               .composer > summary::-webkit-details-marker { display: none; }
+               .composer > summary::after {
+                 border-bottom: 1.5px solid currentColor;
+                 border-right: 1.5px solid currentColor;
+                 content: "";
+                 grid-column: 2;
+                 grid-row: 1 / 3;
+                 height: .5rem;
+                 margin: .35rem .5rem 0 1rem;
+                 transform: rotate(45deg);
+                 transition: transform 160ms ease-out;
+                 width: .5rem;
+               }
+               .composer[open] > summary::after { transform: rotate(225deg); }
+               .composer > summary strong { font-size: 1rem; font-weight: 650; }
+               .composer > summary span { color: var(--muted); font-size: .875rem; grid-column: 1; line-height: 1.5; }
+               .composer > .disclosure-body { max-width: 44rem; padding-bottom: 1.75rem; }
+               .composer .command-form { border: 0; padding: 0; }
+               .composer[open] + .composer { margin-top: .75rem; }
+               .completed-history { margin-top: 3rem; }
+               .capture { border-radius: 8px; }
+               .capture-head { gap: 1rem; }
+               .capture-head h3 { font-size: 1.125rem; line-height: 1.35; }
+               .capture-meta { font-family: inherit; font-size: .8125rem; line-height: 1.5; }
+               .capture-workflow { display: grid; gap: 1rem; padding: 1.25rem; }
+               .capture-workflow > .context-panel { background: transparent; border-width: 1px 0; border-radius: 0; }
+               .capture-workflow > .context-panel .context-summary { padding-left: 0; padding-right: 0; }
+               .capture-workflow > .context-panel .context-body { padding-left: 0; padding-right: 0; }
+               .capture .pill { flex: none; white-space: normal; }
+               .effect-preview { display: grid; gap: 1rem; }
+               .effect-preview > h4 { font-size: .9375rem; }
+               .diff-list { display: grid; gap: 1.25rem; }
+               .diff-row { border-top: 1px solid var(--line); padding-top: 1rem; }
+               .diff-row > h4 { font-size: .875rem; margin-bottom: .75rem; }
+               .diff-columns { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); }
+               .diff-version { background: var(--surface-2); display: grid; gap: .75rem; min-width: 0; padding: 1rem; }
+               .diff-version > div { display: grid; gap: .4rem; }
+               .diff-label { color: var(--muted); font-size: .8125rem; font-weight: 600; }
+               .readable-text, .proposal-answer { line-height: 1.65; overflow-wrap: anywhere; white-space: pre-wrap; }
+               .source-summary-list { display: grid; gap: .75rem; list-style: none; margin: 0; padding: 0; }
+               .source-summary-list li { display: flex; flex-wrap: wrap; gap: .5rem 1rem; justify-content: space-between; }
+               .request-sources .disclosure-body { padding: 0 1rem 1rem; }
+               .history-entry { border-bottom: 1px solid var(--line); display: grid; gap: .5rem; padding: .75rem 0; }
+               .work-status { align-items: center; display: flex; flex-wrap: wrap; gap: .75rem 1rem; line-height: 1.6; }
+               .work-status > p { flex-basis: 100%; }
+               .work-status > a { font-size: .8125rem; }
+               .settings-section { display: grid; gap: 1rem; margin-bottom: 3rem; }
+               .settings-section > h2 { font-size: 1.125rem; }
+               .settings-page > h2 { font-size: 1.125rem; margin-bottom: 1rem; }
+               .lookup-result h3 { overflow-wrap: anywhere; }
+               .account-list { display: grid; gap: 0; }
+               .account-list > article, .account-list > form {
+                 background: transparent;
+                 border: 0;
+                 border-bottom: 1px solid var(--line);
+                 border-radius: 0;
+                 display: grid;
+                 gap: .6rem;
+                 padding: 1.25rem 0;
+               }
+               .account-list > article > form { justify-items: start; }
+               .account-list > article > h3 { font-size: 1rem; }
+               .account-list > form > button { justify-self: start; }
+               .settings-page .login-panel { margin-top: 0; }
+               .proposal-conflict { font-size: .875rem; line-height: 1.6; }
+               .proposal .decision-row { align-items: end; margin-top: 1rem; }
+               .task-sources { background: transparent; border: 0; border-radius: 0; box-shadow: none; }
+               .task-sources > summary, .task-sources > .disclosure-body { padding-left: 0; padding-right: 0; }
+               .capture-workflow legend { font-family: inherit; font-size: .875rem; letter-spacing: 0; text-transform: none; }
+               button:disabled { cursor: not-allowed; opacity: .55; }
+               @media (max-width: 650px) {
+                 .brand-sub { display: none; }
+                 .primary-nav .nav-key { display: none; }
+                 .utility-nav {
+                   display: flex;
+                   gap: .25rem;
+                   margin: 0;
+                   position: fixed;
+                   right: .65rem;
+                   top: calc(.35rem + env(safe-area-inset-top));
+                   z-index: 31;
+                 }
+                 .utility-nav a { align-items: center; display: flex; font-size: .8125rem; min-height: 2.9rem; padding: .5rem .65rem; }
+                 .activity-row > summary { grid-template-columns: minmax(0, 1fr); gap: .5rem; padding: 1.1rem 0; }
+                 .activity-state { display: flex; gap: 1rem; justify-content: space-between; text-align: left; }
+                 .activity-detail { padding-left: 0; padding-right: 0; }
+                 .data-grid { grid-template-columns: minmax(0, 1fr); }
+                 .capture-head { flex-wrap: wrap; }
+                 .capture-head > .capture-copy { flex: 1 1 14rem; }
+                 .capture-workflow { padding: 1rem; }
+                 .capture { box-shadow: none; }
+                 .request-sources .disclosure-body { padding-left: 0; padding-right: 0; }
+                 .composer > .disclosure-body { padding-bottom: 1.25rem; }
+                 .inbox-empty { padding-top: .5rem; }
+               }
+               @media (prefers-reduced-motion: reduce) {
+                 .composer > summary::after { transition: none; }
+               }
                '''
       ==
       ;body
@@ -3269,6 +3847,18 @@
                 ;span.nav-count: {<subscription-count>}
               ==
             ==
+            ;nav.utility-nav(aria-label "App")
+              ;a
+                =href          "/apps/seer/activity"
+                =aria-current  ?:(activity-active "page" "false")
+                Activity
+              ==
+              ;a
+                =href          "/apps/seer/settings"
+                =aria-current  ?:(settings-active "page" "false")
+                Settings
+              ==
+            ==
             ;div.sidebar-foot: {(scow %p our)}
           ==
           ;div.workspace
@@ -3277,12 +3867,12 @@
               ;+
               ?~  notice
                 ;div.hidden;
-              ;div.flash(role "status"): {(trip u.notice)}
-              ;+  receipt-panel
-              ;+  page-body
-              ;footer.app-footer.meta
-                ;p: Server-rendered by %seer
+              ;div.flash(role "status")
+                ;p: {(trip u.notice)}
+                ;+  ?:  activity-active  ;span.hidden;
+                    ;a.quiet-link(href "/apps/seer/activity"): View activity
               ==
+              ;+  page-body
             ==
           ==
           ;+  key-help
@@ -3297,6 +3887,8 @@
       %inbox          inbox-page
       %stacks         stacks-page
       %subscriptions  subscriptions-page
+      %activity       activity-page
+      %settings       settings-page
       %stack          (stack-page owner.page name.page)
       %stack-browse   (stack-page owner.page name.page)
     ==
@@ -3338,165 +3930,143 @@
   ++  inbox-page
     ^-  manx
     =/  selected  inbox-captures
-    =/  shown=@ud  (lent recent.selected)
-    =/  omitted=@ud  (sub completed.selected shown)
-    =/  requests=(list [@tas change-request])  ~(tap by changes)
-    =/  available-models=(list [@tas assistant-model])  ordered-assistant-models
+    =/  requests
+      %+  sort  ~(tap by changes)
+      |=  [a=[@tas change-request] b=[@tas change-request]]
+      (gth updated-at.+.a updated-at.+.b)
+    =/  finished
+      %+  skim  requests
+      |=  [id=@tas request=change-request]
+      ?=(?(%applied %rejected) status.request)
+    =.  requests
+      %+  skip  requests
+      |=  [id=@tas request=change-request]
+      ?=(?(%applied %rejected) status.request)
+    =/  available-models  ordered-assistant-models
     =/  waiting=?  (changes-waiting requests)
-    =/  request-copy=tape
-      "Describe the required result. Seer submits a plan or brief for review."
-    =/  target-copy=tape
-      ;:  weld
-        "Library requests produce typed operations. Desk requests "
-        "produce implementation briefs and cannot change code."
-      ==
-    =/  prompt-hint=tape
-      "Rename my MCP stack. Update the approval-boundary card."
-    =/  capture-copy=tape
-      ;:  weld
-        "AI clients add card proposals here. Approval creates a card "
-        "and adds it to the review queue."
-      ==
-    =/  history-copy=tape
-      ;:  weld
-        "Older completed captures remain available through bounded MCP "
-        "inspection with seer/list-captures. Approved cards retain their source records."
-      ==
-    ;section
-      ;div.page-head
+    ;section.inbox-page
+      ;header.page-head
         ;div.page-copy
-          ;div.kicker: change request
-          ;h1: Change Seer
-          ;p.muted: {request-copy}
-        ==
-        ;div.stat
-          ;div.count: {<open-change-count>}
-          ;div.meta: open plans
+          ;h1: Inbox
+          ;p.muted: Review new cards and proposed changes before adding them to your library.
         ==
       ==
-      ;section.panel.command-panel
-        ;div.form-head
-          ;div.kicker: request → review
-          ;h2: What should change?
-          ;p.muted: {target-copy}
-        ==
-        ;+  (login-panel 'inbox')
-        ;+
-        ?~  available-models
-          ;div.hidden;
-        ;form.command-form
-          =method   "post"
-          =action   "/apps/seer/actions/request-change"
-          =hx-post  "/apps/seer/actions/request-change"
-          ;input(type "hidden", name "start", value "false");
-          ;label
-            ;span: instruction
-            ;textarea(name "prompt", required "", placeholder prompt-hint);
+      ;+  ?.  ?&(?=(~ active.selected) ?=(~ requests))  ;span.hidden;
+          ;div.empty-state.inbox-empty
+            ;h2: Nothing waiting for review
+            ;p.muted: Start a draft below, or return to your library to keep studying.
+            ;a.quiet-link(href "/apps/seer/stacks"): Go to your library
           ==
-          ;div.command-controls
-            ;label
-              ;span: target
-              ;select(name "target")
-                ;option(value "library"): My library
-                ;option(value "desk"): Seer itself · brief only
+      ;+  ?~  active.selected  ;span.hidden;
+          ;section.inbox-section
+            ;h2: Card drafts
+            ;div.capture-list
+              ;*  %+  turn  active.selected
+                  |=  [capture-id=@tas session=capture]
+                  (capture-section capture-id session)
+            ==
+          ==
+      ;section#change-requests.change-list
+        ;span.hidden(hx-get "/apps/seer/inbox", hx-trigger ?:(waiting "every 2s" "none"), hx-target "#change-requests", hx-select "#change-requests", hx-swap "outerHTML");
+        ;+  ?~  requests  ;span.hidden;
+            ;div.inbox-section
+              ;h2: Proposed changes
+              ;div.change-list
+                ;*  %+  turn  requests
+                    |=  [change-id=@tas request=change-request]
+                    (change-row change-id request)
               ==
             ==
-            ;label
-              ;span: plan with
-              ;select(name "model", required "")
-                ;*
-                %+  turn  available-models
-                |=  [model-id=@tas profile=assistant-model]
-                ;option
-                  =value  (tas-tape model-id)
-                  =title  (trip description.profile)
-                  ;+  ;/  (model-option-label profile)
+      ==
+      ;div.inbox-compose
+        ;details.composer
+          ;summary
+            ;strong: Draft new cards
+            ;span: Start with a topic and your sources.
+          ==
+          ;div.disclosure-body
+            ;p.muted: Prepare a draft for your assistant. Its card suggestions will appear here for you to review.
+            ;form
+              =method   "post"
+              =action   "/apps/seer/actions/begin-capture"
+              =hx-post  "/apps/seer/actions/begin-capture"
+              ;label
+                ;span: Topic
+                ;input(name "title", required "", maxlength "1024", placeholder "How photosynthesis works");
+              ==
+              ;label
+                ;span: What do you want to learn?
+                ;textarea(name "goal", required "", maxlength "131072", placeholder "Explain how plants turn sunlight into energy.");
+              ==
+              ;label
+                ;span: From (optional)
+                ;input(name "source", maxlength "1024", placeholder "Biology notes, chapter 3");
+              ==
+              ;p.muted: You can attach the source text after creating the draft.
+              ;button(type "submit"): Create card draft
+            ==
+          ==
+        ==
+        ;details.composer
+          ;summary
+            ;strong: Request a change
+            ;span: Ask for edits to your cards or stacks.
+          ==
+          ;div.disclosure-body
+            ;p.muted: Describe the change and review the proposed edits before applying them.
+            ;+  ?^  available-models  ;span.hidden;
+                ;p.muted
+                  ;a(href "/apps/seer/settings"): Connect an assistant
+                  ; to request a change.
                 ==
+            ;+  ?~  available-models  ;span.hidden;
+                ;form.command-form
+                  =method   "post"
+                  =action   "/apps/seer/actions/request-change"
+                  =hx-post  "/apps/seer/actions/request-change"
+                  ;input(type "hidden", name "start", value "false");
+                  ;label
+                    ;span: What should change?
+                    ;textarea(name "prompt", required "", placeholder "Shorten the answers in my Biology stack.");
+                  ==
+                  ;div.two
+                    ;label
+                      ;span: Change
+                      ;select(name "target")
+                        ;option(value "library"): My library
+                        ;option(value "desk"): An improvement to Seer (written proposal)
+                      ==
+                    ==
+                    ;label
+                      ;span: Assistant
+                      ;select(name "model", required "")
+                        ;*  %+  turn  available-models
+                            |=  [model-id=@tas profile=assistant-model]
+                            ;option(value (tas-tape model-id)): {(model-option-label profile)}
+                      ==
+                    ==
+                  ==
+                  ;p.muted: App improvement requests produce a written proposal for a developer.
+                  ;button(type "submit"): Create change request
+                ==
+          ==
+        ==
+      ==
+      ;+  ?.  ?|(?=(^ recent.selected) ?=(^ finished))  ;span.hidden;
+          ;details.reveal.completed-history
+            ;summary: Completed drafts and changes
+            ;div.disclosure-body
+              ;p.muted: Cards you approved are in your library. Showing the latest 20 completed card drafts.
+              ;div.stack-list
+                ;*  %+  turn  recent.selected
+                    |=  [capture-id=@tas session=capture]
+                    (capture-history-row capture-id session)
               ==
+              ;*  %+  turn  finished
+                  |=  [change-id=@tas request=change-request]
+                  (change-row change-id request)
             ==
-            ;button(type "submit"): Create draft · attach sources next
           ==
-        ==
-      ==
-      ;section#change-requests.change-list.section
-        =hx-get      "/apps/seer/inbox"
-        =hx-trigger  ?:(waiting "every 2s" "none")
-        =hx-target   "#change-requests"
-        =hx-select   "#change-requests"
-        =hx-swap     "outerHTML"
-        ;+
-        ?~  requests
-          ;div.hidden;
-        ;div.change-list
-          ;div.form-head
-            ;div.kicker: review queue
-            ;h2: Change requests
-          ==
-          ;*
-          %+  turn  requests
-          |=  [change-id=@tas request=change-request]
-          (change-row change-id request)
-        ==
-      ==
-      ;section.capture-history
-        ;div.form-head
-          ;div.kicker: card captures
-          ;h2: Capture inbox
-          ;p.muted: {capture-copy}
-        ==
-        ;details.reveal
-          ;summary: Start a capture before generating proposals
-          ;form
-            =method   "post"
-            =action   "/apps/seer/actions/begin-capture"
-            =hx-post  "/apps/seer/actions/begin-capture"
-            ;label
-              ;span: capture title
-              ;input(name "title", required "", maxlength "1024");
-            ==
-            ;label
-              ;span: learning goal
-              ;textarea(name "goal", required "", maxlength "131072");
-            ==
-            ;label
-              ;span: source description · not evidence
-              ;input(name "source", maxlength "1024");
-            ==
-            ;button(type "submit"): Create capture · attach evidence next
-          ==
-        ==
-        ;+
-        ?~  active.selected
-          ;div.empty
-            ;h2: Your inbox is clear
-            ;p: Create a capture, attach sources, and freeze the packet before asking an MCP client to stage proposals.
-            ;a.button.secondary(href "/apps/seer/stacks"): Open library
-          ==
-        ;div.capture-list
-          ;*
-          %+  turn  active.selected
-          |=  [capture-id=@tas session=capture]
-          (capture-section capture-id session)
-        ==
-      ==
-      ;+
-      ?:  =(0 completed.selected)
-        ;div.hidden;
-      ;section.capture-history
-        ;div.form-head
-          ;div.kicker: capture history
-          ;h2: Recent captures
-          ;p.muted: Showing {<shown>} of {<completed.selected>} completed captures · {<omitted>} omitted.
-          ;p.muted: {history-copy}
-        ==
-        ;div.stack-list.section
-          ;*
-          %+  turn  recent.selected
-          |=  [capture-id=@tas session=capture]
-          (capture-history-row capture-id session)
-        ==
-      ==
-      ;+  maintenance-panel
     ==
   ::
   ++  change-row
@@ -3506,13 +4076,18 @@
       ?|  =(%pending status.request)
           =(%working status.request)
       ==
-    =/  eyebrow=tape
-      ?:  =(0 id.profile.request)
-        "{(trip target.request)} · planner-submitted · no provider recorded"
-      ;:  weld
-        "{(trip target.request)} · "
-        "{(role-name role.profile.request)} · "
-        "{(trip label.profile.request)}"
+    =/  description=tape
+      ?:  =(0 id.profile.request)  "Suggested by an assistant"
+      (trip label.profile.request)
+    =/  status=tape
+      ?-  status.request
+        %draft     "Draft"
+        %pending   "Queued"
+        %working   "Preparing changes"
+        %ready     "Ready to review"
+        %failed    "Needs attention"
+        %applied   "Applied"
+        %rejected  "Closed"
       ==
     =/  change-tape=tape  (tas-tape change-id)
     =/  row-class=tape
@@ -3523,50 +4098,56 @@
       =class  row-class
       ;div.capture-head
         ;div.capture-copy
-          ;div.eyebrow
-            ;+  ;/  eyebrow
-          ==
           ;h3: {(trip prompt.request)}
           ;div.capture-meta
-            ;span: {(tas-tape change-id)}
-            ;span: {<(lent operations.request)>} operations
+            ;span: {description}
+            ;+  ?:  =(0 (lent operations.request))  ;span.hidden;
+                ;span: {<(lent operations.request)>} proposed {?:(=((lent operations.request) 1) "change" "changes")}
           ==
         ==
         ;span(class ?:(active "pill thinking-pill" "pill"))
-          ;+  ;/  (trip status.request)
+          ;+  ;/  status
         ==
       ==
       ;div.proposal-body.change-body
         ;+  (work-panel [%change our %root change-id] 'inbox')
-        ;+  (packet-panel packet.request citations.request)
-        ;+  ?:  =(0 id.profile.request)  ;span.hidden;
-            (learning-panel [%change change-id] prompt.request provider.profile.request)
         ;+
         ?-  status.request
           %draft
             ;div
-              ;p.muted: Attach and authorize sources before generation. No provider invocation has started.
+              ;p.muted: Add any sources the assistant should use, then ask it to prepare the changes. You will review the result before it changes your library.
               ;+  (work-context-panel [%change change-id])
               ;form.inline
                 =method   "post"
                 =action   "/apps/seer/actions/start-change"
                 =hx-post  "/apps/seer/actions/start-change"
                 ;input(type "hidden", name "change-id", value change-tape);
-                ;button(type "submit"): Generate plan · potentially billable
+                ;button(type "submit"): Prepare changes
               ==
+              ;form.inline
+                =method   "post"
+                =action   "/apps/seer/actions/reject-change"
+                =hx-post  "/apps/seer/actions/reject-change"
+                ;input(type "hidden", name "change-id", value change-tape);
+                ;button.secondary(type "submit"): Discard draft
+              ==
+              ;p.muted: Your AI provider may charge for this request.
             ==
           %pending
             %-  thinking-indicator
-            "Wait for the local bridge to claim this request."
+            "Waiting for the assistant to start."
           %working
             %-  thinking-indicator
-            "Wait while {(trip label.profile.request)} creates a plan."
+            "{(trip label.profile.request)} is preparing your changes."
           %ready
             (change-ready change-id request)
           %failed
             ;div
-              ;div.proposal-conflict: {(trip response.request)}
-              ;p.muted: First reconcile the receipt and external outcome below. A new attempt is not a replay and may incur another charge.
+              ;details.technical
+                ;summary: Error details
+                ;p.readable-text: {(trip response.request)}
+              ==
+              ;p.muted: Check the request activity before trying again. A second request may incur another charge.
               ;+  (work-context-panel [%change change-id])
               ;div.decision-row
                 ;form.inline
@@ -3574,7 +4155,7 @@
                   =action   "/apps/seer/actions/retry-change"
                   =hx-post  "/apps/seer/actions/retry-change"
                   ;input(type "hidden", name "change-id", value change-tape);
-                  ;button.secondary(type "submit"): Start new attempt · potentially billable
+                  ;button.secondary(type "submit"): Try again
                 ==
                 ;form.inline
                   =method   "post"
@@ -3586,10 +4167,13 @@
               ==
             ==
           %applied
-            (change-result change-id request "Applied")
+            (change-result change-id request "Changes applied.")
           %rejected
-            (change-result change-id request "Rejected")
+            (change-result change-id request "No proposed changes were applied.")
         ==
+        ;+  (packet-panel packet.request citations.request)
+        ;+  ?:  =(0 id.profile.request)  ;span.hidden;
+            (learning-panel [%change change-id] prompt.request provider.profile.request)
       ==
     ==
   ::
@@ -3603,23 +4187,23 @@
       ==
     =/  projection  (preview-json:effects preview 262.144)
     ;div
-      ;p.meta: Proposed summary · awaiting operator review, not applied
+      ;h4: Review the proposal
       ;div.proposal-answer: {(trip summary.request)}
       ;+
       ?:  =(%desk target.request)
         ;div.provenance
-          ;p: Implementation brief only. No code is changed, installed, or deployed.
+          ;p: A written proposal for a developer to implement.
           ;details.reveal
-            ;summary: Inspect implementation brief
+            ;summary: Read the proposal
             ;div.proposal-answer: {(trip artifact.request)}
           ==
         ==
-      (effect-panel preview projection)
+      (effect-panel preview projection ~)
       ;+  ?.  ?&  =(%library target.request)
                   !=(plan.request `digest.preview)
               ==
             ;span.hidden;
-          ;p.proposal-conflict: The stored plan digest does not match this preview. No effect is authorized; reject and request a new plan.
+          ;p.proposal-conflict: This preview no longer matches the proposed change. Reject it and request an updated plan.
       ;div.decision-row
         ;form.inline
           =method   "post"
@@ -3634,14 +4218,14 @@
                 =(plan.request `digest.preview)
                 (projection-complete projection)
             ==
-          ;span.pill: no library effect authorized
+          ;span.muted: Approval unavailable
         ;form.inline
           =method   "post"
           =action   "/apps/seer/actions/apply-change"
           =hx-post  "/apps/seer/actions/apply-change"
           ;input(type "hidden", name "change-id", value (tas-tape change-id));
           ;input(type "hidden", name "digest", value (scow %ux digest.preview));
-          ;button(type "submit"): Approve this exact diff
+          ;button(type "submit"): Apply these changes
         ==
       ==
     ==
@@ -3650,14 +4234,16 @@
     |=  [change-id=@tas request=change-request label=tape]
     ^-  manx
     ;div
-      ;div.ai-answer: {label} · {(trip summary.request)}
+      ;p.muted: {label}
+      ;+  ?:  =('' summary.request)  ;span.hidden;
+          ;div.proposal-answer: {(trip summary.request)}
       ;div.decision-row
         ;form.inline
           =method   "post"
           =action   "/apps/seer/actions/delete-change"
           =hx-post  "/apps/seer/actions/delete-change"
           ;input(type "hidden", name "change-id", value (tas-tape change-id));
-          ;button.danger(type "submit"): Forget
+          ;button.danger(type "submit"): Remove from history
         ==
       ==
     ==
@@ -3666,39 +4252,58 @@
     |=  [capture-id=@tas session=capture]
     ^-  manx
     =/  drafts=(list [@tas proposal])  ~(tap by proposals.session)
-    =/  clear-confirm=tape
-      "Reject every remaining proposal in this capture?"
     ;article.capture
       ;div.capture-head
         ;div.capture-copy
-          ;div.eyebrow: {(tas-tape capture-id)} · {(trip created-by.session)}
-          ;h2: {(trip title.session)}
+          ;h3: {(trip title.session)}
           ;p.muted: {(trip goal.session)}
           ;div.capture-meta
-            ;span: {<(lent drafts)>} pending
-            ;span: {<approved.session>} approved
-            ;span: {<rejected.session>} rejected
-            ;span: source · {(trip source.session)}
+            ;span: {<(lent drafts)>} {?:(=((lent drafts) 1) "card" "cards")} to review
+            ;+  ?:  =(0 approved.session)  ;span.hidden;
+                ;span: {<approved.session>} added to library
           ==
         ==
-        ;form.inline
-          =hx-confirm  clear-confirm
-          =method      "post"
-          =action      "/apps/seer/actions/discard-capture"
-          =hx-post     "/apps/seer/actions/discard-capture"
+        ;form.inline(hx-confirm "Discard this draft and its remaining card suggestions? Approved cards stay in your library.")
+          =method   "post"
+          =action   "/apps/seer/actions/discard-capture"
+          =hx-post  "/apps/seer/actions/discard-capture"
           ;input(type "hidden", name "capture", value (tas-tape capture-id));
-          ;button.danger(type "submit"): Clear
+          ;button.danger(type "submit"): Discard draft
         ==
       ==
-      ;+  (work-context-panel [%capture capture-id])
-      ;+  (scope-learning-panel [%capture capture-id])
-      ;+  (capture-packet-form capture-id)
-      ;+  (packet-panel packet.session ~)
-      ;div
-        ;*
-        %+  turn  drafts
-        |=  [proposal-id=@tas draft=proposal]
-        (proposal-row capture-id proposal-id draft)
+      ;div.capture-workflow
+        ;+  ?^  drafts  ;span.hidden;
+            ;div.disclosure-body
+              ;p.muted: Prepare your sources here, then ask an assistant connected to Seer to suggest cards. You will review its suggestions here before adding them.
+              ;+  (work-context-panel [%capture capture-id])
+              ;+  (capture-packet-form capture-id ?=(^ packet.session))
+              ;+  ?~  packet.session  ;span.hidden;
+                  =/  frozen  (~(get by packets.evidence) u.packet.session)
+                  ?~  frozen  ;span.hidden;
+                  ?^  (packet-egress-error:ev u.frozen contexts evidence)
+                    ;p.proposal-conflict: Resolve the issue in Prepared sources, then prepare them again.
+                  ;div.disclosure-body
+                    ;p.muted: Check the prepared sources below, then send this message to your assistant:
+                    ;label
+                      ;span: Message for your assistant
+                      ;textarea(readonly "", rows "3"): Review the prepared sources for draft "{(trip title.session)}" (ID: {(tas-tape capture-id)}), then suggest cards and send them to Seer for me to review.
+                    ==
+                  ==
+              ;+  (packet-panel packet.session ~)
+            ==
+        ;*  %+  turn  drafts
+            |=  [proposal-id=@tas draft=proposal]
+            (proposal-row capture-id proposal-id draft)
+        ;details.technical
+          ;summary: Draft details
+          ;div.disclosure-body
+            ;p: Created {(display-time created-at.session)}
+            ;p: From: {(trip source.session)}
+            ;p: Created by: {(trip created-by.session)}
+            ;p: Draft ID: {(tas-tape capture-id)}
+            ;+  (scope-learning-panel [%capture capture-id])
+          ==
+        ==
       ==
     ==
   ::
@@ -3714,27 +4319,28 @@
     ;article.proposal
       ;div.proposal-head
         ;div.capture-copy
-          ;div.eyebrow: {(tas-tape stack.draft)} / {(tas-tape card.draft)}
           ;h3: {(trip title.draft)}
         ==
-        ;span.pill: {(trip created-by.draft)}
+        ;span.pill: Suggested by {(trip created-by.draft)}
       ==
       ;div.proposal-body
-        ;div.proposal-prompt: {(trip front.draft)}
+        ;+  (effect-panel preview projection `title.draft)
         ;details.reveal
-          ;summary: Inspect proposed answer
-          ;div.proposal-answer: {(trip back.draft)}
-        ==
-        ;div.provenance
-          ;p: Generated rationale · {(trip rationale.draft)}
-          ;p: Declared source · {(trip source.draft)}
-          ;p: Learning objective · {(trip objective.draft)}
-          ;p: Generated claim · {(trip claim.draft)}
-          ;p: Why a new card · {(trip why-new.draft)}
-          ;p: Caveat · {(trip caveat.draft)}
+          ;summary: Why this card?
+          ;div.disclosure-body
+            ;p: {(trip objective.draft)}
+            ;p: {(trip rationale.draft)}
+            ;p: {(trip why-new.draft)}
+            ;+  ?:  =('' caveat.draft)  ;span.hidden;
+                ;p.muted: {(trip caveat.draft)}
+            ;details.technical
+              ;summary: Suggestion details
+              ;p: Source note: {(trip source.draft)}
+              ;p: Claim: {(trip claim.draft)}
+            ==
+          ==
         ==
         ;+  (packet-panel packet.draft citations.draft)
-        ;+  (effect-panel preview projection)
         ;+  ?~  packet.draft  ;div.hidden;
             =/  packet  (~(get by packets.evidence) u.packet.draft)
             ?~  packet  ;div.hidden;
@@ -3747,7 +4353,7 @@
             ;input(type "hidden", name "capture", value (tas-tape capture-id));
             ;input(type "hidden", name "proposal", value proposal-tape);
             ;label
-              ;span: rejection reason · optional
+              ;span: Reason (optional)
               ;input(name "reason", maxlength "1024");
             ==
             ;button.danger(type "submit"): Reject
@@ -3762,7 +4368,7 @@
             ;input(type "hidden", name "capture", value (tas-tape capture-id));
             ;input(type "hidden", name "proposal", value proposal-tape);
             ;input(type "hidden", name "digest", value (scow %ux digest.preview));
-            ;button(type "submit"): Approve card
+            ;button(type "submit"): Add card to library
           ==
         ==
       ==
@@ -3771,12 +4377,7 @@
   ++  capture-history-row
     |=  [capture-id=@tas session=capture]
     ^-  manx
-    =/  history-meta=tape
-      ;:  weld
-        "{(tas-tape capture-id)} · "
-        "{(trip created-by.session)} · "
-        "{(trip source.session)}"
-      ==
+    =/  history-meta=tape  (display-time created-at.session)
     ;article.stack-row
       ;div.stack-link
         ;div.stack-name
@@ -3785,12 +4386,12 @@
         ==
         ;div.row-end
           ;span: {<approved.session>} approved · {<rejected.session>} rejected
-          ;form.inline(hx-confirm "Remove this completed capture from history?")
+          ;form.inline(hx-confirm "Remove this completed draft from history? Approved cards stay in your library.")
             =method   "post"
             =action   "/apps/seer/actions/delete-capture"
             =hx-post  "/apps/seer/actions/delete-capture"
             ;input(type "hidden", name "capture", value (tas-tape capture-id));
-            ;button.danger(type "submit"): Forget
+            ;button.danger(type "submit"): Remove
           ==
         ==
       ==
@@ -4055,73 +4656,89 @@
         (~(get by logins) %login-claude)
       (~(get by logins) %logout-claude)
     =/  polling=?
-      ?|  (login-request-active codex-request)
-          (login-request-active claude-request)
+      ?|  (login-request-polling %codex codex-request)
+          (login-request-polling %claude claude-request)
       ==
-    =/  poll-url=tape
-      ?:  =('inbox' return)
-        "/apps/seer/inbox"
-      "/apps/seer/review"
-    ;section.panel.form-panel.login-panel
-      =hx-get      poll-url
-      =hx-trigger  ?:(polling "every 2s" "none")
-      =hx-target   "#seer-app"
-      =hx-select   "#seer-app"
-      =hx-swap     "outerHTML"
+    ;section#login-panel.settings-section.login-panel
       ;div.form-head
-        ;h3: Connect an assistant
-        ;p.muted: Provider credentials stay on the local bridge machine.
-      ==
-      ;div.two
-        ;+  (login-provider %codex "Codex" %login-codex codex-request return)
-        ;+
-        %:  login-provider
-          %claude
-          "Claude Code"
-          %login-claude
-          claude-request
-          return
+        ;h2: Assistant accounts
+        ;p.muted: Use your Codex or Claude Code account to ask questions and request changes.
+        ;+  ?:  paired  ;span.hidden;
+            ;p.proposal-conflict: The bridge is not paired with this ship, so sign-in and sign-out cannot start. Pair it first: see "Run the local bridge" in the Seer README.
+        ;details.technical(data-persist "login|how")
+          ;summary: How sign-in works
+          ;p: Sign-in runs through the bridge, Seer's local AI connection on your computer. The bridge opens the provider's sign-in and keeps your credentials there. They are not stored in your card library.
         ==
+      ==
+      ;div.account-list
+        ;+  ?.  polling  ;span.hidden;
+            ;span#login-poll.hidden(hx-get "/apps/seer/settings", hx-trigger "every 3s", hx-target "#login-panel", hx-select "#login-panel", hx-swap "outerHTML", hx-indicator "#login-poll");
+        ;+  (login-provider %codex "Codex" codex-request return)
+        ;+  (login-provider %claude "Claude Code" claude-request return)
       ==
     ==
   ::
   ++  login-provider
     |=  $:  provider=ai-provider
             label=tape
-            login-id=@tas
             request=(unit login-request)
             return=@t
         ==
     ^-  manx
     =/  connected=?  (provider-connected provider)
-    ?~  request
-      ?:  connected
-        (login-connected-card provider label)
-      (login-start-card provider label return)
+    ?~  request  (login-idle-card provider label return)
     =/  req=login-request  u.request
-    ?+  status.req
-      ?:  connected
-        (login-connected-card provider label)
-      ?:  =(%failed status.req)
-        (login-failed-card label req return (trip message.req))
-      (login-start-card provider label return)
+    =/  logout=?  (logout-request req)
+    ?-  status.req
         %pending
-      %:  login-status-card
-        label
-        req
-        return
-        "Waiting for the local bridge to claim this sign-in."
-      ==
+      (login-waiting-card label req return logout)
         %working
       %:  login-status-card
         label
         req
         return
-        "The bridge is starting provider authorization."
+        ?:  logout
+          "The bridge is signing out."
+        "The bridge is opening {label} sign-in. A link and code will appear here in a moment."
       ==
         %challenge
       (login-challenge-card label req return)
+        %done
+      ::  the bridge confirms the request before it republishes its
+      ::  model catalog, so the account can lag its own confirmation.
+      ?:  logout
+        ?:  connected
+          (login-status-card label req return "Signed out. Updating the model list.")
+        (login-idle-card provider label return)
+      ?:  connected  (login-idle-card provider label return)
+      (login-status-card label req return "Signed in. Loading available models.")
+        %failed
+      ?:  ?&(connected !logout)  (login-idle-card provider label return)
+      (login-failed-card label req return logout)
     ==
+  ::
+  ::  No request in flight: every account action needs a paired bridge.
+  ++  login-idle-card
+    |=  [provider=ai-provider label=tape return=@t]
+    ^-  manx
+    =/  connected=?  (provider-connected provider)
+    ?.  paired  (login-unpaired-card label connected)
+    ?:  connected  (login-connected-card provider label)
+    (login-start-card provider label return)
+  ::
+  ++  logout-request
+    |=  req=login-request
+    ^-  ?
+    ?=(?(%logout-codex %logout-claude) id.req)
+  ::
+  ++  login-request-polling
+    |=  [provider=ai-provider request=(unit login-request)]
+    ^-  ?
+    ?~  request  %.n
+    ?:  ?=(?(%pending %working %challenge) status.u.request)  %.y
+    ?.  =(%done status.u.request)  %.n
+    =/  connected=?  (provider-connected provider)
+    ?:((logout-request u.request) connected !connected)
   ::
   ++  login-start-card
     |=  [provider=ai-provider label=tape return=@t]
@@ -4135,6 +4752,15 @@
       ;input(type "hidden", name "return", value (trip return));
       ;button(type "submit"): Sign in to {label}
     ==
+  ::
+  ++  login-unpaired-card
+    |=  [label=tape connected=?]
+    ^-  manx
+    ;article.panel
+      ;h3: {label}
+      ;p.muted: {?:(connected "Signed in. Sign-out is available once the bridge is paired." "Available once the bridge is paired.")}
+    ==
+  ::
   ++  login-request-active
     |=  request=(unit login-request)
     ^-  ?
@@ -4164,15 +4790,43 @@
     ^-  manx
     ;article.panel
       ;h3: {label}
-      ;p.muted: Connected through the local bridge.
+      ;p.muted: Signed in
       ;form
         =method   "post"
         =action   "/apps/seer/actions/request-logout"
         =hx-post  "/apps/seer/actions/request-logout"
         =hx-swap  "outerHTML"
         ;input(type "hidden", name "provider", value (trip provider));
+        ;input(type "hidden", name "return", value "settings");
         ;button.secondary(type "submit"): Sign out
       ==
+    ==
+  ::
+  ++  login-cancel-form
+    |=  [req=login-request return=@t label=tape]
+    ^-  manx
+    ;form
+      =method   "post"
+      =action   "/apps/seer/actions/cancel-login"
+      =hx-post  "/apps/seer/actions/cancel-login"
+      =hx-swap  "outerHTML"
+      ;input(type "hidden", name "login-id", value (trip id.req));
+      ;input(type "hidden", name "return", value (trip return));
+      ;button.secondary(type "submit"): {label}
+    ==
+  ::
+  ++  login-waiting-card
+    |=  [label=tape req=login-request return=@t logout=?]
+    ^-  manx
+    ;article.panel
+      ;h3: {label}
+      ;p.muted: {?:(logout "Waiting for the bridge to sign out." "Waiting for the bridge on your computer to pick this up.")}
+      ;p: The bridge must be running and paired with this ship. Once it picks this up, {?:(logout "this account will show as signed out." "a sign-in link and code will appear here.")} Keep this page open; it updates on its own.
+      ;details.technical(data-persist "login|{(trip id.req)}|stuck")
+        ;summary: If nothing happens
+        ;p: Start the bridge on the computer where it is installed: systemctl --user start seer-ai-bridge, or node bridge/seer-ai-bridge.mjs from the Seer checkout. Its log shows whether it can reach this ship. A bridge serves only the ship in its configuration.
+      ==
+      ;+  (login-cancel-form req return "Cancel")
     ==
   ::
   ++  login-status-card
@@ -4181,23 +4835,37 @@
     ;article.panel
       ;h3: {label}
       ;p.muted: {message}
-      ;form
-        =method   "post"
-        =action   "/apps/seer/actions/cancel-login"
-        =hx-post  "/apps/seer/actions/cancel-login"
-        =hx-swap  "outerHTML"
-        ;input(type "hidden", name "login-id", value (trip id.req));
-        ;input(type "hidden", name "return", value (trip return));
-        ;button.secondary(type "submit"): Cancel
-      ==
+      ;p.muted: Keep this page open; it updates on its own.
+      ;+  (login-cancel-form req return "Cancel")
+    ==
+  ::
+  ++  login-failure-tape
+    |=  [label=tape req=login-request logout=?]
+    ^-  tape
+    ?:  =('Cancelled.' message.req)  "Cancelled."
+    =/  reason=@tas  `@tas`message.req
+    ?+  reason
+        ?:(logout "Sign-out did not complete on the bridge." "Sign-in did not complete on the bridge.")
+      %login-failed
+        ?:  logout
+          "Sign-out did not complete. Try again."
+        "Sign-in did not complete. Try again, and finish every step on the provider's page."
+      %outcome-unknown
+        "Seer cannot confirm whether this finished. Check the bridge log, then try again if needed."
+      %provider-unavailable
+        "The {label} command is not available on the bridge computer. Install it there, then try again."
+      %provider-unsupported
+        "The bridge does not support {label}."
+      ?(%capability-rotated %epoch-retired)
+        "Bridge pairing or activity history changed before this request was picked up. Try again."
     ==
   ::
   ++  login-failed-card
-    |=  [label=tape req=login-request return=@t message=tape]
+    |=  [label=tape req=login-request return=@t logout=?]
     ^-  manx
     ;article.panel
       ;h3: {label}
-      ;p.muted: {message}
+      ;p.proposal-conflict: {(login-failure-tape label req logout)}
       ;form
         =method   "post"
         =action   "/apps/seer/actions/retry-login"
@@ -4207,15 +4875,7 @@
         ;input(type "hidden", name "return", value (trip return));
         ;button(type "submit"): Try again
       ==
-      ;form
-        =method   "post"
-        =action   "/apps/seer/actions/cancel-login"
-        =hx-post  "/apps/seer/actions/cancel-login"
-        =hx-swap  "outerHTML"
-        ;input(type "hidden", name "login-id", value (trip id.req));
-        ;input(type "hidden", name "return", value (trip return));
-        ;button.secondary(type "submit"): Cancel
-      ==
+      ;+  (login-cancel-form req return "Dismiss")
     ==
   ::
   ++  login-challenge-card
@@ -4230,12 +4890,12 @@
     ^-  manx
     ;article.panel
       ;h3: {label}
-      ;p.muted: Open the provider page, then enter this one-time code.
+      ;p.muted: Open the sign-in page, enter this one-time code, and approve access. This page updates when {label} confirms.
       ;a.button.secondary
         =href    (trip auth-url.req)
         =target  "_blank"
         =rel     "noopener noreferrer"
-        Open secure sign-in
+        Open sign-in page
       ==
       ;div.meta: {(trip user-code.req)}
       ;form
@@ -4254,8 +4914,8 @@
     ^-  manx
     =/  authorize-copy=tape
       ;:  weld
-        "Open Anthropic sign-in, authorize the account, "
-        "then paste the one-time code."
+        "Open the sign-in page and authorize the account. "
+        "It shows a one-time code; paste it here to finish."
       ==
     =/  code-attrs=mart
       :~  [%name "code"]
@@ -4273,7 +4933,7 @@
         =href    (trip auth-url.req)
         =target  "_blank"
         =rel     "noopener noreferrer"
-        Open secure sign-in
+        Open sign-in page
       ==
       ;form
         =method   "post"
@@ -4283,10 +4943,10 @@
         ;input(type "hidden", name "login-id", value (trip id.req));
         ;input(type "hidden", name "return", value (trip return));
         ;label
-          ;span: authorization code
+          ;span: One-time code
           ;+  [[%input code-attrs] ~]
         ==
-        ;button(type "submit"): Send code to bridge
+        ;button(type "submit"): Complete sign-in
       ==
       ;form
         =method   "post"
@@ -4327,7 +4987,6 @@
     ;section
       ;div.page-head
         ;div.page-copy
-          ;div.kicker: local
           ;h1: Library
           ;p.muted: Stacks stored on this ship.
         ==
@@ -4352,16 +5011,14 @@
       ==
       ;section.panel.form-panel.desktop-only
         ;div.form-head
-          ;div.kicker: create
           ;h2: New stack
-          ;p.muted: Enter a stable stack ID and display name.
+          ;p.muted: Give your stack a name and a short ID for its address.
         ==
         ;+  new-stack-form
       ==
       ;details.mobile-compose.mobile-only
         ;summary.compose-trigger
           ;span.compose-title
-            ;span.kicker: create
             ;strong: New stack
           ==
         ==
@@ -4378,7 +5035,6 @@
     ;section
       ;div.page-head
         ;div.page-copy
-          ;div.kicker: network
           ;h1: Shared
           ;p.muted: Stacks followed from other ships.
         ==
@@ -4403,7 +5059,6 @@
       ==
       ;section.panel.form-panel.desktop-only
         ;div.form-head
-          ;div.kicker: subscribe
           ;h2: Follow a remote stack
         ==
         ;+  subscription-form
@@ -4411,7 +5066,6 @@
       ;details.mobile-compose.mobile-only
         ;summary.compose-trigger
           ;span.compose-title
-            ;span.kicker: subscribe
             ;strong: Follow a stack
           ==
         ==
@@ -4444,7 +5098,6 @@
     =/  maybe-stack  (lookup-stack owner name)
     ?~  maybe-stack
       ;section.empty
-        ;div.kicker: not found
         ;h1: Stack unavailable
         ;p: This stack is missing or the link is invalid.
         ;a.button.secondary(href "/apps/seer/stacks"): Back to library
@@ -4585,7 +5238,6 @@
       ;div.editor-tools
         ;section.panel.form-panel.desktop-only
           ;div.form-head
-            ;div.kicker: create
             ;h2: Add a card
           ==
           ;+  (add-card-form name)
@@ -4595,13 +5247,12 @@
           (mobile-card-composer name %.n)
         (mobile-card-composer name %.y)
         ;section.panel.danger-zone.desktop-only
-          ;div.kicker: stack settings
+          ;h3: Stack settings
           ;+  (delete-stack-form name)
         ==
         ;details.mobile-compose.mobile-only.settings-disclosure
           ;summary.compose-trigger
             ;span.compose-title
-              ;span.kicker: manage
               ;strong: Stack settings
             ==
           ==
@@ -4620,7 +5271,6 @@
       ;details.mobile-compose.mobile-only(open "")
         ;summary.compose-trigger
           ;span.compose-title
-            ;span.kicker: create
             ;strong: Add your first card
           ==
         ==
@@ -4632,7 +5282,6 @@
     ;details.mobile-compose.mobile-only
       ;summary.compose-trigger
         ;span.compose-title
-          ;span.kicker: create
           ;strong: Add a card
         ==
       ==
@@ -4776,11 +5425,11 @@
       ;div.item-detail
         ;div.card-content
           ;section.card-face
-            ;div.eyebrow: front
+            ;p.diff-label: Front
             ;div.prompt: {(trip (body-text front.content.item))}
           ==
           ;section.card-face
-            ;div.eyebrow: back
+            ;p.diff-label: Back
             ;div.answer: {(trip (body-text back.content.item))}
           ==
         ==
@@ -4832,15 +5481,15 @@
     ^-  (list manx)
     =/  card-scope=?  ?=(^ card)
     =/  count=@ud  (lent rows)
-    =/  panel-title=tape  ?:(card-scope "Card context" "Stack context")
+    =/  panel-title=tape  ?:(card-scope "Card sources" "Stack sources")
     =/  purpose=tape
       ?:  card-scope
-        "Available only to prompts for this card."
-      "Available to every card prompt in this stack."
+        "References for questions about this card."
+      "References for any card in this stack."
     =/  empty-copy=tape
       ;:  weld
-        "No context attached yet. Add a note, ship file, "
-        "local file, or web page."
+        "Add a note, file, or web page "
+        "for the assistant to use as a reference."
       ==
     =/  source-word=tape  ?:(=(count 1) "source" "sources")
     =/  attached=(set @t)
@@ -4879,9 +5528,9 @@
       ?.  ?=(%stack -.scope.source)  ~
       ?~(body ~ (manifest-members u.body))
     =/  context-tape=tape  (tas-tape context-id)
-    =/  gone-copy=tape  "source file removed · snapshot kept"
-    =/  stale-copy=tape  "desk updated · refresh to re-read"
-    =/  remove-confirm=tape  "Remove this source from future prompts?"
+    =/  gone-copy=tape  "Original file removed. Saved copy available."
+    =/  stale-copy=tape  "Files have changed. Refresh to check for updates."
+    =/  remove-confirm=tape  "Remove this source from future requests?"
     =/  remove-label=tape  "Remove {(trip label.source)}"
     ;article.context-source
       ;div.context-source-copy
@@ -4906,8 +5555,9 @@
         ?:  ?&  =(%failed status.source)
                 !=(0 (met 3 error.source))
             ==
-          ;div.context-source-status(data-status "failed")
-            ;+  ;/  (trip error.source)
+          ;details.technical
+            ;summary: Loading error details
+            ;p.readable-text: {(trip error.source)}
           ==
         ;span.hidden;
         ;+  ?~  members  ;span.hidden;
@@ -4923,7 +5573,7 @@
               =hx-post  "/apps/seer/actions/retry-context-source"
               ;input(type "hidden", name "context-id", value context-tape);
               ;*  (context-return-fields scope.source)
-              ;button.secondary(type "submit"): Start new acquisition attempt
+              ;button.secondary(type "submit"): Try loading again
             ==
         ;+  ?.  ?&  =(%clay kind.source)
                     !=(%pending status.source)
@@ -4944,12 +5594,7 @@
           =hx-post     "/apps/seer/actions/remove-context-source"
           ;input(type "hidden", name "context-id", value context-tape);
           ;*  (context-return-fields scope.source)
-          ;button.icon-button
-            =type        "submit"
-            =title       "Remove this source"
-            =aria-label  remove-label
-            ;+  ;/  "×"
-          ==
+          ;button.secondary(type "submit", aria-label remove-label): Remove
         ==
       ==
     ==
@@ -5183,8 +5828,8 @@
           [%maxlength "131072"]
           :-  %placeholder
           ;:  weld
-            "Paste the facts, constraints, examples, or background "
-            "this assistant should carry."
+            "Paste the notes or reference text "
+            "the assistant should use."
           ==
       ==
     =/  locator-attrs=mart
@@ -5210,8 +5855,8 @@
       ==
     =/  noscript-copy=tape
       ;:  weld
-        "Local file upload needs the inline script. "
-        "Use Note or Ship file instead."
+        "File upload needs JavaScript. "
+        "You can paste the text as a note instead."
       ==
     =/  hidden-locator-attrs=mart
       :~  [%type "hidden"]
@@ -5365,11 +6010,6 @@
       ordered-assistant-models
     =/  prompt-sources=(list [@tas context-source])
       (prompt-contexts owner stack-name item-name)
-    =/  no-model-copy=tape
-      ;:  weld
-        "No assistant model is available. "
-        "Open Review to connect a provider."
-      ==
     =/  question-attrs=mart
       :~  [%name "question"]
           [%required ""]
@@ -5383,10 +6023,8 @@
         ;div.hidden;
       ;div.ai-head
         ;div
-          ;div.eyebrow: assistant
           ;h3: Card assistant
         ==
-        ;span.pill: {<`@ud`(lent available-models)>} models · OMP
       ==
       ;+
       ?~  rows
@@ -5400,11 +6038,10 @@
       ;+  (scope-learning-panel [%stack owner stack-name `item-name])
       ;+
       ?~  available-models
-        ?:  =('review' return)
-          ;div
-            ;+  (login-panel 'review')
-          ==
-        ;div.ai-model-empty.section: {no-model-copy}
+        ;p.muted
+          ;a(href "/apps/seer/settings"): Connect an assistant in Settings
+          ; to ask questions about this card.
+        ==
       ;form.ai-form.section
         =method   "post"
         =action   "/apps/seer/actions/ask-card"
@@ -5416,25 +6053,25 @@
         ;input(type "hidden", name "return", value (trip return));
         ;+  (context-picker prompt-sources)
         ;+  packet-budget-fields
-        ;p.muted: The selected provider receives the frozen card, request, and authorized excerpts. Ask is read-only; Edit authorizes one revision-fenced change to this card, not a plan awaiting approval.
-        ;p.muted: A provider invocation may be billable. Unsupported provider adapters fail closed; account sign-in alone does not establish safe generation support.
+        ;p.muted: Ask for an explanation, or choose Edit to update this card directly.
+        ;p.muted: The assistant receives this card, your message, and the selected sources. Your AI provider may charge for the request.
         ;div.ai-form-row
           ;label
-            ;span: action
+            ;span: Action
             ;select(name "mode")
-              ;option(value "ask"): Ask
+              ;option(value "ask"): Ask a question
               ;+
               ?:  =(owner our)
-                ;option(value "edit"): Edit
-              ;option(value "edit", disabled ""): Edit · local cards only
+                ;option(value "edit"): Edit this card now
+              ;option(value "edit", disabled ""): Edit (your own cards only)
             ==
           ==
           ;label
-            ;span: request
+            ;span: Your message
             ;+  [[%textarea question-attrs] ~]
           ==
           ;label
-            ;span: answer with
+            ;span: Assistant
             ;select(name "model", required "")
               ;*
               %+  turn  available-models
@@ -5446,7 +6083,7 @@
               ==
             ==
           ==
-          ;button(type "submit"): Send · potentially billable
+          ;button(type "submit"): Send request
         ==
       ==
     ==
@@ -5458,13 +6095,13 @@
       ;div.hidden;
     =/  count=@ud  (lent rows)
     ;fieldset.context-picker
-      ;legend: Select evidence · {<count>} available sources
+      ;legend: Sources to include
       ;div.context-choice-list
         ;*
         %+  turn  rows
         |=  [context-id=@tas source=context-source]
         =/  scope=tape
-          ?.  ?=(%stack -.scope.source)  (trip -.scope.source)
+          ?.  ?=(%stack -.scope.source)  "draft"
           ?~(card.scope.source "stack" "card")
         =/  choice-attrs=mart
           :~  [%type "checkbox"]
@@ -5509,22 +6146,20 @@
       =class  ?:(active "ai-turn is-thinking" "ai-turn")
       ;div.ai-head
         ;div.meta: {head-meta}
-        ;span(class ?:(active "pill thinking-pill" "pill")): {?:(=(%answered status.job) "answer-ready · inspect receipt for effects" (trip status.job))}
+        ;span(class ?:(active "pill thinking-pill" "pill")): {?:(=(%answered status.job) "Response ready" ?:(active "In progress" "Needs attention"))}
       ==
       ;div.ai-question: {(trip prompt.job)}
       ;+  (work-panel [%question our %root question-id] return)
-      ;+  (packet-panel packet.job citations.job)
-      ;+  (learning-panel [%stack owner.job stack.job `card.job] prompt.job provider.profile.job)
       ;+
       ?-  status.job
         %pending
-          (thinking-indicator "Wait for the local bridge.")
+          (thinking-indicator "Waiting for the assistant to start.")
         %working
           ?:  =(%edit mode.job)
             %-  thinking-indicator
-            "Wait while {(trip label.profile.job)} revises this card."
+            "{(trip label.profile.job)} is updating this card."
           %-  thinking-indicator
-          "Wait while {(trip label.profile.job)} prepares an answer."
+          "{(trip label.profile.job)} is preparing an answer."
         %answered
           ?:  =(%ask mode.job)
             ;div.ai-answer: {(trip response.job)}
@@ -5534,13 +6169,13 @@
               ;summary: Review the edit
               ;div.ai-diff
                 ;div.ai-version
-                  ;div.eyebrow: before
+                  ;p.diff-label: Before
                   ;p: {(trip title.job)}
                   ;p: {(trip (body-text front.job))}
                   ;p: {(trip (body-text back.job))}
                 ==
                 ;div.ai-version
-                  ;div.eyebrow: after
+                  ;p.diff-label: After
                   ;p: {(trip result-title.job)}
                   ;p: {(trip result-front.job)}
                   ;p: {(trip result-back.job)}
@@ -5550,8 +6185,11 @@
           ==
         %failed
           ;div
-            ;div.proposal-conflict: {(trip response.job)}
-            ;p.muted: Reconcile the receipt first. A new attempt is not a replay and may repeat billable work when the external outcome is unknown.
+            ;details.technical
+              ;summary: Error details
+              ;p.readable-text: {(trip response.job)}
+            ==
+            ;p.muted: Check the request activity before trying again. A second request may incur another charge.
             ;div.item-actions
               ;form.inline
                 =method   "post"
@@ -5562,7 +6200,7 @@
                 ;input(type "hidden", name "owner", value (scow %p owner.job));
                 ;input(type "hidden", name "stack", value (tas-tape stack.job));
                 ;input(type "hidden", name "return", value (trip return));
-                ;button.secondary(type "submit"): Start new attempt · potentially billable
+                ;button.secondary(type "submit"): Try again
               ==
               ;form.inline
                 =method   "post"
@@ -5578,6 +6216,8 @@
             ==
           ==
       ==
+      ;+  (packet-panel packet.job citations.job)
+      ;+  (learning-panel [%stack owner.job stack.job `card.job] prompt.job provider.profile.job)
     ==
   ::
   ++  thinking-indicator
