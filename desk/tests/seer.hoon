@@ -800,6 +800,29 @@
     (expect-eq !>(%.y) !>((~(has by items.local) %remote)))
   ==
 ::
+++  test-browser-source-preparation-accepts-decimal-budgets
+  ^-  tang
+  =/  core  (do-noun ag [%set-bridge-capability bridge-test-secret])
+  =.  core  (do-bridge core [%replace-assistant-models 'worker-1' ~[fixture-model]] 'web-model')
+  =.  core  (do core [%begin-capture %cap 'Capture' 'Goal' 'Source' 'Owner'])
+  =.  core  (do core [%add-context-source %source [%capture %cap] %note 'Note' '' 'Source'])
+  =.  core  (do core [%set-context-egress %source (silt ~[%codex])])
+  =/  profile  (~(got by models:(peek-ai core)) %test-model)
+  =/  act=action  [%prepare-capture %cap profile ~[[%source 0 ~ %.y %.y]] 32.768 8.192]
+  =/  cmd  (make-command (slav %da (peek-epoch core)) 'web-prepare' act)
+  =/  body
+    (crip "capture=cap&model=test-model&context-source=1&max-bytes=32768&excerpt-bytes=8192&idempotency-epoch={(trip (peek-epoch core))}&operation-id=web-prepare")
+  =/  request=inbound-request:eyre
+    %*  .  *inbound-request:eyre
+      authenticated  %.y
+      request  [%'POST' '/apps/seer/actions/prepare-capture' ~ `[(met 3 body) body]]
+    ==
+  =/  web-bowl  bol
+  =/  shell  ~(. seer-agent web-bowl(sap /eyre))
+  =/  browser  +:(on-load:shell on-save:core)
+  =/  prepared  +:(on-poke:browser %handle-http-request !>(['web-check' request]))
+  (expect-eq !>('ok') !>((json-text (peek-receipt prepared cmd) 'status')))
+::
 ++  test-read-observation-dependencies
   ^-  tang
   =/  core  (do ag [%new-stack %s1 'One' ~])

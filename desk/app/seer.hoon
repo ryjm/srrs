@@ -783,7 +783,7 @@
     =/  id  (slav %tas (form-got fields 'capture'))
     =/  model  (~(got by models.state) (slav %tas (form-got fields 'model')))
     %:  apply-web-action  eyre-id
-      [%prepare-capture id model (form-selections fields [%capture id]) (slav %ud (form-got fields 'max-bytes')) (slav %ud (form-got fields 'excerpt-bytes'))]
+      [%prepare-capture id model (form-selections fields [%capture id]) (need (rush (form-got fields 'max-bytes') dim:ag)) (need (rush (form-got fields 'excerpt-bytes') dim:ag))]
       [%inbox ~]
       `'Capture packet frozen. Inspect exact provider input.'
     ==
@@ -1092,8 +1092,8 @@
           profile
           prompt
           selections
-          (slav %ud (form-got fields 'max-bytes'))
-          (slav %ud (form-got fields 'excerpt-bytes'))
+          (need (rush (form-got fields 'max-bytes') dim:ag))
+          (need (rush (form-got fields 'excerpt-bytes') dim:ag))
       ==
       target-page
       `'Request sent to {(trip label.profile)}.'
