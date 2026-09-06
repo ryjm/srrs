@@ -1014,11 +1014,15 @@
       =/  login  (~(get by logins.after) id.key)
       ?~(login ~ `provider.u.login)
     =/  attempt  +(attempt.job)
+    ::  A sign-in waits for a person to finish the provider's device flow;
+    ::  Codex device codes stay valid for fifteen minutes. Every other kind
+    ::  of work is a single provider invocation and keeps the tight bound.
+    =/  window=@dr  ?:(=(%login kind.key) ~m15 ~m3)
     %=  job
       attempt                attempt
       lease                  (shax (jam [epoch.control secret-revision.control key attempt now]))
       lease-until            `(add now ~m2)
-      deadline               `(add now ~m3)
+      deadline               `(add now window)
       secret-revision        secret-revision.control
       checkpoint             ?~(packet %none %context-frozen)
       provider               provider

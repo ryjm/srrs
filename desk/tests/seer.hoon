@@ -979,6 +979,43 @@
     (expect-eq !>(`%cancelled) !>(stop-reason.cancelled))
   ==
 ::
+::  A sign-in waits for a person to finish the provider's device flow, so its
+::  work must outlive the bound that fences a single provider invocation.
+::
+++  test-sign-in-work-outlives-a-provider-invocation
+  ^-  tang
+  =/  core  (do ag [%new-stack %s1 'Stack' ~])
+  =.  core  (do-noun core [%set-bridge-capability bridge-test-secret])
+  =.  core  (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =.  core  (do-bridge core [%replace-assistant-models 'worker-1' ~[fixture-model]] 'catalog')
+  =/  profile  (~(got by models:(peek-ai core)) %test-model)
+  =.  core  (do core [%ask-card %q1 ~zod %s1 %c1 %ask profile 'Explain' ~ 65.536 32.768])
+  =.  core  (do core [%request-login %login-codex %codex])
+  =.  core  (do-bridge core [%claim-card-question %q1 'worker-1'] 'claim-question')
+  =.  core  (do-bridge core [%claim-login %login-codex 'worker-1'] 'claim-login')
+  =/  question  (need (peek-work core %question %root %q1))
+  =/  login  (need (peek-work core %login %root %login-codex))
+  =/  claimed-at  (sub (need lease-until.login) ~m2)
+  ::  both workers keep their leases alive
+  =.  core  (at-time core (add claimed-at ~m1.s50))
+  =.  core  (do-bridge core [%heartbeat-work [%question ~zod %root %q1] 'worker-1'] 'early-question')
+  =.  core  (do-bridge core [%heartbeat-work [%login ~zod %root %login-codex] 'worker-1'] 'early-login')
+  ::  past the provider-invocation bound, only the person-paced sign-in continues
+  =.  core  (at-time core (add claimed-at ~m3.s40))
+  =.  core  (do core [%issue-bridge-nonce 'late-question'])
+  =/  late-question  (bridge-command core [%heartbeat-work [%question ~zod %root %q1] 'worker-1'] 'late-question')
+  =.  core  (do-command core late-question)
+  =.  core  (do core [%issue-bridge-nonce 'late-login'])
+  =/  late-login  (bridge-command core [%heartbeat-work [%login ~zod %root %login-codex] 'worker-1'] 'late-login')
+  =.  core  (do-command core late-login)
+  =/  renewed  (need (peek-work core %login %root %login-codex))
+  ;:  weld
+    (expect-eq !>(%.y) !>((gth (need deadline.login) (need deadline.question))))
+    (expect-eq !>('blocked') !>((json-text (peek-receipt core late-question) 'status')))
+    (expect-eq !>('ok') !>((json-text (peek-receipt core late-login) 'status')))
+    (expect-eq !>(%.y) !>((gth (need lease-until.renewed) (add claimed-at ~m3.s40))))
+  ==
+::
 ++  test-read-observation-dependencies
   ^-  tang
   =/  core  (do ag [%new-stack %s1 'One' ~])
