@@ -584,12 +584,22 @@ node bridge/seer-ai-bridge.mjs
 
 The bridge reads the Cookie header from `~/.codex/config.toml` by default. You can also set `SEER_MCP_COOKIE`.
 
-Run `bridge/install-bridge.sh` to render `bridge/seer-ai-bridge.service` with
-this checkout's absolute path and install it to
-`~/.config/systemd/user/seer-ai-bridge.service`, then run
+Run `bridge/install-bridge.sh` to render `bridge/seer-ai-bridge.service` and
+`bridge/seer-ai-bridge@.service` with this checkout's absolute path and
+install them under `~/.config/systemd/user/`, then run
 `systemctl --user enable --now seer-ai-bridge`. Put `SEER_BRIDGE_SECRET` and
 `SEER_MCP_COOKIE` in `~/.config/seer/ai-bridge.env` (loaded via `EnvironmentFile=`)
 rather than editing the unit.
+
+Each bridge instance serves exactly one ship: the `mcpUrl` in its config.
+A sign-in requested on a ship no bridge serves stays queued; the Settings
+panel says so. To serve another ship on the same computer, such as a moon,
+write `~/.config/seer/ai-bridge-NAME.json` with that ship's `mcpUrl` and a
+secret paired on that ship, optionally `~/.config/seer/ai-bridge-NAME.env`,
+and run `systemctl --user enable --now seer-ai-bridge@NAME`. Provider
+credentials belong to the computer, not to a ship: when the provider CLI is
+already signed in, a sign-in request from another ship completes without a
+second authorization, and a sign-out on one ship signs the computer out.
 
 Run the bridge tests:
 
