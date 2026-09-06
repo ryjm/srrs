@@ -1662,9 +1662,15 @@ export function startLogin(config, cookie, commands, job, refreshCatalog, depend
       if (!command || !["codex", "claude"].includes(job.provider)) throw bridgeError("PROVIDER_UNAVAILABLE");
       const loggedIn = job.provider === "claude"
         ? (dependencies.claudeLoggedIn || claudeLoggedIn) : (dependencies.codexLoggedIn || codexLoggedIn);
-      await session.checkpoint("provider-started");
-      externalStarted = true;
-      if (job.login_id.startsWith("logout-")) {
+      // Provider credentials belong to this host, not to one ship. An account
+      // already in the wanted state is confirmed without a provider process and
+      // without provider checkpoints, so recovery never reports it as ambiguous.
+      const signedIn = await loggedIn(command, config);
+      const logout = job.login_id.startsWith("logout-");
+      const needsProcess = logout ? signedIn : !signedIn;
+      if (needsProcess) await session.checkpoint("provider-started");
+      if (needsProcess && logout) {
+        externalStarted = true;
         await (dependencies.runBoundedProcess || runBoundedProcess)(command,
           job.provider === "claude" ? ["auth", "logout"] : ["logout"], {
             env: providerEnvironment(), signal: session.signal,
@@ -1672,7 +1678,8 @@ export function startLogin(config, cookie, commands, job, refreshCatalog, depend
             maxStdoutBytes: 16_384, maxStderrBytes: 16_384, maxStdinBytes: 0,
           });
         if (await loggedIn(command, config)) throw bridgeError("LOGIN_FAILED");
-      } else {
+      } else if (needsProcess) {
+        externalStarted = true;
         const interactiveArgs = job.provider === "claude" ? ["auth", "login", "--claudeai"] : ["login", "--device-auth"];
         entry.handle = (dependencies.runInteractive || runInteractive)(command, interactiveArgs, {
           env: providerEnvironment(), signal: session.signal,
@@ -1714,7 +1721,7 @@ export function startLogin(config, cookie, commands, job, refreshCatalog, depend
         if (challengeError) throw challengeError;
         if (!challengeTask || !await loggedIn(command, config)) throw bridgeError("LOGIN_FAILED");
       }
-      await session.checkpoint("output-received");
+      if (needsProcess) await session.checkpoint("output-received");
       await session.mutation("finish-login");
       published = true;
       session.stop();

@@ -3772,7 +3772,15 @@
   ?:  ?=(?(%fail-card-question %fail-change %fail-context-source %fail-login %heartbeat-work) -.act)  ~
   =/  output  (publication-bytes act)
   ?^  output
-    ?.  =(%output-received checkpoint.u.job)  `%output-checkpoint-required
+    ::  An account already in the wanted state on the bridge host needs no
+    ::  provider process; confirming it must not look like an external run.
+    ?.  ?|  =(%output-received checkpoint.u.job)
+            ?&  ?=(%finish-login -.act)
+                =(%none checkpoint.u.job)
+                =(0 invocations.u.job)
+            ==
+        ==
+      `%output-checkpoint-required
     ?:  ?&  ?=(%finish-change -.act)
             (gth (lent (scag +(max-operations.u.job) operations.act)) max-operations.u.job)
         ==

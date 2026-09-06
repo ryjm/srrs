@@ -823,6 +823,50 @@
   =/  prepared  +:(on-poke:browser %handle-http-request !>(['web-check' request]))
   (expect-eq !>('ok') !>((json-text (peek-receipt prepared cmd) 'status')))
 ::
+::  An account already in the wanted state on the bridge host is confirmed
+::  without a provider process: no provider checkpoint is recorded, so
+::  cancellation and recovery of such work are never ambiguous.
+::
+++  test-locally-confirmed-sign-in-never-becomes-ambiguous
+  ^-  tang
+  =/  core  (do-noun ag [%set-bridge-capability bridge-test-secret])
+  =.  core  (do core [%request-login %login-codex %codex])
+  =.  core  (do core [%request-login %login-claude %claude])
+  =.  core  (do-bridge core [%claim-login %login-codex 'worker-1'] 'claim-codex')
+  =.  core  (do-bridge core [%claim-login %login-claude 'worker-1'] 'claim-claude')
+  =/  claimed  (need (peek-work core %login %root %login-codex))
+  ::  a started provider process still needs its output checkpoint
+  =.  core  (do-bridge core [%checkpoint-work [%login ~zod %root %login-claude] 'worker-1' %provider-started] 'claude-started')
+  =.  core  (do core [%issue-bridge-nonce 'claude-early'])
+  =/  early  (bridge-command core [%finish-login %login-claude 'worker-1'] 'claude-early')
+  =.  core  (do-command core early)
+  ::  an expired lease on unstarted work is plain recovery, not an unknown outcome
+  =.  core  (at-time core (need lease-until.claimed))
+  =.  core  (do-bridge core [%recover-work [%login ~zod %root %login-codex] 'worker-1'] 'recover-codex')
+  =/  recovered  (need (peek-work core %login %root %login-codex))
+  =.  core  (do-bridge core [%claim-login %login-codex 'worker-2'] 'reclaim-codex')
+  =.  core  (do-bridge core [%finish-login %login-codex 'worker-2'] 'finish-codex')
+  =/  finished  (need (peek-work core %login %root %login-codex))
+  =/  finished-status  status:(~(got by (peek-logins core)) %login-codex)
+  ::  cancelling unstarted work stays a plain cancellation
+  =.  core  (do core [%request-login %logout-codex %codex])
+  =.  core  (do-bridge core [%claim-login %logout-codex 'worker-2'] 'claim-logout')
+  =.  core  (do core [%cancel-work [%login ~zod %root %logout-codex]])
+  =/  cancelled  (need (peek-work core %login %root %logout-codex))
+  ;:  weld
+    (expect-eq !>('output-checkpoint-required') !>((json-text (peek-receipt core early) 'reason')))
+    (expect-eq !>(%working) !>(status:(~(got by (peek-logins core)) %login-claude)))
+    (expect-eq !>(%queued) !>(execution.recovered))
+    (expect-eq !>(%none) !>(effect.recovered))
+    (expect-eq !>(`%lease-recovered) !>(stop-reason.recovered))
+    (expect-eq !>(%done) !>(finished-status))
+    (expect-eq !>(%succeeded) !>(execution.finished))
+    (expect-eq !>(0) !>(invocations.finished))
+    (expect-eq !>(%cancelled) !>(execution.cancelled))
+    (expect-eq !>(%none) !>(effect.cancelled))
+    (expect-eq !>(`%cancelled) !>(stop-reason.cancelled))
+  ==
+::
 ++  test-read-observation-dependencies
   ^-  tang
   =/  core  (do ag [%new-stack %s1 'One' ~])

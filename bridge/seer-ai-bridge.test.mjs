@@ -843,7 +843,7 @@ test("a lost one-shot login code never reaches stdin or triggers another consump
   const fixture = packetFixture();
   const job = { ...fixture.job, ref: ref("login", "login-one"), login_id: "login-one",
     provider: "claude", code_ready: true };
-  let consumed = 0, writes = 0, killed = 0;
+  let consumed = 0, writes = 0, killed = 0, statusChecks = 0;
   let rejectProcess;
   const completion = new Promise((_, reject) => { rejectProcess = reject; });
   const runtime = {
@@ -863,12 +863,41 @@ test("a lost one-shot login code never reaches stdin or triggers another consump
         killed++; rejectProcess(Object.assign(new Error("private child output"), { code: "PROCESS_CANCELLED" }));
       } };
     },
-    claudeLoggedIn: async () => assert.fail("must not certify an undelivered login"),
+    claudeLoggedIn: async () => {
+      statusChecks++;
+      if (statusChecks > 1) assert.fail("must not certify an undelivered login");
+      return false;
+    },
   };
   assert.equal(await startLogin(config, "", { claude: "/exact" }, job, async () => {}, runtime), false);
   assert.equal(consumed, 1);
   assert.equal(writes, 0);
   assert.ok(killed > 0);
+});
+
+test("an account already in the wanted state on this host is confirmed without a provider process or checkpoint", async () => {
+  const fixture = packetFixture();
+  for (const [loginId, signedIn] of [["login-codex", true], ["logout-codex", false]]) {
+    const job = { ...fixture.job, ref: ref("login", loginId), login_id: loginId, provider: "codex" };
+    const calls = [];
+    let refreshed = 0;
+    const runtime = {
+      sleep: async () => {},
+      callTool: async (_config, _cookie, name, args) => {
+        calls.push({ name, args });
+        if (name === "seer/list-login-requests") return page("logins", [job], args);
+        return { status: "ok" };
+      },
+      runInteractive: () => assert.fail("must not launch provider authorization"),
+      runBoundedProcess: async () => assert.fail("must not run a provider process"),
+      codexLoggedIn: async () => signedIn,
+    };
+    assert.equal(await startLogin(config, "", { codex: "/exact" }, job, async () => { refreshed++; }, runtime), true, loginId);
+    assert.equal(refreshed, 1, loginId);
+    assert.equal(calls.some(({ name }) => name === "seer/checkpoint-work"), false, loginId);
+    assert.ok(calls.some(({ name }) => name === "seer/finish-login"), loginId);
+    assert.equal(calls.some(({ name }) => name === "seer/post-login-challenge" || name === "seer/fail-login"), false, loginId);
+  }
 });
 
 async function cancellationServer(t, { acknowledgement = "lost", alterReceipt = (value) => value,
