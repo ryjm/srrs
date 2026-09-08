@@ -2005,6 +2005,8 @@
                  --muted: #62625c;
                  --soft: #6f6f69;
                  --focus: #334dde;
+                 --cursor: #6a81ce;
+                 --cursor-tint: #f8fafe;
                  --danger: #b42318;
                  --ok: #1a7f37;
                  --warn: #8a5800;
@@ -2025,6 +2027,8 @@
                    --muted: #aaa9a2;
                    --soft: #aaa9a2;
                    --focus: #8899ff;
+                   --cursor: #849be3;
+                   --cursor-tint: #1c1e24;
                    --danger: #ff8a80;
                    --ok: #7ec488;
                    --warn: #d9a94e;
@@ -2722,8 +2726,8 @@
                  overflow: hidden;
                  position: relative;
                  transition: border-color 160ms cubic-bezier(.16, 1, .3, 1),
-                   box-shadow 160ms cubic-bezier(.16, 1, .3, 1),
-                   transform 160ms cubic-bezier(.16, 1, .3, 1);
+                   background-color 160ms cubic-bezier(.16, 1, .3, 1),
+                   box-shadow 160ms cubic-bezier(.16, 1, .3, 1);
                }
                .item:hover, .item[open] { border-color: var(--line-strong); }
                .item[open] {
@@ -2732,26 +2736,13 @@
                  box-shadow: var(--shadow);
                }
                .item[data-vim-selected] {
-                 border-color: var(--line-strong);
-                 box-shadow: var(--shadow);
-                 transform: translateY(-1px);
-               }
-               .item[data-vim-selected]::before {
-                 background: var(--focus);
-                 content: "";
-                 inset: .8rem auto .8rem .35rem;
-                 position: absolute;
-                 width: 1px;
-                 z-index: 2;
-               }
-               .item[data-vim-selected] > .item-summary {
-                 background: var(--surface-2);
+                 background: var(--cursor-tint);
+                 border-color: var(--cursor);
                }
                .item[data-vim-selected] .item-id { color: var(--ink); }
                .item[data-vim-selected] .item-toggle {
-                 background: var(--ink);
-                 border-color: var(--ink);
-                 color: var(--bg);
+                 border-color: var(--cursor);
+                 color: var(--ink);
                }
                .item-summary {
                  align-items: start;
@@ -3112,26 +3103,64 @@
                  margin-top: 3rem;
                  padding-top: 1rem;
                }
-               [data-vim-active] {
-                 outline: 2px solid var(--focus);
+               /* Keyboard cursor: one 1px hairline in a muted ink-blue on a
+                  cooler sheet. It rings whatever stands alone (a card, a form,
+                  a summary) and rules the margin of whatever sits in a list.
+                  No shadow, no lift: the pointer's hover stays warm, the
+                  cursor stays cool. */
+               [data-vim-active], [data-vim-active]:focus-visible {
+                 outline: 1px solid var(--cursor);
                  outline-offset: 3px;
                }
                .item-summary[data-vim-active] { outline: none; }
                form[data-vim-active] { border-radius: 4px; }
-               [data-key-item]:not([data-review-card])[data-vim-active] {
-                 border-color: var(--line-strong);
-                 box-shadow: var(--shadow);
+               details.flip > .flip-bar[data-vim-active] { outline-offset: -4px; }
+               .capture[data-vim-active], .review-card[data-vim-active] {
+                 border-color: var(--cursor);
+                 outline: none;
+               }
+               .capture[data-vim-active] { background: var(--cursor-tint); }
+               .stack-link[data-vim-active], .stack-row[data-vim-active],
+               .proposal[data-vim-active], .activity-row[data-vim-active],
+               .account-list > .panel[data-vim-active],
+               .composer > summary[data-vim-active] {
+                 background: var(--cursor-tint);
                  outline: none;
                  position: relative;
                }
-               [data-key-item]:not([data-review-card])[data-vim-active]::before {
-                 background: var(--focus);
-                 border-radius: 2px;
+               .stack-link[data-vim-active]::before,
+               .stack-row[data-vim-active]::before,
+               .proposal[data-vim-active]::before,
+               .activity-row[data-vim-active]::before,
+               .account-list > .panel[data-vim-active]::before,
+               .composer > summary[data-vim-active]::before {
+                 background: var(--cursor);
                  content: "";
-                 inset: .8rem auto .8rem .35rem;
+                 inset: .85rem auto .85rem .45rem;
                  position: absolute;
-                 width: 3px;
+                 width: 1px;
                }
+               /* Edge-to-edge rows have no padding of their own, so the band
+                  bleeds into the gutter until their text sits as deep inside
+                  it as it does in a list (1.1rem), and the rule keeps its
+                  place .45rem in from the band's edge. Two offset shadows
+                  widen the band without touching the dividers above and
+                  below. */
+               .account-list > .panel[data-vim-active] {
+                 box-shadow: -1.15rem 0 0 var(--cursor-tint),
+                   1.15rem 0 0 var(--cursor-tint);
+               }
+               .account-list > .panel[data-vim-active]::before { left: -.7rem; }
+               .composer > summary[data-vim-active] {
+                 box-shadow: -1.1rem 0 0 var(--cursor-tint),
+                   1.1rem 0 0 var(--cursor-tint);
+               }
+               .composer > summary[data-vim-active]::before { left: -.65rem; }
+               .activity-row[data-vim-active] {
+                 box-shadow: -.6rem 0 0 var(--cursor-tint),
+                   .6rem 0 0 var(--cursor-tint);
+               }
+               .activity-row[data-vim-active]::before { left: -.15rem; }
                .vim-chord {
                  backdrop-filter: blur(12px);
                  -webkit-backdrop-filter: blur(12px);
@@ -3202,7 +3231,6 @@
                  }
                  .session-progress-fill { transition: none; }
                  .item { transition: none; }
-                 .item[data-vim-selected] { transform: none; }
                }
                @media (max-width: 850px) {
                  .app-shell { grid-template-columns: 12.5rem minmax(0, 1fr); }
@@ -3988,6 +4016,15 @@
                  .utility-nav a { align-items: center; display: flex; font-size: .8125rem; min-height: 2.9rem; padding: .5rem .65rem; }
                  .key-hint-button { display: none; }
                  .activity-row > summary { grid-template-columns: minmax(0, 1fr); gap: .5rem; padding: 1.1rem 0; }
+                 /* The page gutter is 1rem here and the summary loses its
+                    padding, so the band fills the gutter exactly. */
+                 .composer > summary[data-vim-active],
+                 .activity-row[data-vim-active] {
+                   box-shadow: -1rem 0 0 var(--cursor-tint),
+                     1rem 0 0 var(--cursor-tint);
+                 }
+                 .composer > summary[data-vim-active]::before,
+                 .activity-row[data-vim-active]::before { left: -.55rem; }
                  .activity-state { display: flex; gap: 1rem; justify-content: space-between; text-align: left; }
                  .activity-detail { padding-left: 0; padding-right: 0; }
                  .data-grid { grid-template-columns: minmax(0, 1fr); }
