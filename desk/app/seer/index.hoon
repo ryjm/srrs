@@ -1097,6 +1097,7 @@
         ;script:'''
                 (function () {
                   "use strict";
+                  document.documentElement.classList.add("kb");
                   var done = 0;
                   var open = {};
                   var prefix = "";
@@ -1644,7 +1645,6 @@
                     }
                   }
                   function sync() {
-                    document.documentElement.classList.add("kb");
                     syncContextForms();
                     var r = root();
                     if (r) {
@@ -2198,6 +2198,7 @@
                  border: 1px solid var(--line);
                  border-radius: 3px;
                  color: var(--soft);
+                 display: none;
                  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco,
                    Consolas, monospace;
                  font-size: .58rem;
@@ -2622,9 +2623,16 @@
                  text-underline-offset: 3px;
                }
                .linkish:hover { color: var(--ink); filter: none; }
+               /* Keyboard hints show only where the keys work: the script is
+                  running and the primary pointer is a mouse or trackpad. A
+                  phone or tablet never sees them, whatever its width. */
                @media (hover: hover) and (pointer: fine) {
-                 html.kb .key-hint { display: inline-block; }
-                 html.kb .key-line { display: flex; }
+                 html.kb .key-hint, html.kb .nav-key { display: inline-block; }
+                 html.kb .key-line, html.kb .key-hint-button { display: flex; }
+                 /* The bottom tab bar and the fixed utility nav have no room. */
+                 @media (max-width: 650px) {
+                   html.kb .nav-key, html.kb .key-hint-button { display: none; }
+                 }
                }
                dialog.key-help {
                  background: var(--surface);
@@ -3298,7 +3306,6 @@
                  .nav-count { font-size: .62rem; line-height: 1; }
                  .nav-label { gap: .3rem; }
                  .nav-label > span { font-size: .88rem; }
-                 .nav-key { font-size: .5rem; padding: .15rem .22rem; }
                  .sidebar-foot { display: none; }
                  .workspace { min-height: 100dvh; }
                  .request-status { position: fixed; z-index: 40; }
@@ -3845,7 +3852,7 @@
                  border-radius: 4px;
                  color: var(--muted);
                  cursor: pointer;
-                 display: flex;
+                 display: none;
                  font: inherit;
                  font-size: .875rem;
                  gap: .5rem;
@@ -4003,7 +4010,6 @@
                button:disabled { cursor: not-allowed; opacity: .55; }
                @media (max-width: 650px) {
                  .brand-sub { display: none; }
-                 .primary-nav .nav-key { display: none; }
                  .utility-nav {
                    display: flex;
                    gap: .25rem;
@@ -4014,7 +4020,6 @@
                    z-index: 31;
                  }
                  .utility-nav a { align-items: center; display: flex; font-size: .8125rem; min-height: 2.9rem; padding: .5rem .65rem; }
-                 .key-hint-button { display: none; }
                  .activity-row > summary { grid-template-columns: minmax(0, 1fr); gap: .5rem; padding: 1.1rem 0; }
                  /* The page gutter is 1rem here and the summary loses its
                     padding, so the band fills the gutter exactly. */
