@@ -1,7 +1,7 @@
 /-  *seer
 |%
 ::
-++  seer-schema-version  2
+++  seer-schema-version  3
 ::
 ::  Display text only; action tags and receipts remain the machine contract.
 ++  operation-title
@@ -10,7 +10,6 @@
   ?+  tag  'Action'
     %new-stack                'Create stack'
     %new-item                 'Create card'
-    %schedule-item            'Schedule card'
     %raise-item               'Add card to review'
     %answered-item            'Record review answer'
     %review-stack             'Add stack to review'
@@ -18,7 +17,6 @@
     %delete-item              'Delete card'
     %edit-stack               'Rename stack'
     %edit-item                'Edit card'
-    %read                     'Read card'
     %update-review            'Update review queue'
     %import                   'Import stack'
     %import-file              'Import file'
@@ -38,23 +36,19 @@
     %rename-context-source    'Rename source'
     %archive-orphan-contexts  'Archive unused sources'
     %remove-context-source    'Remove source'
-    %claim-context-source     'Start loading source'
     %finish-context-source    'Save loaded source'
     %fail-context-source      'Record source loading problem'
     %retry-context-source     'Try loading source again'
     %refresh-context-source   'Refresh source'
     %ask-card                 'Request AI help'
     %replace-assistant-models  'Update available AI models'
-    %claim-card-question      'Start AI request'
     %answer-card-question     'Save AI answer'
     %apply-card-edit          'Save AI card edit'
     %fail-card-question       'Record AI request problem'
     %retry-card-question      'Try AI request again'
     %delete-card-question     'Delete AI conversation'
     %request-change           'Request AI changes'
-    %claim-change             'Start preparing changes'
     %start-change             'Queue AI changes'
-    %prepare-change-packet    'Prepare change sources'
     %propose-change           'Record proposed changes'
     %finish-change            'Save proposed changes'
     %fail-change              'Record change request problem'
@@ -63,23 +57,21 @@
     %retry-change             'Try change request again'
     %delete-change            'Delete change request'
     %request-login            'Start provider sign-in'
-    %issue-bridge-nonce       'Prepare connection verification'
-    %set-bridge-capability    'Change AI connection settings'
-    %claim-login              'Start sign-in through the bridge'
     %post-login-challenge     'Show provider sign-in instructions'
     %submit-login-code        'Submit sign-in code'
     %finish-login             'Complete provider sign-in'
     %fail-login               'Record sign-in problem'
     %retry-login              'Try provider sign-in again'
     %cancel-login             'Close sign-in request'
-    %consume-login-code       'Clear delivered sign-in code'
+    %import-account           'Save provider sign-in'
+    %rotate-account           'Renew provider sign-in'
+    %fail-renewal             'Record sign-in renewal problem'
+    %clear-account            'Sign out of provider'
+    %refresh-catalog          'Refresh available AI models'
     %share-clay-context       'Share source file'
     %unshare-clay-context     'Stop sharing source file'
     %fetch-remote-manifest    'Request shared source list'
-    %bridge-action            'Process bridge update'
-    %checkpoint-work          'Record task progress'
-    %heartbeat-work           'Keep task connection active'
-    %recover-work             'Recover interrupted task'
+    %dispatch-work            'Start task'
     %cancel-work              'Cancel task'
   ==
 ::
@@ -91,9 +83,9 @@
           !=(%outcome-unknown reason.receipt)
       ==
     %.n
-  ?:  ?=(?(%read %answered-item %update-review) action.receipt)  %.y
+  ?:  ?=(?(%answered-item %update-review) action.receipt)  %.y
   ?&  !=(%operator authority.receipt)
-      ?=(?(%collect-retained %archive-orphan-contexts %replace-assistant-models %issue-bridge-nonce %claim-context-source %claim-card-question %claim-change %claim-login %prepare-change-packet %consume-login-code %checkpoint-work %heartbeat-work) action.receipt)
+      ?=(?(%collect-retained %archive-orphan-contexts %replace-assistant-models %dispatch-work %rotate-account) action.receipt)
   ==
 ::
 ++  problem-description
@@ -139,37 +131,47 @@
     %provider-unavailable
       'The assistant was unavailable. Check its service status and your connection in Settings before starting more work.'
     %provider-unsupported
-      'The bridge does not support this assistant. Choose a supported assistant in Settings.'
-    %unsupported-isolation
-      'This bridge cannot run AI requests with the required privacy controls. You can still add and review cards manually.'
+      'This assistant is not supported. Choose a supported assistant in Settings.'
+    ?(%sign-in-required %account-missing)
+      'No provider sign-in is saved on this ship for the selected assistant. Open Settings and sign in, paste credentials, or enter an API key.'
+    ?(%account-expired %renewal-failed %renewal-terminal)
+      'The provider sign-in on this ship can no longer be renewed. Open Settings and sign in again.'
+    %renewal-cooldown
+      'The provider sign-in could not be renewed just now. Seer will try again shortly; check Settings if this persists.'
     %login-failed
       'Provider sign-in did not complete. Open Settings to check the sign-in request and provider instructions.'
+    %expired
+      'The sign-in code expired before it was used. Start the sign-in again from Settings.'
+    %device-auth-disabled
+      'The provider account has device code sign-in turned off. Enable it in the provider account settings, then try again.'
+    %denied
+      'The provider rejected this sign-in. Start again from Settings.'
+    %unreachable
+      'The provider could not be reached from this ship. Check the network, then try again.'
     %invalid-login-code
       'Seer could not accept this sign-in code. Paste only the code from the provider, without line breaks.'
+    %invalid-login-state
+      'The pasted code does not belong to this sign-in request. Start the sign-in again and paste the code it shows.'
     %invalid-login-challenge
-      'The bridge returned sign-in instructions Seer could not accept. Check the sign-in request in Settings.'
-    ?(%login-code-changed %login-version-unavailable)
-      'The sign-in request changed before the code could be consumed. Check its current status in Settings before submitting another code.'
-    %delivery-unavailable
-      'No sign-in code is available to deliver. It may already have been consumed. Check the sign-in status in Settings.'
-    ?(%paired-bridge-required %invalid-bridge-proof %invalid-bridge-capability)
-      'Seer could not verify the bridge connection. Check the bridge configuration on the computer running it.'
-    ?(%operator-entrypoint-required %worker-action-required %worker-mismatch %invalid-worker %work-scope-mismatch %catalog-claim-required)
-      'This request does not have the required permission. Use Seer for manual actions and check the bridge connection in Settings.'
-    ?(%invalid-command %invalid-worker-action %invalid-nonce)
+      'The provider returned sign-in instructions Seer could not accept. Check the sign-in request in Settings.'
+    ?(%invalid-credentials %invalid-account)
+      'Seer could not read the pasted credentials. Paste the complete credential JSON, a setup token, or an API key.'
+    ?(%operator-entrypoint-required %system-action-required %work-scope-mismatch)
+      'This request does not have the required permission. Use Seer for manual actions.'
+    %invalid-command
       'Seer could not accept the request format. Reopen the page and check that the connected tools are up to date.'
     %action-trapped
       'Seer encountered an error while handling this action. Check the related item and Activity details before starting another attempt.'
-    ?(%work-fenced %lease-expired %lease-unavailable)
-      'This bridge worker no longer has permission to update the task. Check its current status before recovering it; an external request may already have started.'
-    %lease-not-expired
-      'The task connection is still active. Check its progress before attempting recovery.'
-    ?(%work-deadline %deadline-expired %deadline-unavailable)
-      'The task cannot continue within its recorded time limit. Check its status and any external result before starting another attempt.'
-    ?(%checkpoint-order %source-owned-checkpoint %output-checkpoint-required %provider-checkpoint-required %packet-already-frozen %work-required)
-      'This task update is not valid at the current stage. Check task progress and the bridge before starting more work.'
-    %worker-failed
-      'The bridge could not finish this request. Open the error details for more information.'
+    ?(%work-fenced %attempt-fenced)
+      'This result belongs to an earlier attempt and was ignored. Check the task status before starting another attempt.'
+    ?(%work-deadline %deadline-expired %deadline-unavailable %timeout)
+      'The task did not finish within its time limit. Check its status and any external result before starting another attempt.'
+    ?(%output-limit %output-budget-exhausted)
+      'The response exceeded the size limit for this task. Narrow the request before starting another attempt.'
+    ?(%checkpoint-order %packet-already-frozen %work-required)
+      'This task update is not valid at the current stage. Check task progress before starting more work.'
+    ?(%request-failed %fetch-failed)
+      'Seer could not finish this request. Open the error details for more information.'
     ?(%invalid-provider-output %invalid-change-output)
       'The AI result could not be accepted. Review the request and its sources before deciding whether to ask for a new result.'
     %source-fetch-failed
@@ -253,9 +255,7 @@
     %invocation-limit
       'This task has used its allowed AI requests. Review its progress and any existing result before starting more work.'
     ?(%model-limit %invalid-model-catalog)
-      'Seer could not accept the list of AI models. Check the bridge and its model settings.'
-    %nonce-limit
-      'Too many connection checks are outstanding. Check the bridge connection before sending more requests.'
+      'Seer could not accept the list of AI models returned by the provider. Refresh the catalog from Settings.'
     ?(%invalid-capture %invalid-proposal %invalid-request)
       'The draft or request is missing required information or contains invalid content. Review its goal, text, and selected sources.'
     %invalid-change-prompt
@@ -268,18 +268,20 @@
       'The proposal contains no library changes. Review the request before preparing a new proposal.'
     %desk-brief-required
       'Ask for a written proposal describing the intended app improvements.'
-    ?(%unobserved-plan-target %incomplete-library-observation %incomplete-library-metadata %incomplete-library-read)
-      'The bridge did not read all library information needed for these changes. Narrow the request or complete that review before preparing changes.'
-    ?(%invalid-read-report %invalid-library-read-report %invalid-bounded-query %duplicate-observation)
-      'The bridge could not provide a valid record of the library it reviewed. Check the bridge before preparing new changes.'
+    ?(%unobserved-plan-target %incomplete-library-observation)
+      'The plan targets library entries that were not part of its frozen observation. Prepare the changes again.'
+    ?(%destination-rejected %private-host %ip-literal %port-not-allowed %invalid-url %url-too-long)
+      'This address cannot be fetched from the ship: only public http and https hosts on the default ports are allowed.'
+    ?(%redirect-limit %invalid-redirect)
+      'The page redirected too many times or to an address that cannot be fetched.'
+    %invalid-utf8
+      'The fetched content is not valid UTF-8 text and cannot be saved as a source.'
     %no-supported-candidate
       'The assistant found no suitable result supported by the selected sources. Review the learning goal and choose more relevant sources.'
     %cancelled
       'The task was cancelled in Seer. This does not confirm that an external request was stopped.'
-    ?(%capability-rotated %epoch-retired)
-      'Connection settings or activity history changed, interrupting this task. Check its current status before starting more work.'
-    %lease-recovered
-      'The interrupted task was returned to the queue.'
+    %epoch-retired
+      'Activity history was cleared, interrupting this task. Check its current status before starting more work.'
   ==
 ::
 ++  operation-state
@@ -307,10 +309,9 @@
     %begin-capture       'Draft recorded'
     ?(%ask-card %retry-card-question %request-change)
       'Request recorded'
-    ?(%start-change %retry-change %request-login %retry-login %retry-context-source %recover-work)
+    ?(%start-change %retry-change %request-login %retry-login %retry-context-source)
       'Queued'
-    ?(%claim-card-question %claim-change %claim-context-source %claim-login)
-      'Started'
+    %dispatch-work  'Started'
     %post-login-challenge  'Sign-in needed'
     %submit-login-code     'Code recorded'
   ==
@@ -379,25 +380,26 @@
       'The change request was saved. Open it in Inbox to see the next step.'
     ?(%start-change %retry-change)
       'The change request was queued. Any proposed library changes still need your approval.'
-    %prepare-change-packet
-      'The library information and selected references were saved for this change request.'
     ?(%propose-change %finish-change)
       'The proposed changes are ready to review in Inbox.'
     %apply-change       'The approved changes were saved to your library.'
     %reject-change      'The change request was closed without applying changes.'
     %delete-change     'The change request was deleted. Any previously applied library changes remain.'
     ?(%request-login %retry-login)
-      'The sign-in request was queued for the bridge. Open Settings for the next sign-in step.'
+      'The sign-in request was queued. Open Settings for the next sign-in step.'
     %post-login-challenge
       'Provider sign-in instructions are ready. Open Settings to continue.'
     %submit-login-code
       'The sign-in code was submitted. Check Settings for the result.'
-    %finish-login       'The bridge reported that sign-in completed.'
+    %finish-login       'Provider sign-in completed on this ship.'
     %cancel-login
       'The sign-in request was closed in Seer. This does not sign you out of the provider.'
-    %consume-login-code  'The delivered sign-in code was cleared from Seer.'
-    %set-bridge-capability
-      'AI connection settings were saved. Existing tasks may need attention; review them before starting more work.'
+    %import-account     'The provider sign-in was saved on this ship.'
+    %rotate-account     'The provider sign-in was renewed.'
+    %fail-renewal
+      'The provider sign-in could not be renewed. Open Settings to sign in again.'
+    %clear-account      'The provider sign-in was removed from this ship.'
+    %refresh-catalog    'The list of available AI models was requested from the provider.'
     %retire-operation-epoch
       'Activity history was cleared. Review interrupted AI tasks before starting more work.'
     %purge-evidence      'The selected saved source text was deleted.'
@@ -407,13 +409,7 @@
     %unshare-clay-context  'The source file is no longer shared with other ships.'
     %fetch-remote-manifest
       'The shared source list was requested. Open the related stack and check its source file picker for the result.'
-    %issue-bridge-nonce  'A one-time connection check was prepared.'
-    ?(%claim-card-question %claim-change %claim-context-source %claim-login)
-      'The bridge accepted the task and marked it as started.'
-    %checkpoint-work    'Task progress was recorded.'
-    %heartbeat-work     'The task connection was renewed.'
-    %recover-work
-      'The interrupted task was returned to the queue before a provider request was recorded as started.'
+    %dispatch-work      'The task was started on this ship.'
     %cancel-work
       'Cancellation was recorded in Seer. This does not confirm that an external request was stopped.'
   ==
@@ -550,83 +546,56 @@
   |=  [our=@p act=action]
   ^-  (unit entity-key)
   ?+  act  ~
-    [?(%ask-card %claim-card-question %answer-card-question %apply-card-edit %fail-card-question) *]
+    [?(%ask-card %answer-card-question %apply-card-edit %fail-card-question) *]
       `[%question our %root id.act]
     [?(%retry-card-question %delete-card-question) *]
       `[%question our %root id.act]
-    [?(%request-change %prepare-change-packet %propose-change %claim-change %finish-change %fail-change %apply-change) *]
+    [?(%request-change %propose-change %finish-change %fail-change %apply-change) *]
       `[%change our %root id.act]
     [?(%start-change %reject-change %retry-change %delete-change) *]
       `[%change our %root id.act]
-    [?(%add-context-source %set-context-egress %rename-context-source %claim-context-source %finish-context-source %fail-context-source) *]
+    [?(%add-context-source %set-context-egress %rename-context-source %finish-context-source %fail-context-source) *]
       `[%context our %root id.act]
     [?(%remove-context-source %retry-context-source %refresh-context-source) *]
       `[%context our %root id.act]
-    [?(%request-login %claim-login %post-login-challenge %submit-login-code %finish-login %fail-login %consume-login-code) *]
+    [?(%request-login %post-login-challenge %submit-login-code %finish-login %fail-login) *]
       `[%login our %root id.act]
     [?(%retry-login %cancel-login) *]
       `[%login our %root id.act]
-    [?(%checkpoint-work %heartbeat-work %recover-work) *]
-      `work.act
-    [%cancel-work *]
+    [?(%dispatch-work %cancel-work) *]
       `work.act
   ==
 ::
-++  claim-action
+::  System actions are the ship's own transitions from its outbound
+::  request responses. They carry the attempt they belong to and are
+::  never accepted from a poke.
+::
+++  system-action
   |=  act=action
   ^-  ?
-  ?=([?(%claim-card-question %claim-change %claim-context-source %claim-login) *] act)
-::
-++  worker-request
-  |=  act=action
-  ^-  (unit [id=@tas worker=@t fields=(list @t)])
-  ?+  act  ~
-      [?(%claim-card-question %claim-change %claim-context-source %claim-login %finish-login) *]
-    `[id.act worker.act ~['2']]
-      [%answer-card-question *]
-    `[id.act worker.act (weld ~['2' response.act] (citation-fields citations.act))]
-      [%apply-card-edit *]
-    `[id.act worker.act (weld ~['2' title.act front.act back.act response.act] (citation-fields citations.act))]
-      [?(%fail-card-question %fail-change) *]
-    `[id.act worker.act ~['2' response.act]]
-      [%prepare-change-packet *]
-    :-  ~
-    :*  id.act
-        worker.act
-        ;:  weld
-          ~['2']
-          (precondition-fields observations.act)
-          ~[read-report.act]
-          (selection-fields selections.act)
-          ~[(decimal-text max-bytes.act) (decimal-text excerpt-bytes.act)]
-        ==
-    ==
-      [%finish-change *]
-    `[id.act worker.act :(weld ~['2' summary.act artifact.act] (operation-fields operations.act) (citation-fields citations.act))]
-      [%finish-context-source *]
-    `[id.act worker.act ~['2' label.act content.act final-locator.act]]
-      [%fail-context-source *]
-    `[id.act worker.act ~['2' error.act]]
-      [%post-login-challenge *]
-    `[id.act worker.act ~['2' auth-url.act user-code.act]]
-      [%fail-login *]
-    `[id.act worker.act ~['2' message.act]]
-      [%consume-login-code *]
-    `[id.act worker.act ~['2' (decimal-text content-revision.act)]]
-      [%replace-assistant-models *]
-    `[%catalog worker.act ['2' (profile-fields profiles.act)]]
-      [%checkpoint-work *]
-    `[id.work.act worker.act :(weld ~['2'] (key-fields work.act) ~[(scot %tas stage.act)])]
-      [?(%heartbeat-work %recover-work) *]
-    `[id.work.act worker.act ['2' (key-fields work.act)]]
-  ==
-:::
+  ?=  $?  [%answer-card-question *]
+          [%apply-card-edit *]
+          [%fail-card-question *]
+          [%finish-change *]
+          [%fail-change *]
+          [%finish-context-source *]
+          [%fail-context-source *]
+          [%post-login-challenge *]
+          [%finish-login *]
+          [%fail-login *]
+          [%replace-assistant-models *]
+          [%rotate-account *]
+          [%fail-renewal *]
+          [%dispatch-work *]
+      ==
+    act
+::::
 ::  Projections contain only one entity, never a serialized agent state.
 ::
 +$  agent-work
   $:  execution=$?(%queued %running %blocked %succeeded %failed %cancelled)
       effect=$?(%none %staged %committed %unknown)
-      worker=@t
+      attempt=@ud
   ==
 +$  agent-subject
   [body=(unit *) review=* work=(unit agent-work)]
@@ -668,14 +637,14 @@
       ?:(=(~ proposals.cap) %none %staged)
     :*  `[id.cap title.cap goal.cap source.cap created-by.cap packet.cap created-at.cap status.cap approved.cap rejected.cap]
         ~
-        `[?:(=(%complete status.cap) %succeeded %blocked) effect '']
+        `[?:(=(%complete status.cap) %succeeded %blocked) effect 0]
     ==
       %proposal
     =/  cap  (~(get by captures.data.view) scope.key)
     ?~  cap  [~ ~ ~]
     =/  found  (~(get by proposals.u.cap) id.key)
     ?~  found  [~ ~ ~]
-    [`u.found ~ `[%blocked %staged '']]
+    [`u.found ~ `[%blocked %staged 0]]
       %question
     =/  found  (~(get by questions.data.view) id.key)
     ?~  found  [~ ~ ~]
@@ -691,7 +660,7 @@
       ?:  ?&(=(%answered status.job) =(%edit mode.job))
         %committed
       %none
-    [`job ~ `[execution effect worker.job]]
+    [`job ~ `[execution effect attempt.job]]
       %change
     =/  found  (~(get by changes.data.view) id.key)
     ?~  found  [~ ~ ~]
@@ -710,7 +679,7 @@
       ?:  =(%applied status.job)  %committed
       ?:  ?|(!=(~ operations.job) !=('' artifact.job))  %staged
       %none
-    [`job ~ `[execution effect worker.job]]
+    [`job ~ `[execution effect attempt.job]]
       %context
     =/  found  (~(get by contexts.data.view) id.key)
     ?~  found  [~ ~ ~]
@@ -723,7 +692,7 @@
         %ready    %succeeded
         %failed   %failed
       ==
-    [`job ~ `[execution ?:(=(%ready status.job) %committed %none) worker.job]]
+    [`job ~ `[execution ?:(=(%ready status.job) %committed %none) attempt.job]]
       %login
     =/  found  (~(get by logins.view) id.key)
     ?~  found  [~ ~ ~]
@@ -736,8 +705,8 @@
         %done       %succeeded
         %failed     %failed
       ==
-    ::  Provider success is reported by the worker, not a ship-side edit.
-    [`job ~ `[execution %none worker.job]]
+    ::  Provider success is the ship's own exchange result, never a library edit.
+    [`job ~ `[execution %none attempt.job]]
       %model
     =/  found  (~(get by models.data.view) id.key)
     ?~  found  [~ ~ ~]
@@ -991,7 +960,7 @@
       (~(put by context-index.next-control) scope idx)
     $(rows t.rows)
   ++  claim-work
-    |=  [key=entity-key job=work-record]
+    |=  [key=entity-key job=work-record attempt=@ud]
     ^-  work-record
     =/  inputs=[profile=(unit assistant-model) packet=(unit @ux)]
       ?+  kind.key  [~ ~]
@@ -1013,17 +982,17 @@
       ?.  =(%login kind.key)  ~
       =/  login  (~(get by logins.after) id.key)
       ?~(login ~ `provider.u.login)
-    =/  attempt  +(attempt.job)
     ::  A sign-in waits for a person to finish the provider's device flow;
-    ::  Codex device codes stay valid for fifteen minutes. Every other kind
-    ::  of work is a single provider invocation and keeps the tight bound.
-    =/  window=@dr  ?:(=(%login kind.key) ~m15 ~m3)
+    ::  Codex device codes stay valid for fifteen minutes. A web fetch is
+    ::  bounded tightly. Every other kind of work is a single provider
+    ::  invocation.
+    =/  window=@dr
+      ?:  =(%login kind.key)  ~m15
+      ?:  =(%context kind.key)  ~s20
+      ~m3
     %=  job
       attempt                attempt
-      lease                  (shax (jam [epoch.control secret-revision.control key attempt now]))
-      lease-until            `(add now ~m2)
       deadline               `(add now window)
-      secret-revision        secret-revision.control
       checkpoint             ?~(packet %none %context-frozen)
       provider               provider
       model-id               ?~(profile.inputs %none id.u.profile.inputs)
@@ -1040,6 +1009,7 @@
       max-output-bytes       65.536
       max-operations        64
       consumed-output-bytes  0
+      redirects              0
       usage                  ~
       cost                   ~
       stop-reason            ~
@@ -1072,33 +1042,29 @@
     =/  old  (~(get by jobs.control) key)
     =/  claimed
       ?&  =(%running execution.next-work)
-          ?~  work.prev  %.n
-          =(%queued execution.u.work.prev)
+          ?~  work.prev  %.y
+          !=(%running execution.u.work.prev)
       ==
     =/  job  (fall old *work-record)
     =.  job
       %=  job
         execution   execution.next-work
         effect      effect.next-work
-        worker      worker.next-work
         updated-at  now
       ==
-    =?  job  claimed  (claim-work key job)
+    =?  job  claimed  (claim-work key job attempt.next-work)
     =?  job  ?=(?(%succeeded %failed %cancelled) execution.job)
       %=  job
-        lease-until  ~
         retryable    =(%failed execution.job)
         checkpoint
           ?:  =(%committed effect.job)  %effect-committed
           ?:  =(%succeeded execution.job)  %result-published
           checkpoint.job
         stop-reason
-          ?:  =(%failed execution.job)  `%worker-failed
+          ?:  =(%failed execution.job)  `%request-failed
           ?:  =(%cancelled execution.job)  `%cancelled
           stop-reason.job
       ==
-    =?  job  ?&(!claimed =(%blocked execution.job))
-      job(lease-until ~)
     control(jobs (~(put by jobs.control) key job))
   ++  card
     |=  [who=@p stak=@tas id=@tas]
@@ -1224,8 +1190,6 @@
     $(rows t.rows)
       %remove-context-source
     (one:tracker [%context owner %root id.act])
-      %claim-context-source
-    (one:tracker [%context owner %root id.act])
       %finish-context-source
     (one:tracker [%context owner %root id.act])
       %fail-context-source
@@ -1235,8 +1199,6 @@
       %refresh-context-source
     (one:tracker [%context owner %root id.act])
       %ask-card
-    (one:tracker [%question owner %root id.act])
-      %claim-card-question
     (one:tracker [%question owner %root id.act])
       %answer-card-question
     (one:tracker [%question owner %root id.act])
@@ -1255,17 +1217,23 @@
     (one:tracker [%change owner %root id.act])
       %propose-change
     (one:tracker [%change owner %root id.act])
-      %claim-change
-    (one:tracker [%change owner %root id.act])
-      %prepare-change-packet
-    (one:tracker [%change owner %root id.act])
       %finish-change
     (one:tracker [%change owner %root id.act])
       %fail-change
     (one:tracker [%change owner %root id.act])
       %apply-change
     ::  Each nested operation is stamped individually, including A->B->A.
-    (one:tracker [%change owner %root id.act])
+    ::  Cards the plan created are stamped again so their attached plan
+    ::  provenance is part of the observed revision.
+    =.  control.tracker  (one:tracker [%change owner %root id.act])
+    =/  request  (~(get by changes.data.after) id.act)
+    ?~  request  control.tracker
+    =/  ops  operations.u.request
+    |-
+    ?~  ops  control.tracker
+    =?  control.tracker  =(%create-card kind.i.ops)
+      (card:tracker owner stack.i.ops card.i.ops)
+    $(ops t.ops)
       %reject-change
     (one:tracker [%change owner %root id.act])
       %retry-change
@@ -1293,8 +1261,6 @@
       (one:deletion [%login owner %root id.act])
     =.  logins.before.tracker  (~(del by logins.before) id.act)
     (one:tracker [%login owner %root id.act])
-      %claim-login
-    (one:tracker [%login owner %root id.act])
       %post-login-challenge
     (one:tracker [%login owner %root id.act])
       %submit-login-code
@@ -1316,8 +1282,8 @@
     ?~  next  control.tracker
     =/  cancelled  u.job(execution %cancelled, updated-at now)
     control.tracker(jobs (~(put by jobs.control.tracker) key cancelled))
-      %consume-login-code
-    (one:tracker [%login owner %root id.act])
+      %dispatch-work
+    (one:tracker work.act)
       %import
     (whole-stack:tracker who.act stack.act)
       %replace-assistant-models
@@ -1328,24 +1294,21 @@
     =.  control.tracker  (one:tracker [%model owner %root i.rows])
     $(rows t.rows)
     ::  These actions either emit requests, change untracked configuration,
-    ::  or are currently domain no-ops. bridge-action dispatches its payload
-    ::  through the same action wrapper; import-file emits a later new-stack.
-      %schedule-item          control
-      %read                   control
-      %update-review          control
-      %import-file            control
-      %issue-bridge-nonce      control
+    ::  or account state that no read index describes; import-file emits a
+    ::  later new-stack.
+      %update-review           control
+      %import-file             control
       %share-clay-context      control
       %unshare-clay-context    control
       %fetch-remote-manifest   control
-      %bridge-action          control
-      %checkpoint-work         control
-      %heartbeat-work          control
-      %recover-work            control
       %cancel-work             control
-      %set-bridge-capability    control
+      %import-account          control
+      %rotate-account          control
+      %fail-renewal            control
+      %clear-account           control
+      %refresh-catalog         control
       %collect-retained        control
-      %retire-operation-epoch   control
+      %retire-operation-epoch  control
       %purge-evidence
     =/  context-rows  ~(key by contexts.data.before)
     =/  question-rows  ~(key by questions.data.before)

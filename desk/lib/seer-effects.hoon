@@ -497,7 +497,7 @@
   |=  [preview=plan-preview complete=? refs=(list json) diffs=(list json) omitted-refs=@ud omitted-diffs=@ud]
   ^-  json
   %-  pairs:enjs:format
-  :~  ['schema_version' (numb:enjs:format 2)]
+  :~  ['schema_version' (numb:enjs:format 3)]
       ['status' s+?:(complete (scot %tas status.preview) 'limit-exceeded')]
       ['validation_status' s+(scot %tas status.preview)]
       ['reason' s+(scot %tas reason.preview)]
@@ -606,7 +606,7 @@
   =?  next  ?&(=(%budget-exhausted status.receipt) =(%receipt-limit reason.receipt))
     (weld next ~['seer/retire-operation-epoch'])
   %-  pairs:enjs:format
-  :~  ['schema_version' (numb:enjs:format 2)]
+  :~  ['schema_version' (numb:enjs:format 3)]
       ['idempotency_epoch' s+(scot %da epoch.receipt)]
       ['operation_id' s+id.receipt]
       ['payload_digest' s+(scot %ux digest.receipt)]
@@ -659,7 +659,7 @@
   |=  reason=@tas
   ^-  json
   %-  pairs:enjs:format
-  :~  ['schema_version' (numb:enjs:format 2)]
+  :~  ['schema_version' (numb:enjs:format 3)]
       ['status' s+'invalid']
       ['reason' s+reason]
       ['complete' b+%.n]

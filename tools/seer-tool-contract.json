@@ -1,0 +1,1030 @@
+{
+  "seer/agent-context": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "cursor": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/list-stacks": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/get-stack": {
+    "type": "object",
+    "required": [
+      "stack_id"
+    ],
+    "properties": {
+      "card_id": {
+        "type": "string"
+      },
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      },
+      "stack_id": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/state-context": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "card_id": {
+        "type": "string"
+      },
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      },
+      "stack_id": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/learning-context": {
+    "type": "object",
+    "required": [
+      "stack_id"
+    ],
+    "properties": {
+      "card_id": {
+        "type": "string"
+      },
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      },
+      "stack_id": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/list-captures": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "capture_id": {
+        "type": "string"
+      },
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/list-card-questions": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "card_id": {
+        "type": "string"
+      },
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      },
+      "stack_id": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/list-change-requests": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/list-login-requests": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/list-context-sources": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "card_id": {
+        "type": "string"
+      },
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "scope_id": {
+        "type": "string"
+      },
+      "scope_type": {
+        "type": "string"
+      },
+      "since": {
+        "type": "string"
+      },
+      "stack_id": {
+        "type": "string"
+      },
+      "status": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/get-context-packet": {
+    "type": "object",
+    "required": [
+      "packet_ref"
+    ],
+    "properties": {
+      "max_bytes": {
+        "type": "string"
+      },
+      "packet_ref": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      }
+    }
+  },
+  "seer/get-evidence-snapshot": {
+    "type": "object",
+    "required": [
+      "snapshot_ref"
+    ],
+    "properties": {
+      "length": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "snapshot_ref": {
+        "type": "string"
+      },
+      "start": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/lookup-learning": {
+    "type": "object",
+    "required": [
+      "objective",
+      "provider",
+      "scope_id",
+      "scope_type"
+    ],
+    "properties": {
+      "back": {
+        "type": "string"
+      },
+      "card_id": {
+        "type": "string"
+      },
+      "front": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "objective": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "provider": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "scope_id": {
+        "type": "string"
+      },
+      "scope_type": {
+        "type": "string"
+      },
+      "snapshot_ref": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/preview-change": {
+    "type": "object",
+    "required": [
+      "change_id"
+    ],
+    "properties": {
+      "change_id": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      }
+    }
+  },
+  "seer/preview-proposal": {
+    "type": "object",
+    "required": [
+      "capture_id",
+      "proposal_id"
+    ],
+    "properties": {
+      "capture_id": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "proposal_id": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      }
+    }
+  },
+  "seer/get-operation-result": {
+    "type": "object",
+    "required": [
+      "idempotency_epoch",
+      "operation_id"
+    ],
+    "properties": {
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "payload_digest": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      }
+    }
+  },
+  "seer/list-assistant-models": {
+    "type": "object",
+    "required": [],
+    "properties": {
+      "cursor": {
+        "type": "string"
+      },
+      "id": {
+        "type": "string"
+      },
+      "limit": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "projection": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "since": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/begin-capture": {
+    "type": "object",
+    "required": [
+      "capture_id",
+      "created_by",
+      "goal",
+      "idempotency_epoch",
+      "operation_id",
+      "schema_version",
+      "source",
+      "title"
+    ],
+    "properties": {
+      "capture_id": {
+        "type": "string"
+      },
+      "created_by": {
+        "type": "string"
+      },
+      "goal": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "source": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/prepare-capture": {
+    "type": "object",
+    "required": [
+      "capture_id",
+      "idempotency_epoch",
+      "model_id",
+      "operation_id",
+      "schema_version",
+      "selections"
+    ],
+    "properties": {
+      "capture_id": {
+        "type": "string"
+      },
+      "excerpt_bytes": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "model_id": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "selections": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/stage-card": {
+    "type": "object",
+    "required": [
+      "back",
+      "capture_id",
+      "card_id",
+      "caveat",
+      "citations",
+      "claim",
+      "created_by",
+      "front",
+      "idempotency_epoch",
+      "objective",
+      "operation_id",
+      "preconditions",
+      "proposal_id",
+      "rationale",
+      "schema_version",
+      "source",
+      "stack_id",
+      "title",
+      "why_new"
+    ],
+    "properties": {
+      "back": {
+        "type": "string"
+      },
+      "capture_id": {
+        "type": "string"
+      },
+      "card_id": {
+        "type": "string"
+      },
+      "caveat": {
+        "type": "string"
+      },
+      "citations": {
+        "type": "string"
+      },
+      "claim": {
+        "type": "string"
+      },
+      "created_by": {
+        "type": "string"
+      },
+      "front": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "objective": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "packet_ref": {
+        "type": "string"
+      },
+      "preconditions": {
+        "type": "string"
+      },
+      "proposal_id": {
+        "type": "string"
+      },
+      "rationale": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "source": {
+        "type": "string"
+      },
+      "stack_id": {
+        "type": "string"
+      },
+      "title": {
+        "type": "string"
+      },
+      "why_new": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/ask-card": {
+    "type": "object",
+    "required": [
+      "card_id",
+      "idempotency_epoch",
+      "model_id",
+      "operation_id",
+      "owner",
+      "prompt",
+      "question_id",
+      "schema_version",
+      "selections",
+      "stack_id"
+    ],
+    "properties": {
+      "card_id": {
+        "type": "string"
+      },
+      "excerpt_bytes": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "max_bytes": {
+        "type": "string"
+      },
+      "model_id": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string"
+      },
+      "question_id": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "selections": {
+        "type": "string"
+      },
+      "stack_id": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/request-change": {
+    "type": "object",
+    "required": [
+      "change_id",
+      "idempotency_epoch",
+      "model_id",
+      "operation_id",
+      "prompt",
+      "schema_version",
+      "target"
+    ],
+    "properties": {
+      "change_id": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "model_id": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "target": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/propose-change": {
+    "type": "object",
+    "required": [
+      "change_id",
+      "idempotency_epoch",
+      "operation_id",
+      "operations",
+      "preconditions",
+      "prompt",
+      "schema_version",
+      "summary"
+    ],
+    "properties": {
+      "change_id": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "operations": {
+        "type": "string"
+      },
+      "preconditions": {
+        "type": "string"
+      },
+      "prompt": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "summary": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/attach-context-source": {
+    "type": "object",
+    "required": [
+      "context_id",
+      "idempotency_epoch",
+      "kind",
+      "label",
+      "operation_id",
+      "schema_version",
+      "scope_id",
+      "scope_type"
+    ],
+    "properties": {
+      "card_id": {
+        "type": "string"
+      },
+      "content": {
+        "type": "string"
+      },
+      "context_id": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "kind": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      },
+      "locator": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "owner": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      },
+      "scope_id": {
+        "type": "string"
+      },
+      "scope_type": {
+        "type": "string"
+      }
+    }
+  },
+  "seer/refresh-context-source": {
+    "type": "object",
+    "required": [
+      "context_id",
+      "idempotency_epoch",
+      "operation_id",
+      "schema_version"
+    ],
+    "properties": {
+      "context_id": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      }
+    }
+  },
+  "seer/archive-context-source": {
+    "type": "object",
+    "required": [
+      "context_id",
+      "idempotency_epoch",
+      "operation_id",
+      "schema_version"
+    ],
+    "properties": {
+      "context_id": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      }
+    }
+  },
+  "seer/rename-context-source": {
+    "type": "object",
+    "required": [
+      "context_id",
+      "idempotency_epoch",
+      "label",
+      "operation_id",
+      "schema_version"
+    ],
+    "properties": {
+      "context_id": {
+        "type": "string"
+      },
+      "idempotency_epoch": {
+        "type": "string"
+      },
+      "label": {
+        "type": "string"
+      },
+      "operation_id": {
+        "type": "string"
+      },
+      "require_scoped_authority": {
+        "type": "boolean"
+      },
+      "schema_version": {
+        "type": "number"
+      }
+    }
+  }
+}

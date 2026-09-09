@@ -2,7 +2,7 @@
 
 Seer is a spaced-repetition application for Urbit. It stores local stacks, subscribes to stacks on other ships with live updates, and copies shared stacks into local ones.
 
-The browser interface uses server-rendered Hoon and HTMX 2.0.2, vendored into the desk and served by the agent itself; pages load with no external requests. Seer has no React build, JavaScript bundle, or client-side state store. The review page adds one inline script for keyboard review and session progress; every action still works without it.
+The browser interface uses server-rendered Hoon and HTMX 2.0.2, vendored into the desk and served by the agent itself; pages load with no external requests. Seer has no React build, JavaScript bundle, or client-side state store. One inline script, shared by every page, adds keyboard navigation and review shortcuts: Space reveals the answer, then grades Good. Every action still works without it.
 
 ## Browser workflows
 
@@ -16,11 +16,12 @@ The browser interface uses server-rendered Hoon and HTMX 2.0.2, vendored into th
   outcomes remain in the main list. Technical details stay collapsed. The lookup
   form can find an action by operation ID. Missing history does not mean an
   action failed or make a retry safe.
-- **Settings** at `/apps/seer/settings` holds assistant sign-in, source storage,
-  and activity-history controls. Sign-in runs through the paired local bridge;
-  the panel says what it is waiting for and refreshes only itself. Each
-  source's sharing permissions remain beside that source, where you can review
-  the text before allowing access.
+- **Settings** at `/apps/seer/settings` holds provider accounts, source storage,
+  and activity-history controls. Sign-in runs on this ship: the panel says what
+  it is waiting for and refreshes only itself. You can also paste credentials,
+  a setup token, or an API key; sign out on this ship; or refresh a provider's
+  model list. Each source's sharing permissions remain beside that source,
+  where you can review the text before allowing access.
   The deletion picker lists the newest 100 saved copies. Use “Delete a copy that
   is not listed” to delete a copy by its exact reference.
 
@@ -29,8 +30,8 @@ The machine-readable `/apps/seer/operation-result` endpoint is unchanged.
 ## Documentation and planning
 
 - This README is the operating guide for the shipped system. Start with the [agent operating guide](#agent-operating-guide) when driving Seer through MCP.
-- [System design](SYSTEM_DESIGN.md) explains the architecture, contract rationale, and acceptance scenarios. This README documents the implemented schema-2 protocol and its runtime limitations.
-- Beads epic `srrs-login-epic-lyy` holds the implementation plan and dependencies. Use `bd show srrs-login-epic-lyy` for the plan and `bd ready` for actionable repository work.
+- [System design](SYSTEM_DESIGN.md) explains the architecture, contract rationale, and acceptance scenarios. This README documents the implemented schema-3 protocol and its runtime limitations.
+- Beads epic `srrs-login-epic-d5n` holds the ship-native cutover plan and dependencies. Use `bd show srrs-login-epic-d5n` for the plan and `bd ready` for actionable repository work.
 - [seer.org](seer.org) is the archived 2021 development log, not a current roadmap.
 
 The installed tool definitions and implementation determine current behavior. Documentation is not permission to call an unadvertised tool or bypass an approval boundary.
@@ -107,34 +108,41 @@ migrations yet. When that shape changes, reset the development agent:
 |revive %seer
 ```
 
-**This permanently deletes Seer's state and subscriptions.** Nuke before
-committing the new shape. Re-pair the bridge afterward; its ship-side secret
-is discarded too. Same-shape code reloads retain state. Add a migration
-strategy before the official release.
+**This permanently deletes Seer's state, subscriptions, and provider
+accounts.** Nuke before committing the new shape and sign in again afterward.
+Same-shape code reloads retain state. Add a migration strategy before the
+official release.
 
 If `%seer-cli` is running, also run `|nuke %seer-cli, =hard &` before
 committing a change to its state shape. `|revive %seer` revives the desk's agents.
 
 Run the desk tests from the Dojo. They drive real Hoon state transitions for
 same-shape reloads, SM-2 scheduling, bounded reads, atomic plans and receipts,
-evidence/citations, orphan cleanup, learning reuse, and fenced bridge attempts:
+evidence/citations, learning reuse, the outbound destination policy, and
+provider response parsing:
 
 ```hoon
 -test /=seer=/tests ~
 ```
 
 After installing a desk revision and reimporting its MCP definitions, run the
-existing alignment canary from the configured bridge host:
+alignment canary from any computer that can reach the ship's MCP endpoint:
 
 ```bash
-node bridge/check-ship-alignment.mjs
+SEER_MCP_URL=http://127.0.0.1:8080/mcp SEER_MCP_COOKIE='urbauth-~sampel=...' \
+  node tools/check-ship-alignment.mjs
 ```
 
-The canary checks required tool schemas, rejects obsolete direct/operator
-tools, verifies live protocol and authority fields, exercises bounded reads
-and unchanged resume, and reconciles an unknown operation without mutating
-state. Exit `0` means those checks passed, `1` means contract drift, and `2`
-means a connectivity or configuration failure. It does not invoke a provider.
+When either variable is unset, the canary falls back to the `mcpUrl` and
+`cookie` fields of its local config file under `~/.config/seer/` (the path is
+in the script header). It checks that the live catalogue advertises exactly
+the 27 schema-3 tools with matching input schemas and none of the retired
+schema-2 worker tools, verifies the orientation's protocol, authority, and
+capability fields, exercises bounded reads and unchanged resume, and
+reconciles an unknown operation without mutating state. Exit `0` means those
+checks passed, `1` means contract drift, and `2` means a connectivity or
+configuration failure. It does not invoke a provider. Its hermetic tests run
+with `node --test tools/check-ship-alignment.test.mjs`.
 
 ## Web architecture
 
@@ -163,7 +171,7 @@ header:   Cookie: urbauth-~<ship>=<login-code>
 tool:     mcp/poke-our-agent {"agent":"mcp-server","mark":"import-tools","data":"'seer'"}
 ```
 
-Import both tools and prompts after an upgrade. `%mcp-server` sends `tools/list_changed` when imported definitions change. See [Schema-2 cutover](#schema-2-cutover) when removing old definitions.
+Import both tools and prompts after an upgrade. `%mcp-server` sends `tools/list_changed` when imported definitions change. See [Schema-3 cutover](#schema-3-cutover) when removing old definitions.
 
 ### Agent operating guide
 
@@ -204,12 +212,13 @@ Current lifecycle distinctions:
 | Card question/edit | `answered` stores an answer or the completed edit result; factual correctness is not implied by this status. |
 | Context source | `ready` means material was stored, not that it is current, complete for the task, or factually verified. |
 
-Every mutation requires numeric `schema_version: 2`, the current
+Every mutation requires numeric `schema_version: 3`, the current
 `idempotency_epoch`, and a stable `operation_id` of 1–128 UTF-8 bytes.
-Worker mutations additionally require a nonce-bound paired capability proof;
-worker IDs and caller-supplied actor/role fields grant nothing. MCP remains
+Caller-supplied actor/role fields grant nothing. MCP remains
 **owner-trusted**, not least-privilege: scoped delegation is unavailable and
-`require_scoped_authority: true` is rejected.
+`require_scoped_authority: true` is rejected. The orientation's
+`operations.planner` list names the mutations MCP can perform;
+`operations.operator` names the browser pages that hold every other control.
 
 ### Bounded reads
 
@@ -233,17 +242,17 @@ combine `cursor` with `since`. Check `status`, `complete`, and `omissions`:
 
 Capture proposals are a separate page selected by `capture_id`. Job reads
 support status filters and exact IDs. Login reads never contain verification
-URLs, user codes, paste-back codes, or credentials. The bridge retains bounded
-metadata pages, fetches selected job details, and discloses evidence/library
-omissions instead of treating unobserved material as absent.
+URLs, user codes, paste-back codes, or credentials. Treat omissions as
+unobserved material, not as absence.
 
 ### Authority, approval, and receipts
 
 Planner MCP tools can observe, attach evidence, ask questions, and stage typed
 work. They cannot approve proposals, apply library plans, fabricate recall
-grades, grant provider egress, administer retention, or initiate account login.
-Those controls remain authenticated browser/local-operator actions. The
-paired bridge has a separate worker-only proof boundary.
+grades, grant provider egress, administer retention, sign in to a provider, or
+read an account. Those controls remain authenticated browser actions. Provider
+requests are the ship's own Iris events; the orientation's `execution` field
+says so.
 
 Preview and approval use the same ordered candidate-state validator. Approval
 binds the exact plan digest, entity incarnations, and content/review
@@ -265,18 +274,18 @@ including when JavaScript is disabled.
 
 ### Attach durable assistant context
 
-Context is ship-owned and survives browser/bridge restarts. It can be scoped
-to a stack, card, capture, or change before a destination stack exists.
-Selection and provider egress are separate: attaching or checking a source
-does not grant external disclosure. The operator grants each provider access
-explicitly.
+Context is ship-owned and survives browser restarts and agent reloads. It can
+be scoped to a stack, card, capture, or change before a destination stack
+exists. Selection and provider egress are separate: attaching or checking a
+source does not grant external disclosure. The operator grants each provider
+access explicitly.
 
 The browser accepts four source kinds:
 
 - **Note**: pasted facts, constraints, examples, or background.
 - **Ship file**: a text-compatible file, directory, or whole desk from any desk on this ship, or a file another ship has shared. The picker loads the selected desk's file list on its own; type to fuzzy-filter, and results rank as you type with no extra requests. The first result attaches the whole desk; directory entries appear above files.
 - **Local file**: a browser-selected text file up to 128 KB.
-- **Web page**: a public HTTP or HTTPS page fetched by the paired bridge.
+- **Web page**: a public HTTP or HTTPS page fetched by this ship under the destination policy below.
 
 Directory and desk acquisition returns bounded text or **listing-only**
 coverage. A listing describes paths, not their file contents. Attach a listed
@@ -287,17 +296,24 @@ without JavaScript through its Load files control and server-side filter.
 
 **Remove** beside a source excludes it from future prompts.
 
-Notes, local files, and Clay files are stored immediately. Web sources enter a
-durable queue; the bridge rejects private-network destinations, follows only
-validated redirects, extracts bounded readable text, and writes the normalized
-snapshot back to `%seer`. Removing a source archives it from future prompts
-without breaking the context snapshot selected by an already-queued request.
-Claims and completions are leased and generation-fenced. A late completion
-cannot reactivate an archived source. Deleting a stack archives sources by
-exact owner/stack identity, leaving other owners and stacks untouched.
-Settings can archive sources whose cards, stacks, or drafts were removed and
-collect unreferenced copies older than 30 days. Retained request/provenance
-dependencies prevent blind deletion.
+Notes, local files, and Clay files are stored immediately. Web sources are
+fetched by this ship as soon as they are attached, at most two at a time,
+under a public-host policy: `http` or `https` only, no userinfo, no IP
+literals, no `localhost`, `.local`, `.internal`, `.onion`, or single-label
+hosts, ports 80 and 443 only, URLs of at most 4,096 bytes, at most five
+redirects (each re-checked against the same policy), a 20-second deadline,
+and a 131,072-byte cap. The ship does not resolve names itself, so a public
+hostname that resolves to a private address is not rejected; this DNS-level
+check is an accepted residual risk of ship-native fetching. Failures are
+recorded as named reasons such as `private-host`, `redirect-limit`,
+`source-too-large`, or `timeout`, and Inbox offers a retry.
+Removing a source archives it from future prompts without breaking the
+context snapshot selected by an already-queued request. A late response for
+a cancelled or superseded attempt is dropped. Deleting a stack archives
+sources by exact owner/stack identity, leaving other owners and stacks
+untouched. Settings can archive sources whose cards, stacks, or drafts were
+removed and collect unreferenced copies older than 30 days. Retained
+request/provenance dependencies prevent blind deletion.
 Archived sources remain inspectable through `seer/list-context-sources`:
 `status: archived` is separate from `acquisition_status`, and `active: false`
 keeps them out of acquisition queues. Their snapshot references remain usable
@@ -305,12 +321,16 @@ until the applicable retention or purge policy removes the body.
 
 Packets disclose the exact provider-bound material and distinct missing,
 failed, stale, excluded, listing-only, purged, and budget-omitted states.
-UTF-8 excerpts expose exact ranges. Citation validation checks selected
-snapshots, boundaries, and quoted bytes—not whether the quotation entails a
-generated claim. Identical scoped bodies are stored once across observations.
-Canonical packets use `prompt_version: 2`; input and output schemas remain at
-version 2. The frozen work record carries the packet's prompt version, and the
-bridge rejects prompt version 1 even when its packet and work versions agree.
+UTF-8 excerpts expose exact ranges. A model's byte offsets are advisory:
+before validation, a citation whose range does not hold its quote is moved
+to the occurrence of that quote nearest the claimed start, when the
+snapshot contains it. Citation validation then checks selected snapshots,
+boundaries, and quoted bytes—not whether the quotation entails a generated
+claim. `seer/get-evidence-snapshot` reads past the end of a body to its
+end and reports the included range. Identical scoped bodies are stored once
+across observations. Canonical packets use `prompt_version: 2` and schema
+version 3. The frozen work record carries the packet's prompt and schema
+versions.
 
 ### Share ship files with other ships
 
@@ -360,7 +380,7 @@ link. Do not stage duplicate proposals or create a second capture for the plan.
 
 ### MCP tools
 
-Seer publishes 48 tools. Names below have the `seer/` prefix; inspect the
+Seer publishes 27 tools. Names below have the `seer/` prefix; inspect the
 installed definitions for required fields and exact limits.
 
 | Surface | Tools | Authority |
@@ -369,15 +389,13 @@ installed definitions for required fields and exact limits.
 | Durable work | `list-captures`, `list-card-questions`, `list-change-requests` | Read-only |
 | Evidence | `list-context-sources`, `get-context-packet`, `get-evidence-snapshot` | Read-only |
 | Learning/effects | `lookup-learning`, `preview-proposal`, `preview-change`, `get-operation-result` | Read-only |
-| Accounts/catalog | `list-assistant-models`, `list-login-requests` | Read-only; no login codes |
+| Accounts/catalog | `list-assistant-models`, `list-login-requests` | Read-only; no credentials or login codes |
 | Capture/planning | `begin-capture`, `prepare-capture`, `stage-card`, `ask-card`, `request-change`, `propose-change` | Planner; no approval or implicit provider authorization |
 | Source lifecycle | `attach-context-source`, `refresh-context-source`, `archive-context-source`, `rename-context-source` | Planner; no implicit egress grant |
-| Source acquisition | `claim-context-source`, `finish-context-source`, `fail-context-source` | Paired worker |
-| Card execution | `claim-card-question`, `answer-card-question`, `apply-card-edit`, `fail-card-question` | Paired worker; edits require the prior operator grant |
-| Change execution | `claim-change`, `prepare-change-packet`, `finish-change`, `fail-change` | Paired worker |
-| Account execution | `claim-login`, `post-login-challenge`, `consume-login-code`, `finish-login`, `fail-login` | Paired worker |
-| Execution control | `heartbeat-work`, `checkpoint-work`, `recover-work`, `replace-assistant-models` | Paired worker |
-| Proof nonce | `issue-bridge-nonce` | Nonce issuance is not worker authority |
+
+Provider execution, sign-in, catalog refresh, and cancellation have no MCP
+tools: the ship performs them from its own state, and the browser holds the
+controls.
 
 Ordered plan operations require all nine documented fields; unused text is
 empty. Include one precondition per target and card parent. Target
@@ -430,12 +448,13 @@ Set `URBIT_MCP_COOKIE` to the complete authenticated Cookie header. Keep the val
 
 Do not store the Cookie header in the repository. You can also run `claude mcp add --transport http --scope user` with the same URL and header.
 
-### Schema-2 cutover
+### Schema-3 cutover
 
-Stop the bridge before upgrading. For this pre-release state-shape cutover,
-follow the explicit [nuke/commit/revive procedure](#develop-seer); there is no
-migration chain or fallback wire format. Re-pair the fresh agent, then import
-both definitions:
+Schema 3 moves provider execution onto the ship; the schema-2 local bridge and
+its worker tools no longer exist. Stop any such process still running against
+the ship before upgrading. For this pre-release state-shape cutover, follow
+the explicit [nuke/commit/revive procedure](#develop-seer); there is no
+migration chain or fallback wire format. Then import both definitions:
 
 ```text
 mcp/poke-our-agent {"agent":"mcp-server","mark":"import-tools","data":"'seer'"}
@@ -444,8 +463,7 @@ mcp/poke-our-agent {"agent":"mcp-server","mark":"import-prompts","data":"'seer'"
 
 The installed MCP server **merges definitions by name**. Reimporting alone
 does not remove obsolete tools. The canary detects this mixed catalogue.
-On a development ship, reset the MCP server if stale direct/operator tools
-remain:
+On a development ship, reset the MCP server if stale tools remain:
 
 ```hoon
 |nuke %mcp-server, =hard &
@@ -454,8 +472,9 @@ remain:
 
 **This discards MCP-server state, including definitions from every desk.**
 Reimport tools and prompts for Seer and every other desk you use, restore any
-other required MCP configuration, reconnect clients, and rerun the canary
-before restarting the bridge. Do not bypass the failure with cached tools.
+other required MCP configuration, reconnect clients, and rerun the canary.
+Do not bypass the failure with cached tools. Sign in to each provider again
+from Settings; accounts do not survive the `%seer` nuke.
 
 The MCP definitions are in `desk/lib/seer-mcp.hoon`. Tool threads use typed Gall pokes for changes and scries for reads.
 
@@ -469,30 +488,25 @@ A library request can use these operations:
 - Create, edit, or delete a card.
 - Add a card to the review queue.
 
-The bridge reads bounded metadata and selected details, then freezes a
-source-authored packet before dispatch. Alternatively, a planner can submit a
-complete `seer/propose-change` without any provider invocation.
-The frozen library input retains the worker's `read_report` alongside
-source-authored `source_coverage` counts. Invalid or expired scans stop before
-dispatch. Partial discovery remains explicit; it is not proof that no relevant
-card exists, and a report cannot claim completeness over unobserved entities.
-Preparation accepts only this ship's stack/card observations. Cached remote
-references are read-only: the bridge excludes them from preparation and records
-`remote-read-only` omissions in `read_report`, rather than supplying foreign
-fences or treating the remote material as absent.
-
-Library reads share a 98,304-byte total budget and a 40-MCP-call ceiling.
-Stack discovery follows at most four metadata pages. Up to six exact stack
-metadata lookups share a 65,536-byte allowance with those discovery pages.
-Card metadata and selected detail reads also count against the total byte/call
-budgets. Selection remains limited to six stacks, 24 cards overall, and eight
-cards per stack. Hitting a discovery, selection, byte, or call cap leaves
-explicit omissions; it does not authorize a broader scan or prove completeness.
+The ship prepares the request itself: it selects up to six stacks and 24 cards
+(eight per stack) from this ship's own library by normalized-token overlap
+between the prompt and stack/card titles, with stable ID order as the
+tie-break and a 98,304-byte observation budget, then freezes that observation
+with the evidence packet before dispatch. Alternatively, a planner can submit
+a complete `seer/propose-change` without any provider invocation.
+Subscribed remote stacks are read-only and appear in the packet as
+`remote-read-only` omissions; the stack, card, and byte caps produce explicit
+`stack-limit`, `card-limit`, and `byte-limit` omissions. Partial observation
+is not proof that no relevant card exists.
 
 Plans are limited to 64 operations, 131,072 operation-text bytes, and 256
-affected entities. Preview discloses before/after text and review effects.
-Approval compares exact content/incarnation fences and the plan digest;
-a conflict changes no library entities and requires a newly reviewed plan.
+affected entities. A `create-card` operation without a `card_id` receives one
+derived from its title (lowercase letters and digits, runs of anything else
+become one dash, at most 48 characters); an existing card with that id is a
+validation conflict, not an overwrite. Preview discloses before/after text
+and review effects. Approval compares exact content/incarnation fences and
+the plan digest; a conflict changes no library entities and requires a newly
+reviewed plan.
 
 A request for **Seer itself** produces an implementation brief. The brief covers the interface, state, actions, MCP contract, development resets, security, tests, and acceptance criteria.
 
@@ -504,189 +518,119 @@ Each card has an **Assistant** panel. Use **Ask** to request an explanation.
 
 Use **Edit** to revise an owned card. Subscribed cards support **Ask** only.
 
-Select a model with one of these OMP roles:
-
-- **Fast** uses the `smol` role.
-- **Balanced** uses the `default` role.
-- **Deep** uses the `slow` role.
-
-Each option shows its full OMP selector, such as `openai-codex/gpt-5.6-terra`. Seer stores the selected profile with the request.
+Select a model. Seer groups each signed-in provider's catalog into **Fast**,
+**Balanced**, and **Deep** by model name; each option shows its exact
+selector, such as `openai-codex/gpt-5.6-terra`. Seer stores the selected
+profile with the request.
 
 An edit response must contain the complete title, front, back, and edit summary. Seer applies all fields in one state change.
 
 Seer rejects an edit if the card's content revision or incarnation changed, including A→B→A. Review-only changes do not invalidate the editorial grant. The retained result remains a generated claim, not primary evidence.
 
-### Run the local bridge
+## Provider accounts
 
-Account credentials stay in the local Codex/Claude account files, not on the
-ship. The bridge checks local authentication, replaces the exact model
-catalogue atomically, polls bounded work queues, acquires source-time leases,
-and reconciles every protected write through source receipts.
+Seer signs in to Codex (ChatGPT) and Claude from the ship. Credentials live in
+`%seer` state, never in the card library, and each ship signs in separately: a
+moon and its planet do not share an account. Settings shows each provider's
+method, account label, expiry, catalog freshness, renewal state, and named
+failure, never token material. Planner MCP tools cannot create, read, or
+select an account.
 
-**Provider generation currently fails closed for the inspected CLIs:**
+### Sign in
 
-| Inspected CLI | Blocker |
-| --- | --- |
-| Codex 0.151.0 | `codex_no_tools_envelope_unavailable`: read-only sandboxing does not remove every tool. |
-| Claude Code 2.1.257 | `claude_account_auth_isolation_unavailable`: account-file authentication cannot guarantee exclusion of managed hooks/configuration. |
+- **Codex** uses the device flow. In Settings, choose **Sign in**; the panel
+  shows a link to `https://auth.openai.com/codex/device`, a one-time code, and
+  its expiry. Open the link, enter the code, approve access, and the panel
+  updates on its own once the ship's polling sees the confirmation. Device
+  code sign-in must be enabled under Security in the ChatGPT account.
+- **Claude** uses the paste-back flow. Choose **Sign in**, open the authorize
+  link, approve access, and paste the `code#state` value shown by the callback
+  page into the panel's code field. The ship verifies the state and exchanges
+  the code in the same event; the pasted code and verifier are cleared whether
+  or not the exchange succeeds.
+- **Paste credentials instead** accepts the contents of `~/.codex/auth.json`
+  or `~/.claude/.credentials.json` from a computer that is already signed in,
+  the value printed by `claude setup-token`, or a provider API key. The method
+  (`oauth`, `setup-token`, or `api-key`) is part of the account record and of
+  every catalog observation; a key never silently stands in for an OAuth
+  session or the reverse.
 
-Authentication or catalogue presence is not proof of a supported execution
-envelope. `PROVIDER_UNSUPPORTED` stops before a model prompt/invocation;
-there is no sandbox-only fallback, substitute model, API-key fallback, or
-successful truncated answer. Manual typed plans and human review remain
-usable. A safe, verified CLI envelope is required before generation can run.
+Sign-in requests expire after 15 minutes. A failed request names its reason
+(`expired`, `device-auth-disabled`, `denied`, `unreachable`,
+`invalid-login-challenge`) and offers **Try again**. **Sign out on this ship**
+removes the account from this ship only; the provider account is unchanged.
+**Refresh model list** re-reads the provider's catalog (Codex from
+`chatgpt.com/backend-api/codex/models`, Claude from
+`api.anthropic.com/v1/models`) and replaces it in one state change.
 
-Provider children receive an environment allowlist containing only executable,
-locale, and account-directory settings—not ship cookies, bridge secrets,
-API keys, proxies, or shell/Node injection variables. The bounded process
-supervisor enforces deadlines, stdout/stderr/stdin limits, cancellation, and
-POSIX process-group cleanup. A process group is not an OS security sandbox.
-
-Work records expose attempt, lease, frozen input/model/schema revisions,
-checkpoint, invocation/output consumption, and stop reason. An unavailable
-usage or billed-cost measurement stays unknown. Completed proposals, stored
-answers, and committed library effects have separate dispositions.
-
-Settings has provider-specific sign-in controls. Sign-in is a separate
-interactive flow; one-shot paste-back codes are cleared on consumption and
-never returned by ordinary read tools. A lost code-consumption reply is not
-retried or reconstructed.
-
-Terminal login remains available as a recovery path on the bridge host:
-
-```bash
-codex login --device-auth
-codex login status
-claude auth login --claudeai
-claude auth status
-```
-
-On NixOS, install Claude Code from nixpkgs:
-
-```bash
-NIXPKGS_ALLOW_UNFREE=1 nix profile install --impure nixpkgs#claude-code
-```
-
-Copy `bridge/ai-bridge.example.json` to `~/.config/seer/ai-bridge.json`. Set a command path only when the command is not on `PATH`.
-`mcpTimeoutMs` bounds each ship call (default 30,000 ms);
-`contextMaxBytes` bounds each source (131,072 bytes), and
-`contextFetchTimeoutMs` bounds each fetch (20,000 ms). Process defaults are
-180,000 ms, 65,536 stdout bytes, 16,384 stderr bytes, and 262,144 stdin bytes;
-the source work budget or a particular operation may impose a tighter bound.
-Codex model-catalog discovery has a separate 1,048,576-byte stdout limit;
-that metadata allowance does not increase provider-generation output bounds.
-
-Pair the bridge with Seer before enabling frontend sign-in. Generate a
-high-entropy shared secret on the bridge host:
-
-```bash
-openssl rand -hex 32
-```
-
-Copy the output into the local ship Dojo and the bridge configuration:
+The same actions are available from the Dojo:
 
 ```hoon
-:seer &noun [%set-bridge-capability 'PASTE_THE_GENERATED_VALUE']
+:seer &noun [%import-account %codex 'PASTE']
+:seer &noun [%clear-account %codex]
+:seer &noun [%refresh-catalog %codex]
 ```
 
-Set the same value as `bridgeSecret` in `~/.config/seer/ai-bridge.json`, or
-export it as `SEER_BRIDGE_SECRET`. The secret is separate from the ship MCP
-cookie and stays between the local Dojo and the bridge configuration. Before
-each protected mutation, Seer issues a short-lived nonce; the bridge sends an
-HMAC-SHA256 proof in the `seer-bridge-v2` domain covering the schema epoch,
-operation identity, action, request, worker, attempt, lease, nonce, and every
-mutable field. The source consumes the nonce atomically. One-shot login
-codes require a signed consume operation. Rotating the secret also fences
-old attempts; it does not authorize replay of uncertain external execution.
+### Renewal
 
-Start the bridge:
+OAuth accounts renew on use, never by idle polling. When pending work needs an
+account whose access token expires within five minutes, that work waits, one
+refresh is issued with a 30-second deadline, and both tokens rotate in the
+event that releases the waiting work. Only one refresh is in flight per
+provider. A `400`, `401`, or `403` answer is terminal: Settings says the ship
+can no longer renew the sign-in, and you sign in again. Other failures set a
+one-minute cooldown. Signing out cancels an in-flight renewal.
 
-```bash
-node bridge/seer-ai-bridge.mjs
-```
+Importing a credential file copies its tokens; it does not share them. Once
+the ship renews an imported OAuth account, the provider has rotated the
+refresh token and the copy in `~/.codex/auth.json` or
+`~/.claude/.credentials.json` no longer renews. Sign in to the CLI again on
+that machine, or sign the ship in through its own flow instead of importing.
 
-The bridge reads the Cookie header from `~/.codex/config.toml` by default. You can also set `SEER_MCP_COOKIE`.
+### What leaves the ship
 
-Run `bridge/install-bridge.sh` to render `bridge/seer-ai-bridge.service` and
-`bridge/seer-ai-bridge@.service` with this checkout's absolute path and
-install them under `~/.config/systemd/user/`, then run
-`systemctl --user enable --now seer-ai-bridge`. Put `SEER_BRIDGE_SECRET` and
-`SEER_MCP_COOKIE` in `~/.config/seer/ai-bridge.env` (loaded via `EnvironmentFile=`)
-rather than editing the unit.
+A provider request carries exactly the frozen packet shown in Inbox — its
+`canonical_prompt` and the selected model — and nothing else from the
+library. Codex requests go to `chatgpt.com/backend-api/codex/responses` with
+`Authorization`, `chatgpt-account-id` (OAuth accounts), and the
+`originator`/`User-Agent` values the Codex client sends. Claude requests go
+to `api.anthropic.com/v1/messages` with `anthropic-version`, the account's
+authorization header (`x-api-key` for API keys), and
+`anthropic-beta: oauth-2025-04-20` for OAuth and setup-token accounts.
+Request bodies never contain a `tools` field, so the provider cannot call
+back into the ship.
 
-Each bridge instance serves exactly one ship: the `mcpUrl` in its config.
-A sign-in requested on a ship no bridge serves stays queued; the Settings
-panel says so. To serve another ship on the same computer, such as a moon,
-write `~/.config/seer/ai-bridge-NAME.json` with that ship's `mcpUrl` and a
-secret paired on that ship, optionally `~/.config/seer/ai-bridge-NAME.env`,
-and run `systemctl --user enable --now seer-ai-bridge@NAME`. Provider
-credentials belong to the computer, not to a ship: when the provider CLI is
-already signed in, a sign-in request from another ship completes without a
-second authorization, and a sign-out on one ship signs the computer out.
+**Policy caveat.** The OAuth flows drive first-party client identities (the
+public Codex and Claude client IDs, with their compatibility headers) from
+third-party code, and provider terms may restrict that. Seer states the
+method it uses and does not disguise its requests beyond those headers. API
+keys are the policy-conservative alternative.
 
-Run the bridge tests:
+### Bounds
 
-```bash
-node --test bridge/seer-ai-bridge.test.mjs bridge/check-ship-alignment.test.mjs
-```
+- Provider requests have a 3-minute deadline and a 262,144-byte response cap;
+  a fired deadline cancels the request and fails the attempt as `timeout`
+  with effect `unknown`, because the provider may have run.
+- Stored answers and change artifacts are limited to 65,536 bytes.
+- One provider request runs at a time per provider; up to two web fetches run
+  concurrently; catalog refresh reads at most 1 MiB and never displaces
+  admitted work.
+- Sign-in and renewal exchanges are capped at 65,536 response bytes.
+
+Work records expose `attempt`, `execution`, `effect`, `deadline`,
+`checkpoint`, `redirects`, invocation/output consumption, `usage`, and
+`stop_reason`. `cost` stays unknown. Completed proposals, stored answers,
+and committed library effects have separate dispositions.
 
 ### Recovery
 
-The bridge does not requeue working jobs automatically at startup. It never
-steals an unexpired lease. Use the durable work/receipt view before an explicit
-recovery or cancellation:
-
-```bash
-node bridge/seer-ai-bridge.mjs --once
-node bridge/seer-ai-bridge.mjs --recover question REQUEST_ID
-node bridge/seer-ai-bridge.mjs --cancel question REQUEST_ID
-```
-
-Kinds are `question`, `change`, `context`, and `login`. Cancellation uses the
-authenticated native operator route and reconciles its receipt; it is not an
-advertised planner MCP write. A possible provider execution or consumed
-secret remains an unknown outcome until reconciled. A new human-authorized
-attempt is distinct from transport retry and may incur another charge.
-
-### Measured transport bounds
-
-Compared historical commit `d1f8093c3d49c5a2d7015b9ffbed121100b28cf6`
-with schema 2 on disposable ships running Vere 4.6/Zuse 408. Small fixture:
-one stack and one card. Large fixture: 101 stacks, 300 cards (200 in the
-focused stack), and 100 completed captures. Fixture creation/verification
-is excluded. Bytes are actual MCP HTTP response bodies, including the
-repeated text representation and JSON-RPC wrapper.
-
-| Observation | Historical small | Schema-2 small | Historical large | Schema-2 large |
-| --- | ---: | ---: | ---: | ---: |
-| Orientation calls | 5 | 1 | 5 | 1 |
-| Orientation bytes | 951 | 6,339 | 137,893 | 6,371 |
-| Focused read bytes, one call | 601 | 3,041 | 64,031 | 3,045 |
-| Unchanged focused resume bytes, one call | 601 | 1,651 | 64,031 | 1,655 |
-
-Historical orientation loaded stacks, captures, sources, questions, and
-changes; focused reads/repeats loaded the complete stack. Schema 2 uses
-`agent-context`, then exact `learning-context` detail and its watermark.
-It returns one selected card in both fixture sizes, preserving
-“What does π denote?” and “The ratio of a circle’s circumference to its
-diameter.” exactly. The small fixture has higher fixed protocol overhead;
-the large fixture no longer repeats unrelated history or card bodies.
-
-These transport fixtures have no open assistant work. A separate ready
-two-operation plan produced 4,283 structured orientation bytes. The canary
-therefore requests one orientation row with a 32,768-byte budget; its other
-bounded reads use 4,096 bytes. A valid oversized page is `limit-exceeded`,
-not evidence of an incompatible protocol.
-
-A separate retained-source fixture attached three identical 58,000-byte
-Unicode notes. Historical state retained 174,000 logical source-body bytes.
-Schema 2 retained one 58,000-byte blob and three immutable snapshots; all
-three expanded to the exact original bytes. These are body-storage counts,
-not total state, disk, or RSS measurements; metadata and database compression
-are excluded.
-
-No providers were invoked in this experiment. Token usage and billed cost
-were **not measured**, not inferred as zero. Regression scenarios separately
-verify scoped body deduplication, retention, exact evidence ranges, revision
-conflicts, and artifact reuse; transport savings do not establish improved
-learner outcomes.
+Because a Gall event either completes or leaves no trace, the only ambiguous
+window is a request that was sent and never answered. A running attempt whose
+deadline fires fails as `timeout`; provider work is then `unknown`, fetches
+are `none`. Inbox and Activity offer **Cancel** and **Retry** on the record
+itself. Cancellation issues `%cancel-request` and fences later responses; it
+cannot reverse an external side effect, so cancelled provider work is also
+`unknown` while a cancelled fetch is `none`. A retry is a new human-authorized
+attempt, distinct from transport retry, and may incur another charge. An
+agent reload keeps in-flight requests and timers, and re-checks every running
+attempt's deadline against `now`.

@@ -19,12 +19,6 @@
           back=@t
       ==
   ::
-      $:  %schedule-item
-          stak=@tas
-          item=@tas
-          scheduled=@da
-      ==
-  ::
       [%raise-item who=@p stak=@tas item=@tas]
       [%answered-item owner=@p stak=@tas item=@tas answer=recall-grade]
       [%review-stack who=@p stak=@tas]
@@ -44,7 +38,6 @@
           back=@t
       ==
   ::
-      [%read who=@p stak=@tas item=@tas]
       [%update-review ~]
   ::
       [%import who=@p stack=@tas]
@@ -104,15 +97,16 @@
       [%rename-context-source id=@tas label=@t]
       [%archive-orphan-contexts ~]
       [%remove-context-source id=@tas]
-      [%claim-context-source id=@tas worker=@t]
+  ::  system actions: applied by the ship itself from its own outbound
+  ::  request responses, never by a planner or a paired worker.
       $:  %finish-context-source
           id=@tas
-          worker=@t
+          attempt=@ud
           label=@t
           content=@t
           final-locator=@t
       ==
-      [%fail-context-source id=@tas worker=@t error=@t]
+      [%fail-context-source id=@tas attempt=@ud error=@tas]
       [%retry-context-source id=@tas]
   ::
       $:  %ask-card
@@ -127,19 +121,25 @@
           max-bytes=@ud
           excerpt-bytes=@ud
       ==
-      [%replace-assistant-models worker=@t profiles=(list assistant-model)]
-      [%claim-card-question id=@tas worker=@t]
-      [%answer-card-question id=@tas worker=@t response=@t citations=(list evidence-citation)]
+      [%replace-assistant-models provider=ai-provider origin=@t profiles=(list assistant-model)]
+      $:  %answer-card-question
+          id=@tas
+          attempt=@ud
+          response=@t
+          citations=(list evidence-citation)
+          usage=(unit @ud)
+      ==
       $:  %apply-card-edit
           id=@tas
-          worker=@t
+          attempt=@ud
           title=@t
           front=@t
           back=@t
           response=@t
           citations=(list evidence-citation)
+          usage=(unit @ud)
       ==
-      [%fail-card-question id=@tas worker=@t response=@t]
+      [%fail-card-question id=@tas attempt=@ud response=@tas]
       [%retry-card-question id=@tas]
       [%delete-card-question id=@tas]
       $:  %request-change
@@ -149,17 +149,7 @@
           prompt=@t
           start=?
       ==
-      [%claim-change id=@tas worker=@t]
       [%start-change id=@tas]
-      $:  %prepare-change-packet
-          id=@tas
-          worker=@t
-          observations=(list entity-precondition)
-          read-report=@t
-          selections=(list evidence-selection)
-          max-bytes=@ud
-          excerpt-bytes=@ud
-      ==
       $:  %propose-change
           id=@tas
           prompt=@t
@@ -169,48 +159,52 @@
       ==
       $:  %finish-change
           id=@tas
-          worker=@t
+          attempt=@ud
           summary=@t
           artifact=@t
           operations=(list state-operation)
           citations=(list evidence-citation)
+          usage=(unit @ud)
       ==
-      [%fail-change id=@tas worker=@t response=@t]
+      [%fail-change id=@tas attempt=@ud response=@tas]
       [%apply-change id=@tas digest=@ux]
       [%reject-change id=@tas]
       [%retry-change id=@tas]
       [%delete-change id=@tas]
+  ::  provider accounts and sign-in. the ship runs the device and
+  ::  paste-back flows itself and stores the resulting tokens.
       [%request-login id=@tas provider=ai-provider]
-      [%issue-bridge-nonce nonce=@t]
-      [%set-bridge-capability secret=@t]
-      [%claim-login id=@tas worker=@t]
       $:  %post-login-challenge
           id=@tas
-          worker=@t
+          attempt=@ud
           auth-url=@t
           user-code=@t
+          device-id=@t
+          interval=@ud
       ==
       [%submit-login-code id=@tas code=@t]
-      [%finish-login id=@tas worker=@t]
-      [%fail-login id=@tas worker=@t message=@t]
+      [%finish-login id=@tas attempt=@ud]
+      [%fail-login id=@tas attempt=@ud message=@tas]
       [%retry-login id=@tas]
       [%cancel-login id=@tas]
-      [%consume-login-code id=@tas worker=@t content-revision=@ud]
+      $:  %import-account
+          provider=ai-provider
+          method=account-method
+          access=@t
+          refresh=@t
+          account=@t
+          expires=(unit @da)
+          scopes=@t
+      ==
+      [%rotate-account provider=ai-provider serial=@ud access=@t refresh=@t expires=(unit @da)]
+      [%fail-renewal provider=ai-provider serial=@ud message=@tas terminal=?]
+      [%clear-account provider=ai-provider]
+      [%refresh-catalog provider=ai-provider]
       [%share-clay-context pax=path]
       [%unshare-clay-context pax=path]
       [%fetch-remote-manifest who=@p]
       [%refresh-context-source id=@tas]
-      $:  %bridge-action
-          worker=@t
-          nonce=@t
-          proof=@
-          attempt=@ud
-          lease=@ux
-          payload=*
-      ==
-      [%checkpoint-work work=entity-key worker=@t stage=work-checkpoint]
-      [%heartbeat-work work=entity-key worker=@t]
-      [%recover-work work=entity-key worker=@t]
+      [%dispatch-work work=entity-key]
       [%cancel-work work=entity-key]
   ==
 ::
@@ -260,11 +254,7 @@
   $:  attempt=@ud
       execution=$?(%queued %running %blocked %succeeded %failed %cancelled)
       effect=$?(%none %staged %committed %unknown)
-      worker=@t
-      lease-until=(unit @da)
       updated-at=@da
-      lease=@ux
-      secret-revision=@ud
       checkpoint=work-checkpoint
       deadline=(unit @da)
       provider=(unit ai-provider)
@@ -282,6 +272,7 @@
       max-output-bytes=@ud
       max-operations=@ud
       consumed-output-bytes=@ud
+      redirects=@ud
       usage=(unit @ud)
       cost=(unit @ud)
       stop-reason=(unit @tas)
@@ -315,7 +306,7 @@
       epoch=@da
       receipts=(map [epoch=@da operation=@t] operation-receipt)
       receipt-count=@ud
-      secret-revision=@ud
+      catalog-revision=@ud
       read-summaries=(map entity-key agent-read-summary)
       read-indexes=(map agent-read-scope agent-read-index)
       context-index=(map context-scope agent-read-index)
@@ -428,7 +419,7 @@
       status=operation-status
       reason=@tas
       effect=$?(%none %staged %committed %unknown)
-      authority=$?(%operator %planner %worker)
+      authority=$?(%operator %planner %system)
       work=(unit entity-key)
       attempt=(unit @ud)
       plan=(unit @ux)
@@ -480,7 +471,8 @@
   ==
 ::
 +$  provenance
-  $:  capture=@tas
+  $:  kind=?(%capture %plan)
+      capture=@tas
       source=@t
       rationale=@t
       created-by=@t
@@ -534,6 +526,40 @@
 ::
 +$  ai-provider  $?(%codex %claude)
 ::
+::  provider accounts live on this ship. a slot holds one method's
+::  credential; renewal rotates oauth tokens in place. token material
+::  never leaves agent state through any read surface.
+::
++$  account-method  $?(%oauth %setup-token %api-key)
++$  account-renewal
+  $:  active=(unit [serial=@ud deadline=@da])
+      serial=@ud
+      retry-at=@da
+      error=@t
+      terminal=?
+  ==
++$  provider-account
+  $:  method=account-method
+      access=@t
+      refresh=@t
+      account=@t
+      expires=(unit @da)
+      scopes=@t
+      observed-at=@da
+      renewal=account-renewal
+  ==
+::  what a read surface may show about an account: never the tokens.
++$  account-view
+  $:  method=account-method
+      account=@t
+      expires=(unit @da)
+      scopes=@t
+      observed-at=@da
+      renewing=?
+      renewal-error=@t
+      renewal-terminal=?
+  ==
+::
 +$  omp-role  $?(%smol %default %slow)
 ::
 ::  omp-style profiles keep the human choice (role), exact provider and
@@ -548,7 +574,7 @@
       model=@t
       label=@t
       description=@t
-      worker=@t
+      origin=@t
       registered-at=@da
   ==
 ::
@@ -579,7 +605,7 @@
       generation=@ud
       status=context-status
       error=@t
-      worker=@t
+      attempt=@ud
       active=?
       egress=(set ai-provider)
       policy-revision=@ud
@@ -607,7 +633,7 @@
       citations=(list evidence-citation)
       created-at=@da
       status=question-status
-      worker=@t
+      attempt=@ud
       response=@t
       result-title=@t
       result-front=@t
@@ -657,7 +683,7 @@
       citations=(list evidence-citation)
       created-at=@da
       status=change-status
-      worker=@t
+      attempt=@ud
       summary=@t
       operations=(list state-operation)
       artifact=@t
@@ -674,6 +700,12 @@
 ::
 +$  login-status  $?(%pending %working %challenge %done %failed)
 ::
+::  provider sign-in runs on this ship. a login-request carries the
+::  public half of the handshake (verification url and user code) plus
+::  the private half the ship needs to finish it (device id, pkce
+::  verifier, expected state). private fields and pasted codes are
+::  cleared the moment a request settles and never appear in reads.
+::
 +$  login-request
   $:  id=@tas
       provider=ai-provider
@@ -682,7 +714,13 @@
       user-code=@t
       pasted-code=@t
       message=@t
-      worker=@t
+      device-id=@t
+      verifier=@t
+      nonce=@t
+      interval=@ud
+      inflight=(unit @tas)
+      deadline=(unit @da)
+      attempt=@ud
       created-at=@da
       updated-at=@da
   ==
@@ -705,6 +743,7 @@
   $:  data=ai-state
       subscribed=(map [@p @tas] stack)
       logins=(map @tas login-request)
+      accounts=(map ai-provider account-view)
   ==
 ::  +stack-info: stack information
 ::

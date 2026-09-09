@@ -122,7 +122,7 @@
           desks=(list @tas)
           control=agent-state
           learning=learning-state
-          paired=?
+          accounts=(map ai-provider account-view)
       ==
   ^-  manx
   =/  stack-count=@ud  (lent ~(tap by stacks))
@@ -217,7 +217,7 @@
     |=  value=json
     ^-  ?
     ?~  value  %.n
-    ?.  ?=(%o -.value)  %.n
+    ?.  ?=([%o *] value)  %.n
     =/  complete  (~(get by p.value) 'complete')
     ?~  complete  %.n
     =(u.complete [%b %.y])
@@ -225,7 +225,7 @@
   ++  json-field
     |=  [value=json key=@t]
     ^-  json
-    ?.  ?=(%o -.value)  ~
+    ?.  ?=([%o *] value)  ~
     (fall (~(get by p.value) key) ~)
   ::
   ++  display-time
@@ -413,11 +413,11 @@
     ^-  manx
     =/  projection
       %:  lookup-artifacts:memory
-        scope  objective  provider  16  32.768
+        scope  objective  provider  16  32.768  ['' '' '']  ~
         contexts  evidence  versions.control  learning
       ==
     =/  rows  (json-field projection 'artifacts')
-    ?.  ?=(%a -.rows)  ;span.hidden;
+    ?.  ?=([%a *] rows)  ;span.hidden;
     ?~  p.rows  ;span.hidden;
     ;details.reveal
       ;summary: Previous answers and decisions
@@ -720,13 +720,12 @@
       ;summary: Latest assistant task
       ;div.disclosure-body
         ;p: Attempt {<attempt.work>} · {(trip execution.work)} · {(trip checkpoint.work)}
-        ;p: Bridge worker: {(trip worker.work)}
         ;p: Model: {(trip model-id.work)}
         ;p: Calls: {<invocations.work>} of {<max-invocations.work>}
         ;p: Input: {<input-bytes.work>} of {<max-input-bytes.work>} bytes
         ;p: Output: {<consumed-output-bytes.work>} of {<max-output-bytes.work>} bytes
         ;p: Deadline: {?~(deadline.work "Not started" (display-time u.deadline.work))}
-        ;p: Worker lease: {?~(lease-until.work "Not assigned" (display-time u.lease-until.work))}
+        ;p: Redirects followed: {<redirects.work>}
         ;p: Reported usage: {?~(usage.work "Unavailable" (scow %ud u.usage.work))}
         ;p: Reported cost: {?~(cost.work "Unavailable" (scow %ud u.cost.work))}
         ;p: Stop code: {?~(stop-reason.work "None" (trip u.stop-reason.work))}
@@ -799,7 +798,7 @@
               ;span: Public web address
               ;input(name "web-locator", type "url", maxlength "2048");
             ==
-            ;p.muted: The bridge downloads the page and saves a copy on your ship.
+            ;p.muted: This ship fetches readable text from the page and stores the snapshot.
           ==
           ;button(type "submit", data-context-submit ""): Attach source
         ==
@@ -4880,27 +4879,20 @@
   ++  login-panel
     |=  return=@t
     ^-  manx
-    =/  codex-request=(unit login-request)
-      %+  choose-login-request
-        (~(get by logins) %login-codex)
-      (~(get by logins) %logout-codex)
-    =/  claude-request=(unit login-request)
-      %+  choose-login-request
-        (~(get by logins) %login-claude)
-      (~(get by logins) %logout-claude)
+    =/  codex-request=(unit login-request)  (~(get by logins) %login-codex)
+    =/  claude-request=(unit login-request)  (~(get by logins) %login-claude)
     =/  polling=?
-      ?|  (login-request-polling %codex codex-request)
-          (login-request-polling %claude claude-request)
+      ?|  (login-request-polling codex-request)
+          (login-request-polling claude-request)
       ==
     ;section#login-panel.settings-section.login-panel
       ;div.form-head
         ;h2: Assistant accounts
         ;p.muted: Use your Codex or Claude Code account to ask questions and request changes.
-        ;+  ?:  paired  ;span.hidden;
-            ;p.proposal-conflict: The bridge is not paired with this ship, so sign-in and sign-out cannot start. Pair it first: see "Run the local bridge" in the Seer README.
+        ;+  ;span.hidden;
         ;details.technical(data-persist "login|how")
           ;summary: How sign-in works
-          ;p: Sign-in runs through the bridge, Seer's local AI connection on your computer. The bridge opens the provider's sign-in and keeps your credentials there. They are not stored in your card library.
+          ;p: This ship signs in to the provider itself and keeps the resulting credentials in its own state, never in your card library. It renews them as needed. Signing out here removes them from this ship only; the provider account is unchanged.
         ==
       ==
       ;div.account-list
@@ -4918,124 +4910,152 @@
             return=@t
         ==
     ^-  manx
-    =/  connected=?  (provider-connected provider)
-    ?~  request  (login-idle-card provider label return)
+    =/  account=(unit account-view)  (~(get by accounts) provider)
+    ?~  request  (login-idle-card provider label account return)
     =/  req=login-request  u.request
-    =/  logout=?  (logout-request req)
     ?-  status.req
         %pending
-      (login-waiting-card label req return logout)
+      (login-status-card label req return "Starting sign-in on this ship…")
         %working
       %:  login-status-card
         label
         req
         return
-        ?:  logout
-          "The bridge is signing out."
-        "The bridge is opening {label} sign-in. A link and code will appear here in a moment."
+        ?:  ?&(=('' user-code.req) =('' auth-url.req))
+          "Contacting the provider…"
+        "Completing sign-in…"
       ==
         %challenge
       (login-challenge-card label req return)
         %done
-      ::  the bridge confirms the request before it republishes its
-      ::  model catalog, so the account can lag its own confirmation.
-      ?:  logout
-        ?:  connected
-          (login-status-card label req return "Signed out. Updating the model list.")
-        (login-idle-card provider label return)
-      ?:  connected  (login-idle-card provider label return)
-      (login-status-card label req return "Signed in. Loading available models.")
+      (login-done-card provider label account req return)
         %failed
-      ?:  ?&(connected !logout)  (login-idle-card provider label return)
-      (login-failed-card label req return logout)
+      (login-failed-card label req return)
     ==
   ::
-  ::  No request in flight: every account action needs a paired bridge.
-  ++  login-idle-card
-    |=  [provider=ai-provider label=tape return=@t]
-    ^-  manx
-    =/  connected=?  (provider-connected provider)
-    ?.  paired  (login-unpaired-card provider label connected)
-    ?:  connected  (login-connected-card provider label)
-    (login-start-card provider label return)
-  ::
-  ++  logout-request
-    |=  req=login-request
-    ^-  ?
-    ?=(?(%logout-codex %logout-claude) id.req)
-  ::
+  ::  poll the panel while the ship is still running a sign-in.
   ++  login-request-polling
-    |=  [provider=ai-provider request=(unit login-request)]
-    ^-  ?
-    ?~  request  %.n
-    ?:  ?=(?(%pending %working %challenge) status.u.request)  %.y
-    ?.  =(%done status.u.request)  %.n
-    =/  connected=?  (provider-connected provider)
-    ?:((logout-request u.request) connected !connected)
-  ::
-  ++  login-start-card
-    |=  [provider=ai-provider label=tape return=@t]
-    ^-  manx
-    ;article.panel(data-key-item "login|{(trip provider)}", tabindex "-1")
-      ;form
-        =data-key-actions  ""
-        =method   "post"
-        =action   "/apps/seer/actions/request-login"
-        =hx-post  "/apps/seer/actions/request-login"
-        =hx-swap  "outerHTML"
-        ;input(type "hidden", name "provider", value (trip provider));
-        ;input(type "hidden", name "return", value (trip return));
-        ;button(type "submit"): Sign in to {label}
-      ==
-    ==
-  ::
-  ++  login-unpaired-card
-    |=  [provider=ai-provider label=tape connected=?]
-    ^-  manx
-    ;article.panel(data-key-item "login|{(trip provider)}", tabindex "-1")
-      ;h3: {label}
-      ;p.muted: {?:(connected "Signed in. Sign-out is available once the bridge is paired." "Available once the bridge is paired.")}
-    ==
-  ::
-  ++  login-request-active
     |=  request=(unit login-request)
     ^-  ?
     ?~  request  %.n
-    ?|  =(%pending status.u.request)
-        =(%working status.u.request)
-        =(%challenge status.u.request)
+    ?=(?(%pending %working %challenge) status.u.request)
+  ::
+  ++  account-method-label
+    |=  [provider=ai-provider method=account-method]
+    ^-  tape
+    ?-  method
+      %oauth        ?:(=(%codex provider) "ChatGPT/Codex sign-in" "Claude sign-in")
+      %setup-token  "Setup token"
+      %api-key      "API key"
     ==
   ::
-  ++  choose-login-request
-    |=  [login=(unit login-request) logout=(unit login-request)]
-    ^-  (unit login-request)
-    ?:  (login-request-active login)  login
-    ?:  (login-request-active logout)  logout
-    ?:  ?=(^ logout)  logout
-    login
+  ::  what the ship holds for a provider, never the tokens themselves.
+  ++  account-summary
+    |=  [provider=ai-provider account=(unit account-view)]
+    ^-  manx
+    ?~  account
+      ;p.muted: Not signed in on this ship.
+    =/  acct=account-view  u.account
+    =/  renewal-copy=tape
+      ?:  =('' renewal-error.acct)  ""
+      (trip (problem-description:seer `@tas`renewal-error.acct))
+    ;div.account-summary
+      ;p.muted: Signed in · {(account-method-label provider method.acct)}
+      ;+  ?:  =('' account.acct)  ;span.hidden;
+          ;p: {(trip account.acct)}
+      ;+  ?~  expires.acct  ;span.hidden;
+          ;p.muted: Expires {(display-time u.expires.acct)}
+      ;+  ?.  renewing.acct  ;span.hidden;
+          ;p.muted: Renewing…
+      ;+  ?:  =("" renewal-copy)  ;span.hidden;
+          ;p.proposal-conflict: {renewal-copy}
+      ;+  ?.  renewal-terminal.acct  ;span.hidden;
+          ;p.proposal-conflict: This ship can no longer renew the sign-in. Sign in again.
+    ==
   ::
-  ++  provider-connected
-    |=  wanted=ai-provider
-    ^-  ?
-    %+  lien  ~(val by models)
-    |=  profile=assistant-model
-    =(wanted provider.profile)
-  ::
-  ++  login-connected-card
-    |=  [provider=ai-provider label=tape]
+  ::  No request in flight: show the account and every action on it.
+  ++  login-idle-card
+    |=  [provider=ai-provider label=tape account=(unit account-view) return=@t]
     ^-  manx
     ;article.panel(data-key-item "login|{(trip provider)}", tabindex "-1")
       ;h3: {label}
-      ;p.muted: Signed in
+      ;+  (account-summary provider account)
+      ;+  (login-start-form provider label ?=(^ account) return)
+      ;+  ?~  account  ;span.hidden;
+          (logout-form provider)
+      ;+  ?~  account  ;span.hidden;
+          (refresh-catalog-form provider)
+      ;+  (import-account-details provider label)
+    ==
+  ::
+  ++  login-start-form
+    |=  [provider=ai-provider label=tape again=? return=@t]
+    ^-  manx
+    =/  text=tape  ?:(again "Sign in again" "Sign in to {label}")
+    ;form
+      =data-key-actions  ""
+      =method   "post"
+      =action   "/apps/seer/actions/request-login"
+      =hx-post  "/apps/seer/actions/request-login"
+      =hx-swap  "outerHTML"
+      ;input(type "hidden", name "provider", value (trip provider));
+      ;input(type "hidden", name "return", value (trip return));
+      ;button(type "submit"): {text}
+    ==
+  ::
+  ++  logout-form
+    |=  provider=ai-provider
+    ^-  manx
+    ;form
+      =data-key-actions  ""
+      =method   "post"
+      =action   "/apps/seer/actions/request-logout"
+      =hx-post  "/apps/seer/actions/request-logout"
+      =hx-swap  "outerHTML"
+      ;input(type "hidden", name "provider", value (trip provider));
+      ;input(type "hidden", name "return", value "settings");
+      ;button.secondary(type "submit"): Sign out on this ship
+    ==
+  ::
+  ++  refresh-catalog-form
+    |=  provider=ai-provider
+    ^-  manx
+    ;form
+      =data-key-actions  ""
+      =method   "post"
+      =action   "/apps/seer/actions/refresh-catalog"
+      =hx-post  "/apps/seer/actions/refresh-catalog"
+      =hx-swap  "outerHTML"
+      ;input(type "hidden", name "provider", value (trip provider));
+      ;input(type "hidden", name "return", value "settings");
+      ;button.secondary(type "submit"): Refresh model list
+    ==
+  ::
+  ++  import-account-details
+    |=  [provider=ai-provider label=tape]
+    ^-  manx
+    =/  file=tape
+      ?:  =(%codex provider)  "~/.codex/auth.json"
+      "~/.claude/.credentials.json"
+    =/  extra=tape
+      ?:  =(%codex provider)  ""
+      "the value printed by claude setup-token, "
+    ;details.technical(data-persist "login|{(trip provider)}|import")
+      ;summary: Paste credentials instead
+      ;p.muted: Already signed in to {label} on another computer? Paste the contents of {file}, {extra}or an API key. This ship stores them and uses them from now on.
       ;form
-        =data-key-actions  ""
+        =data-key-form  ""
         =method   "post"
-        =action   "/apps/seer/actions/request-logout"
-        =hx-post  "/apps/seer/actions/request-logout"
+        =action   "/apps/seer/actions/import-account"
+        =hx-post  "/apps/seer/actions/import-account"
         =hx-swap  "outerHTML"
         ;input(type "hidden", name "provider", value (trip provider));
         ;input(type "hidden", name "return", value "settings");
-        ;button.secondary(type "submit"): Sign out
+        ;label
+          ;span: Credentials
+          ;textarea(name "credentials", rows "4", required "", autocomplete "off", spellcheck "false");
+        ==
+        ;button.secondary(type "submit"): Save credentials on this ship
       ==
     ==
   ::
@@ -5053,57 +5073,61 @@
       ;button.secondary(type "submit"): {label}
     ==
   ::
-  ++  login-waiting-card
-    |=  [label=tape req=login-request return=@t logout=?]
-    ^-  manx
-    ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
-      ;h3: {label}
-      ;p.muted: {?:(logout "Waiting for the bridge to sign out." "Waiting for the bridge on your computer to pick this up.")}
-      ;p: The bridge must be running and paired with this ship. Once it picks this up, {?:(logout "this account will show as signed out." "a sign-in link and code will appear here.")} Keep this page open; it updates on its own.
-      ;details.technical(data-persist "login|{(trip id.req)}|stuck")
-        ;summary: If nothing happens
-        ;p: Start the bridge on the computer where it is installed: systemctl --user start seer-ai-bridge, or node bridge/seer-ai-bridge.mjs from the Seer checkout. Its log shows whether it can reach this ship. A bridge serves only the ship in its configuration.
-      ==
-      ;+  (login-cancel-form req return "Cancel")
-    ==
-  ::
   ++  login-status-card
     |=  [label=tape req=login-request return=@t message=tape]
     ^-  manx
     ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
       ;h3: {label}
       ;p.muted: {message}
-      ;p.muted: Keep this page open; it updates on its own.
+      ;p.muted: This page updates on its own.
       ;+  (login-cancel-form req return "Cancel")
     ==
   ::
+  ++  login-done-card
+    |=  $:  provider=ai-provider
+            label=tape
+            account=(unit account-view)
+            req=login-request
+            return=@t
+        ==
+    ^-  manx
+    ;article.panel(data-key-item "login|{(trip provider)}", tabindex "-1")
+      ;h3: {label}
+      ;p: Signed in on this ship.
+      ;+  (account-summary provider account)
+      ;+  ?~  account  ;span.hidden;
+          (logout-form provider)
+      ;+  ?~  account  ;span.hidden;
+          (refresh-catalog-form provider)
+      ;+  (login-cancel-form req return "Dismiss")
+    ==
+  ::
   ++  login-failure-tape
-    |=  [label=tape req=login-request logout=?]
+    |=  [label=tape req=login-request]
     ^-  tape
-    ?:  =('Cancelled.' message.req)  "Cancelled."
     =/  reason=@tas  `@tas`message.req
     ?+  reason
-        ?:(logout "Sign-out did not complete on the bridge." "Sign-in did not complete on the bridge.")
-      %login-failed
-        ?:  logout
-          "Sign-out did not complete. Try again."
-        "Sign-in did not complete. Try again, and finish every step on the provider's page."
-      %outcome-unknown
-        "Seer cannot confirm whether this finished. Check the bridge log, then try again if needed."
-      %provider-unavailable
-        "The {label} command is not available on the bridge computer. Install it there, then try again."
-      %provider-unsupported
-        "The bridge does not support {label}."
-      ?(%capability-rotated %epoch-retired)
-        "Bridge pairing or activity history changed before this request was picked up. Try again."
+        "Sign-in did not complete. Try again, and finish every step on the {label} page."
+      %cancelled
+        "Cancelled."
+      %expired
+        "The sign-in code expired before it was used. Start again."
+      %device-auth-disabled
+        "Device code sign-in is turned off for this ChatGPT account. Turn it on under Security in the ChatGPT settings, then try again."
+      %denied
+        "{label} rejected this sign-in. Start again and approve access when asked."
+      %unreachable
+        "{label} could not be reached from this ship. Check the ship's network connection, then try again."
+      %invalid-login-challenge
+        "{label} returned sign-in instructions this ship could not use. Try again."
     ==
   ::
   ++  login-failed-card
-    |=  [label=tape req=login-request return=@t logout=?]
+    |=  [label=tape req=login-request return=@t]
     ^-  manx
     ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
       ;h3: {label}
-      ;p.proposal-conflict: {(login-failure-tape label req logout)}
+      ;p.proposal-conflict: {(login-failure-tape label req)}
       ;form
         =data-key-actions  ""
         =method   "post"
@@ -5124,12 +5148,14 @@
       (claude-login-challenge label req return)
     (codex-login-challenge label req return)
   ::
+  ::  device flow: the person enters the code on the provider's page and
+  ::  the ship polls until the provider confirms.
   ++  codex-login-challenge
     |=  [label=tape req=login-request return=@t]
     ^-  manx
     ;article.panel(data-key-item "login|{(trip provider.req)}", tabindex "-1")
       ;h3: {label}
-      ;p.muted: Open the sign-in page, enter this one-time code, and approve access. This page updates when {label} confirms.
+      ;p.muted: Open the sign-in page, enter this one-time code, and approve access. This ship finishes the sign-in once {label} confirms.
       ;a.button.secondary
         =data-key-actions  ""
         =href    (trip auth-url.req)
@@ -5137,26 +5163,24 @@
         =rel     "noopener noreferrer"
         Open sign-in page
       ==
-      ;div.meta: {(trip user-code.req)}
-      ;form
-        =data-key-actions  ""
-        =method   "post"
-        =action   "/apps/seer/actions/cancel-login"
-        =hx-post  "/apps/seer/actions/cancel-login"
-        =hx-swap  "outerHTML"
-        ;input(type "hidden", name "login-id", value (trip id.req));
-        ;input(type "hidden", name "return", value (trip return));
-        ;button.secondary(type "submit"): Cancel
+      ;p.meta
+        ;code: {(trip user-code.req)}
       ==
+      ;+  ?~  deadline.req  ;span.hidden;
+          ;p.muted: This code expires at {(display-time u.deadline.req)}.
+      ;p.muted: This page updates on its own.
+      ;+  (login-cancel-form req return "Cancel")
     ==
   ::
+  ::  paste-back flow: the callback page shows code#state; the ship
+  ::  checks the state and exchanges the code itself.
   ++  claude-login-challenge
     |=  [label=tape req=login-request return=@t]
     ^-  manx
     =/  authorize-copy=tape
       ;:  weld
         "Open the sign-in page and authorize the account. "
-        "It shows a one-time code; paste it here to finish."
+        "The page that follows shows a one-time code; paste it here to finish."
       ==
     =/  code-attrs=mart
       :~  [%name "code"]
@@ -5191,16 +5215,7 @@
         ==
         ;button(type "submit"): Complete sign-in
       ==
-      ;form
-        =data-key-actions  ""
-        =method   "post"
-        =action   "/apps/seer/actions/cancel-login"
-        =hx-post  "/apps/seer/actions/cancel-login"
-        =hx-swap  "outerHTML"
-        ;input(type "hidden", name "login-id", value (trip id.req));
-        ;input(type "hidden", name "return", value (trip return));
-        ;button.secondary(type "submit"): Cancel
-      ==
+      ;+  (login-cancel-form req return "Cancel")
     ==
   ::
   ++  grade-form
@@ -6122,8 +6137,8 @@
       ==
     =/  web-copy=tape
       ;:  weld
-        "The paired bridge fetches readable text and stores "
-        "the snapshot on this ship."
+        "This ship fetches readable text from the page "
+        "and stores the snapshot."
       ==
     =/  form-body=manx
       ;form.context-form
@@ -6522,7 +6537,7 @@
     |=  status=context-status
     ^-  tape
     ?-  status
-      %pending  "Waiting for bridge"
+      %pending  "Queued"
       %working  "Fetching source…"
       %ready    "Ready"
       %failed   "Needs attention"

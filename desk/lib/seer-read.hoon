@@ -133,21 +133,41 @@
     :~  ['capabilities_revision' (numb:enjs:format seer-schema-version)]
         ['authority' s+'owner-trusted']
         ['scoped_delegation' b+%.n]
-        ['worker_authority' s+'paired-proof-seer-bridge-v2']
+        ['execution' s+'ship-native; outbound requests are the ship\'s own events, no paired worker']
         ['mutation_receipts' b+%.y]
-        ['leased_execution' b+%.y]
         ['atomic_catalog_replacement' b+%.y]
         ['source_authored_packets' b+%.y]
         ['atomic_plan_preview' b+%.y]
         ['learning_lookup' b+%.y]
         ['automatic_truth_promotion' b+%.n]
-        ['provider_execution' s+'Runtime capability must be checked; catalog presence is not proof of supported isolation.']
+        ['provider_execution' s+'Requests are sent by this ship with no tools; a signed-in account in Settings is required.']
         ['receipt_retention' (numb:enjs:format 4.096)]
-        ['mutation_identity' s+'schema_version=2, idempotency_epoch, operation_id']
-        ['recovery_policy' s+'Source-time lease expiry only; unknown external outcome requires explicit new authorization.']
+        ['mutation_identity' s+'schema_version=3, idempotency_epoch, operation_id']
+        ['recovery_policy' s+'Deadline expiry fails the attempt; unknown external outcome requires explicit new authorization.']
         ['metadata_first' b+%.y]
         ['bounded_reads' b+%.y]
         ['cursor_policy' s+'scope-revision-bound; refresh explicitly after snapshot-expired']
+        :-  'operations'
+        %-  pairs:enjs:format
+        :~  :-  'planner'
+            :-  %a
+            %+  turn
+              ^-  (list @t)
+              :~  'seer/begin-capture'  'seer/prepare-capture'  'seer/stage-card'
+                  'seer/ask-card'  'seer/request-change'  'seer/propose-change'
+                  'seer/attach-context-source'  'seer/refresh-context-source'
+                  'seer/archive-context-source'  'seer/rename-context-source'
+              ==
+            |=(name=@t s+name)
+            :-  'operator'
+            :-  %a
+            %+  turn
+              ^-  (list @t)
+              :~  '/apps/seer/inbox'  '/apps/seer/settings'  '/apps/seer/activity'
+                  '/apps/seer/review'
+              ==
+            |=(name=@t s+name)
+        ==
         :-  'navigation'
         %-  pairs:enjs:format
         :~  ['library' s+'seer/list-stacks']
@@ -224,11 +244,18 @@
           ~[%codex %claude]
         |=  provider=ai-provider
         =/  idx  (count-at [%model ~ ~ ~ `provider])
+        =/  account  (~(get by accounts.view) provider)
         %-  pairs:enjs:format
         :~  ['provider' s+provider]
             ['catalog_models' (numb:enjs:format total.idx)]
             ['catalog_observed_at' ?:(=(0 revision.idx) ~ s+(scot %da updated-at.idx))]
-            ['authentication' s+'not-observed']
+            ['signed_in' b+?=(^ account)]
+            ['method' ?~(account ~ s+method.u.account)]
+            ['account' ?~(account ~ s+account.u.account)]
+            ['expires_at' ?~(account ~ ?~(expires.u.account ~ s+(scot %da u.expires.u.account)))]
+            ['renewing' ?~(account ~ b+renewing.u.account)]
+            ['renewal_error' ?~(account ~ s+renewal-error.u.account)]
+            ['renewal_terminal' ?~(account ~ b+renewal-terminal.u.account)]
         ==
     ==
   ++  fits
@@ -314,15 +341,11 @@
     :~  ['attempt' (numb:enjs:format attempt.work)]
         ['execution' s+execution.work]
         ['effect' s+effect.work]
-        ['worker' s+worker.work]
-        ['lease' s+(scot %ux lease.work)]
-        ['lease_until' (maybe-date-json:mcp lease-until.work)]
-        ['lease_until_ms' (epoch-milliseconds lease-until.work)]
         ['deadline' (maybe-date-json:mcp deadline.work)]
         ['deadline_ms' (epoch-milliseconds deadline.work)]
         ['updated_at' s+(scot %da updated-at.work)]
         ['checkpoint' s+checkpoint.work]
-        ['secret_revision' (numb:enjs:format secret-revision.work)]
+        ['redirects' (numb:enjs:format redirects.work)]
         ['provider' ?~(provider.work ~ s+u.provider.work)]
         ['model_id' s+model-id.work]
         ['model_revision' (numb:enjs:format model-revision.work)]
@@ -353,12 +376,11 @@
     |=  key=entity-key
     ^-  (list @t)
     =/  work  (~(get by jobs.control) key)
+    =/  page  ?:(=(%login kind.key) '/apps/seer/settings' '/apps/seer/inbox')
     ?:  ?&(?=(^ work) =(%running execution.u.work))
-      ?:  ?&(?=(^ lease-until.u.work) (lte u.lease-until.u.work now))
-        ~['seer/recover-work' 'seer/cancel-work']
-      ~['seer/checkpoint-work' 'seer/heartbeat-work' 'seer/cancel-work']
+      ~[page]
     ?:  ?&(?=(^ work) =(%unknown effect.u.work))
-      ~['seer/cancel-work' '/apps/seer/review']
+      ~[page '/apps/seer/activity']
     ?+  kind.key  ~
       %stack     ~['seer/get-stack']
       %card      ~['seer/learning-context' '/apps/seer/review']
@@ -367,25 +389,21 @@
       %context
         =/  job  (~(got by contexts.data.view) id.key)
         ?.  active.job  ~
-        ?:  =(%failed status.job)  ~['/apps/seer/review']
-        ?:  ?&(=(%pending status.job) =(%web kind.job))  ~['seer/claim-context-source']
+        ?:  =(%failed status.job)  ~['seer/refresh-context-source' '/apps/seer/inbox']
         ~
       %question
         =/  job  (~(got by questions.data.view) id.key)
-        ?:  =(%pending status.job)  ~['seer/claim-card-question']
-        ?:  =(%failed status.job)  ~['/apps/seer/review']
+        ?:  =(%failed status.job)  ~['/apps/seer/inbox']
+        ?:  =(%answered status.job)  ~['seer/learning-context']
         ~
       %change
         =/  job  (~(got by changes.data.view) id.key)
-        ?:  =(%draft status.job)  ~['seer/attach-context-source' 'seer/start-change']
-        ?:  =(%pending status.job)  ~['seer/claim-change']
-        ?:  =(%ready status.job)  ~['seer/preview-change' '/apps/seer/review']
-        ?:  =(%failed status.job)  ~['/apps/seer/review']
+        ?:  =(%draft status.job)  ~['seer/attach-context-source' '/apps/seer/inbox']
+        ?:  =(%ready status.job)  ~['seer/preview-change' '/apps/seer/inbox']
+        ?:  =(%failed status.job)  ~['/apps/seer/inbox']
         ~
       %login
-        =/  job  (~(got by logins.view) id.key)
-        ?:  =(%pending status.job)  ~['seer/claim-login']
-        ~
+        ~['/apps/seer/settings']
     ==
   ++  text-fits
     |=  values=(list @t)
@@ -498,8 +516,8 @@
       `(select-json value ~['proposal_id' 'stack_id' 'card_id' 'title' 'created_by' 'created_at' 'packet_ref' 'artifact_ref' 'preview_tool'])
         %question
       =/  job  (~(got by questions.data.view) id.key)
-      ?.  (text-fits ~[worker.job id.profile.job])  ~
-      ?.  ?|(!detail (text-fits ~[worker.job id.profile.job selector.profile.job model.profile.job label.profile.job title.job front.job back.job prompt.job response.job result-title.job result-front.job result-back.job]))  ~
+      ?.  (text-fits ~[id.profile.job])  ~
+      ?.  ?|(!detail (text-fits ~[id.profile.job selector.profile.job model.profile.job label.profile.job title.job front.job back.job prompt.job response.job result-title.job result-front.job result-back.job]))  ~
       ?.  ?|(!detail (lte (lent (scag 33 citations.job)) 32))  ~
       ?.  ?|(!detail (text-fits (turn citations.job |=(cite=evidence-citation quote.cite))))  ~
       =/  value
@@ -516,11 +534,11 @@
             citations     ?:(detail citations.job ~)
           ==
       ?.  detail
-        `(select-json value ~['question_id' 'owner' 'stack_id' 'card_id' 'title' 'mode' 'provider' 'model_id' 'status' 'worker_id' 'created_at' 'updated_at' 'packet_ref' 'packet_tool'])
+        `(select-json value ~['question_id' 'owner' 'stack_id' 'card_id' 'title' 'mode' 'provider' 'model_id' 'status' 'attempt' 'created_at' 'updated_at' 'packet_ref' 'packet_tool'])
       `value
         %change
       =/  job  (~(got by changes.data.view) id.key)
-      ?.  (text-fits ~[worker.job id.profile.job])  ~
+      ?.  (text-fits ~[id.profile.job])  ~
       ?.  ?|(!detail (lte (lent (scag 65 operations.job)) 64))  ~
       ?.  ?|(!detail (lte (lent (scag 33 citations.job)) 32))  ~
       ?.  ?|(!detail (lte (lent (scag 257 preconditions.job)) 256))  ~
@@ -529,7 +547,7 @@
       ?.  ?|  !detail
               %-  text-fits
               %+  welp
-                ~[worker.job id.profile.job selector.profile.job model.profile.job label.profile.job prompt.job summary.job artifact.job response.job]
+                ~[id.profile.job selector.profile.job model.profile.job label.profile.job prompt.job summary.job artifact.job response.job]
               %-  zing
               %+  turn  operations.job
               |=  op=state-operation
@@ -550,11 +568,10 @@
           scope-preconditions  ?:(detail scope-preconditions.job ~)
         ==
       ?:  detail  `value
-      `(select-json value ~['change_id' 'target' 'provider' 'model_id' 'status' 'worker_id' 'created_at' 'updated_at' 'packet_ref' 'packet_tool' 'plan_digest' 'preview_tool'])
+      `(select-json value ~['change_id' 'target' 'provider' 'model_id' 'status' 'attempt' 'created_at' 'updated_at' 'packet_ref' 'packet_tool' 'plan_digest' 'preview_tool'])
         %context
       =/  source  (~(got by contexts.data.view) id.key)
-      ?.  (text-fits ~[worker.source])  ~
-      ?.  ?|(!detail (text-fits ~[worker.source label.source locator.source error.source]))  ~
+      ?.  ?|(!detail (text-fits ~[label.source locator.source error.source]))  ~
       =/  value
         %-  context-source-json:mcp
         %=  source
@@ -563,21 +580,20 @@
           error    ?:(detail error.source '')
         ==
       ?:  detail  `value
-      `(select-json value ~['context_id' 'owner' 'stack_id' 'card_id' 'scope' 'kind' 'label' 'snapshot_ref' 'generation' 'policy_revision' 'status' 'acquisition_status' 'worker_id' 'active' 'created_at' 'updated_at'])
+      `(select-json value ~['context_id' 'owner' 'stack_id' 'card_id' 'scope' 'kind' 'label' 'snapshot_ref' 'generation' 'policy_revision' 'status' 'acquisition_status' 'attempt' 'active' 'created_at' 'updated_at'])
         %login
       =/  job  (~(got by logins.view) id.key)
-      ?.  (text-fits ~[worker.job])  ~
       =/  value
         %+  login-json:mcp  id.key
         job(auth-url '', user-code '', message '')
-      `(select-json value ~['login_id' 'provider' 'status' 'worker_id' 'created_at' 'updated_at' 'code_ready'])
+      `(select-json value ~['login_id' 'provider' 'status' 'attempt' 'created_at' 'updated_at' 'code_ready'])
         %model
       =/  profile  (~(got by models.data.view) id.key)
-      ?.  (text-fits ~[selector.profile model.profile label.profile worker.profile])  ~
+      ?.  (text-fits ~[selector.profile model.profile label.profile origin.profile])  ~
       ?.  ?|(!detail (text-fits ~[description.profile]))  ~
       =/  value  (assistant-model-json:mcp profile(description ?:(detail description.profile '')))
       ?:  detail  `value
-      `(select-json value ~['model_id' 'provider' 'role' 'selector' 'model' 'label' 'worker_id' 'registered_at'])
+      `(select-json value ~['model_id' 'provider' 'role' 'selector' 'model' 'label' 'origin' 'registered_at'])
     ==
   ++  page
     ^-  json
@@ -638,9 +654,14 @@
       (envelope 'ok' (flop rows) %.n cursor ~)
     =/  value  (row i.candidates)
     ?~  value
-      ?:  ?=(~ rows)
-        (error 'limit-exceeded')
-      (envelope 'ok' (flop rows) %.n cursor ~)
+      ::  A row that cannot fit the byte budget is disclosed by reference and
+      ::  skipped, never silently cut and never returned to on the next page.
+      =/  skip=(unit @t)
+        ?:  ?=(~ t.candidates)  ~
+        `(scot %uv (jam [epoch.control scope-revision fingerprint i.candidates]))
+      =/  disclosure  (envelope 'ok' (flop rows) ?=(~ skip) skip ~[(omission 'row-too-large' `i.candidates)])
+      ?:  (fits disclosure)  disclosure
+      (error 'limit-exceeded')
     =/  next-rows  [u.value rows]
     =/  next-cursor=(unit @t)
       ?:  ?=(~ t.candidates)  ~
@@ -649,6 +670,8 @@
     =/  empty  (envelope 'ok' ~ ?=(~ next-cursor) next-cursor ~)
     ?.  (lte (add (met 3 (en:json:html empty)) (add next-bytes (lent rows))) max-bytes.query)
       ?:  ?=(~ rows)
+        =/  disclosure  (envelope 'ok' ~ ?=(~ next-cursor) next-cursor ~[(omission 'row-too-large' `i.candidates)])
+        ?:  (fits disclosure)  disclosure
         (error 'limit-exceeded')
       (envelope 'ok' (flop rows) %.n cursor ~)
     $(candidates t.candidates, rows next-rows, last `i.candidates, row-bytes next-bytes)

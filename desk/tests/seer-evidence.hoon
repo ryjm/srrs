@@ -47,8 +47,8 @@
   =/  previous  (packet-projection:ev packet.legacy sources store.legacy 32.768)
   ;:  weld
     (expect-eq !>(n+'2') !>((field current 'prompt_version')))
-    (expect-eq !>(n+'2') !>((field current 'schema_version')))
-    (expect-eq !>(n+'2') !>((field current 'output_schema_version')))
+    (expect-eq !>(n+'3') !>((field current 'schema_version')))
+    (expect-eq !>(n+'3') !>((field current 'output_schema_version')))
     (expect-eq !>(%.n) !>(=((field current 'packet_ref') (field previous 'packet_ref'))))
     (expect-eq !>(%.n) !>(=((field current 'input_digest') (field previous 'input_digest'))))
     (expect-eq !>(%.n) !>(=((field current 'prompt_digest') (field previous 'prompt_digest'))))
@@ -111,13 +111,42 @@
     (expect-eq !>(`%unselected-citation) !>((validate-citations:ev packet.limited ~[[id 1 3 'é']] store.limited)))
     (expect-eq !>(`%unselected-citation) !>((validate-citations:ev packet.full ~[[0x0 0 1 'a']] store.full)))
   ==
+::  A model's byte offsets are advisory: a citation is moved to the quoted
+::  bytes nearest its claimed start, a quote the body lacks is left alone
+::  for validation to reject, and a correct citation is untouched.
+++  test-citations-anchor-to-quoted-bytes
+  =/  first  published
+  =/  id  (need snapshot.source.first)
+  =/  sources  (~(put by *(map @tas context-source)) %note source.first)
+  =/  refreshed
+    (publish-snapshot:ev ~zod fixed-now source.first 'abc abc' %full 'local note' ~ %note store.first)
+  =/  twice  (need snapshot.source.refreshed)
+  =/  anchored
+    (anchor-citations:ev ~[[id 0 1 'é'] [id 9 10 'é'] [id 1 3 'é'] [id 0 1 'q'] [twice 5 9 'abc'] [twice 0 3 'abc']] store.refreshed)
+  ;:  weld
+    (expect-eq !>([id 1 3 'é']) !>((snag 0 anchored)))
+    (expect-eq !>([id 1 3 'é']) !>((snag 1 anchored)))
+    (expect-eq !>([id 1 3 'é']) !>((snag 2 anchored)))
+    (expect-eq !>([id 0 1 'q']) !>((snag 3 anchored)))
+    (expect-eq !>([twice 4 7 'abc']) !>((snag 4 anchored)))
+    (expect-eq !>([twice 0 3 'abc']) !>((snag 5 anchored)))
+  ==
 ::  Failed admission must preserve every old snapshot and body reference.
 ++  test-snapshot-admission-and-bounded-expansion
   =/  first  published
   =/  malformed  (@t 0xc3)
   =/  rejected
     (publish-snapshot:ev ~zod fixed-now source.first malformed %full '' ~ %note store.first)
-  =/  capped  store.first(snapshot-count 4.096)
+  ::  The limit counts available snapshots, not the lifetime counter.
+  =/  capped
+    =/  template  (~(got by snapshots.store.first) (need snapshot.source.first))
+    =/  filler=(map @ux evidence-snapshot)
+      =/  n=@ud  4.096
+      =|  acc=(map @ux evidence-snapshot)
+      |-
+      ?:  =(0 n)  acc
+      $(n (dec n), acc (~(put by acc) `@ux`n template(id `@ux`n)))
+    store.first(snapshots (~(uni by snapshots.store.first) filler))
   =/  full
     (publish-snapshot:ev ~zod fixed-now source.first 'new' %full '' ~ %note capped)
   =/  id  (need snapshot.source.first)

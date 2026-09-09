@@ -5,7 +5,7 @@
 ::  transport acknowledgement is never a domain result.
 ::
 |%
-+$  login-delivery  [version=(unit entity-version) code=@t]
+::
 ::
 ++  tools
   ^-  (list tool:mcp)
@@ -27,7 +27,6 @@
       preview-proposal-tool
       operation-result-tool
       lookup-learning-tool
-      issue-bridge-nonce-tool
       begin-capture-tool
       prepare-capture-tool
       stage-card-tool
@@ -35,35 +34,15 @@
       refresh-context-source-tool
       archive-context-source-tool
       rename-context-source-tool
-      claim-context-source-tool
-      finish-context-source-tool
-      fail-context-source-tool
-      replace-assistant-models-tool
-      claim-card-question-tool
-      answer-card-question-tool
-      apply-card-edit-tool
-      fail-card-question-tool
       ask-card-tool
       request-change-tool
-      claim-change-tool
-      prepare-change-packet-tool
       propose-change-tool
-      finish-change-tool
-      fail-change-tool
-      claim-login-tool
-      post-login-challenge-tool
-      finish-login-tool
-      fail-login-tool
-      consume-login-code-tool
-      checkpoint-work-tool
-      heartbeat-work-tool
-      recover-work-tool
   ==
   guard-tool
 ::
 ++  tool-class
   |=  definition=tool:mcp
-  ^-  $?(%read %owner %worker)
+  ^-  $?(%read %owner)
   ?+  name.definition  %owner
     %'seer/list-stacks'            %read
     %'seer/get-stack'              %read
@@ -82,26 +61,6 @@
     %'seer/preview-proposal'       %read
     %'seer/get-operation-result'   %read
     %'seer/lookup-learning'        %read
-    %'seer/replace-assistant-models'  %worker
-    %'seer/claim-card-question'       %worker
-    %'seer/answer-card-question'      %worker
-    %'seer/apply-card-edit'           %worker
-    %'seer/fail-card-question'        %worker
-    %'seer/claim-change'              %worker
-    %'seer/prepare-change-packet'     %worker
-    %'seer/finish-change'             %worker
-    %'seer/fail-change'               %worker
-    %'seer/claim-context-source'      %worker
-    %'seer/finish-context-source'     %worker
-    %'seer/fail-context-source'       %worker
-    %'seer/claim-login'               %worker
-    %'seer/post-login-challenge'      %worker
-    %'seer/finish-login'              %worker
-    %'seer/fail-login'                %worker
-    %'seer/consume-login-code'        %worker
-    %'seer/checkpoint-work'           %worker
-    %'seer/heartbeat-work'            %worker
-    %'seer/recover-work'              %worker
   ==
 ::
 ++  guard-tool
@@ -110,7 +69,7 @@
   =/  class  (tool-class definition)
   =/  params=parameters:tool:mcp
     %-  ~(gas by parameters.definition)
-    :~  ['schema_version' [%number 'Numeric protocol version 2; mandatory for mutations.']]
+    :~  ['schema_version' [%number 'Numeric protocol version 3; mandatory for mutations.']]
         ['require_scoped_authority' [%boolean 'True fails closed: MCP is owner-trusted, not scoped delegation.']]
     ==
   =/  required=required:tool:mcp  required.definition
@@ -121,16 +80,7 @@
     ==
   =?  required  !=(%read class)
     ['schema_version' 'idempotency_epoch' 'operation_id' required]
-  =?  params  =(%worker class)
-    %-  ~(gas by params)
-    :~  ['worker_id' [%string 'Exact paired bridge worker, 1..128 UTF-8 bytes.']]
-        ['proof_nonce' [%string 'Fresh source-issued one-time nonce; never provider input.']]
-        ['proof' [%string 'Canonical @ux HMAC-SHA256, length-prefixed seer-bridge-v2 framing.']]
-        ['attempt' [%string 'Ungrouped decimal attempt; claims/catalog use 0.']]
-        ['lease' [%string 'Canonical @ux current lease; claims/catalog use 0x0.']]
-    ==
-  =?  required  =(%worker class)
-    ['proof_nonce' 'proof' 'attempt' 'lease' required]
+  ::  There is no paired-worker class: the ship executes its own work.
   =/  description=@t
     %+  rap  3
     :~  desc.definition
@@ -156,7 +106,7 @@
   ^-  (unit @t)
   =/  class  (tool-class definition)
   =/  version  (~(get by args) 'schema_version')
-  ?.  ?~(version =(%read class) =([%number 2] u.version))
+  ?.  ?~(version =(%read class) =([%number 3] u.version))
     `'unsupported-schema-version'
   =/  scoped  (~(get by args) 'require_scoped_authority')
   ?:  =([~ %boolean %.y] scoped)  `'scoped-authority-unavailable'
@@ -198,31 +148,10 @@
       ?>  =(epoch (scot %da (slav %da epoch)))
       =/  op  (need (string-arg args 'operation_id'))
       ?>  &((gth (met 3 op) 0) (bounded-text:ev op 128))
-      ?.  =(%worker class)  ~
-      =/  worker  (need (string-arg args 'worker_id'))
-      ?>  &((gth (met 3 worker) 0) (bounded-text:ev worker 128))
-      =/  nonce  (need (string-arg args 'proof_nonce'))
-      ?>  &((gth (met 3 nonce) 0) (bounded-text:ev nonce 128))
-      =/  proof  (hex-arg args 'proof')
-      ?>  (lte (met 0 proof) 256)
-      =/  lease  (hex-arg args 'lease')
-      =/  attempt  (decimal-arg args 'attempt' 0 4.294.967.295)
       ~
     ~
-  ?~  identity  `'invalid-command-identity-or-proof'
+  ?~  identity  `'invalid-command-identity'
   ~
-::
-++  worker-action
-  |=  [args=(map name:parameter:tool:mcp argument:tool:mcp) act=action]
-  ^-  action
-  :*  %bridge-action
-      (need (string-arg args 'worker_id'))
-      (need (string-arg args 'proof_nonce'))
-      (hex-arg args 'proof')
-      (decimal-arg args 'attempt' 0 4.294.967.295)
-      (hex-arg args 'lease')
-      act
-  ==
 ::
 ++  execute-action
   |=  [args=(map name:parameter:tool:mcp argument:tool:mcp) act=action]
@@ -235,52 +164,22 @@
   ;<  entropy=@uvJ  bind:m  get-entropy:io
   =.  submission.cmd  (shax (jam entropy))
   =/  expected=(unit @ux)  `digest.cmd
-  =/  inner=action
-    ?.  ?=(%bridge-action -.act)  act
-    (need ((soft action) payload.act))
-  ;<  delivery=login-delivery  bind:m
-    ?.  ?=(%consume-login-code -.inner)
-      (pure:(strand:spider ,login-delivery) *login-delivery)
-    (scry:io login-delivery %gx /seer/login-code/[id.inner]/noun)
   ;<  ~  bind:m
     (poke-our:io %seer %seer-action !>(cmd))
   ;<  receipt=json  bind:m
     (scry:io json %gx /seer/operation-result/(scot %uv (jam [epoch operation expected]))/json)
-  =/  response  (receipt-response receipt)
-  ?.  ?=(%consume-login-code -.inner)  (pure:m !>(response))
-  ?.  ?=(%result -.response)  (pure:m !>(response))
-  ?>  ?=(%o -.receipt)
-  =/  admitted  =(`[%s 'ok'] (~(get by p.receipt) 'status'))
-  ?.  admitted  (pure:m !>(response))
-  =/  delivered=?
-    ?&  =(`[%s (scot %ux submission.cmd)] (~(get by p.receipt) 'submission'))
-        ?=(^ version.delivery)
-        =(content-revision.inner content-revision.u.version.delivery)
-        (gth (met 3 code.delivery) 0)
-        (bounded-text:ev code.delivery 4.096)
-    ==
-  =/  result
-    %-  pairs:enjs:format
-    :~  ['receipt' receipt]
-        :-  'result'
-        %-  pairs:enjs:format
-        :~  ['status' s+?:(delivered 'delivered' 'delivery-unavailable')]
-            ['code' ?:(delivered s+code.delivery ~)]
-            ['recovery' ?:(delivered ~ s+'Explicitly request a new login and paste a new code; never replay authorization material.')]
-        ==
-    ==
-  (pure:m !>(^-(response:tool:mcp [%result %structured result])))
+  (pure:m !>((receipt-response receipt)))
 ::
 ++  receipt-response
   |=  receipt=json
   ^-  response:tool:mcp
-  ?.  ?=(%o -.receipt)
+  ?.  ?=([%o *] receipt)
     [%error 'invalid-source-receipt' `(error-json 'invalid-source-receipt' '')]
-  ?.  =(`[%n '2'] (~(get by p.receipt) 'schema_version'))
+  ?.  =(`[%n '3'] (~(get by p.receipt) 'schema_version'))
     [%error 'invalid-source-receipt-schema' `receipt]
   =/  status  (~(get by p.receipt) 'status')
   ?.  ?=(^ status)  [%error 'missing-source-receipt-status' `receipt]
-  ?.  ?=(%s -.u.status)  [%error 'invalid-source-receipt-status' `receipt]
+  ?.  ?=([%s *] u.status)  [%error 'invalid-source-receipt-status' `receipt]
   ?.  (~(has in (silt ~['ok' 'blocked' 'conflict' 'invalid' 'unauthorized' 'budget-exhausted' 'outcome-unknown' 'replay-expired'])) p.u.status)
     [%error 'unrecognized-source-receipt-status' `receipt]
   [%result %structured receipt]
@@ -514,7 +413,7 @@
   ^-  response:tool:mcp
   ?.  ?=(%o -.page)
     [%error 'invalid bounded read response' `page]
-  ?.  =(`[%n '2'] (~(get by p.page) 'schema_version'))
+  ?.  =(`[%n '3'] (~(get by p.page) 'schema_version'))
     [%error 'invalid bounded read schema' `page]
   =/  status=(unit json)  (~(get by p.page) 'status')
   ?~  status  [%error 'missing bounded read status' `page]
@@ -607,7 +506,7 @@
           '\0a\0a'
           '''
           Do not invent a source or bypass review. Inspect frozen packets and
-          source previews. Every mutation requires schema_version=2, the current
+          source previews. Every mutation requires schema_version=3, the current
           idempotency_epoch and a stable operation_id; inspect its source receipt.
           Proposals are at /apps/seer/inbox. Do not approve your own proposals.
           '''
@@ -659,7 +558,7 @@
   %^  read-tool  'seer/list-context-sources'  %context
   '''
   Discover durable sources by owner, stack_id, card_id, id, or status. Pending
-  web sources are bridge jobs. Metadata omits source content; select id and
+  web sources are fetched by this ship. Metadata omits source content; select id and
   projection="detail" for the immutable snapshot_ref and egress policy; expand bodies with seer/get-evidence-snapshot.
   '''
 ::
@@ -714,10 +613,8 @@
     %'content'  [%string 'Bounded UTF-8 source text, at most 131072 bytes; never an instruction channel.']
     %'context_id'  [%string 'Stable lowercase slug, 1..128 bytes.']
     %'created_by'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
-    %'digest'  [%string 'Exact canonical @ux digest returned by the source preview.']
     %'error'  [%string 'Safe error text, at most 4096 bytes. Never include credentials, proof material or raw provider diagnostics.']
     %'excerpt_bytes'  [%string 'Ungrouped decimal maximum bytes per selected excerpt, at most 131072.']
-    %'final_locator'  [%string 'Validated final acquisition URL after redirects, at most 2048 bytes.']
     %'front'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
     %'goal'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
     %'idempotency_epoch'  [%string 'Canonical @da idempotency epoch from source orientation.']
@@ -730,32 +627,24 @@
     %'max_bytes'  [%string 'Ungrouped decimal byte budget. Packet input at most 131072; bounded reads 1024..262144.']
     %'mode'  [%string 'ask or edit; no implicit mode changes.']
     %'model_id'  [%string 'Stable lowercase slug, 1..128 bytes.']
-    %'nonce'  [%string 'Caller cryptographic random canonical @ux text, at most 100 bytes; stable across identical replay.']
     %'objective'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
-    %'observations'  [%string 'JSON precondition array, at most 128; content=true for observed full card details and parent stack metadata.']
     %'operation_id'  [%string 'Exact original 1..128 UTF-8 operation identity.']
     %'operations'  [%string 'JSON ordered array, at most 64: kind,stack_id,card_id,title,front,back,original_title,original_front,original_back. All nine fields required, unused text empty.']
     %'owner'  [%string 'Canonical owner ship, at most 64 bytes.']
     %'packet_ref'  [%string 'Exact immutable canonical @ux packet reference.']
     %'payload_digest'  [%string 'Optional expected canonical @ux command digest; mismatch returns conflict.']
     %'preconditions'  [%string 'JSON array, at most 256: {ref:{kind,owner,scope,id},version:null|{incarnation,content_revision,review_revision,present},content,review}. Explicit absence is version:null. One entry per operation target and card parent. Target content=true; target review=true only for create-card/delete-card/queue-card/delete-stack. Parent-only stack flags are both false. Union flags when a parent is also a target. Required flags must match exactly.']
-    %'profiles'  [%string 'JSON array of at most 128 exact seven-field definitions: model_id, provider, role, selector, model, label, description.']
     %'prompt'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
     %'proposal_id'  [%string 'Stable lowercase slug, 1..128 bytes.']
     %'provider'  [%string 'Exact provider: codex or claude.']
-    %'providers'  [%string 'Current external egress policy: codex, claude, both, or none.']
     %'question_id'  [%string 'Stable lowercase slug, 1..128 bytes.']
     %'rationale'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
-    %'reason'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
-    %'read_report'  [%string 'Required JSON object, at most 16384 UTF-8 bytes: {scope:"local-library"|"not-applicable",complete:boolean,omissions:array}. Preserve read failures, bounds and continuations. Worker-reported coverage is not source authority.']
     %'scope_id'  [%string 'Stable lowercase slug, 1..128 bytes.']
     %'scope_type'  [%string 'stack, capture, or change.']
     %'selections'  [%string 'JSON array, at most 64: {source_id,start,end:null|number,include:boolean,mandatory:boolean}; offsets are UTF-8 bytes.']
     %'snapshot_ref'  [%string 'Exact immutable canonical @ux snapshot reference.']
-    %'snapshots'  [%string 'JSON array of at most 256 canonical @ux snapshot references.']
     %'source'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
     %'stack_id'  [%string 'Stable lowercase slug, 1..128 bytes.']
-    %'stage'  [%string 'none, context-frozen, provider-started, output-received, result-published, or effect-committed.']
     %'start'  [%string 'Ungrouped decimal UTF-8 byte offset, at most 4294967295; default 0.']
     %'summary'  [%string 'Explicit bounded UTF-8 text; empty only when semantically unused.']
     %'target'  [%string 'library or desk; desk is implementation-brief-only.']
@@ -765,7 +654,6 @@
     %'work_id'  [%string 'Stable lowercase slug, 1..128 bytes.']
     %'work_kind'  [%string 'question, change, context, or login.']
     %'work_scope'  [%string 'Stable lowercase slug, 1..128 bytes.']
-    %'worker_id'  [%string 'Exact paired bridge identifier, at most 128 UTF-8 bytes.']
   ==
 ::
 ++  mutation-tool
@@ -796,9 +684,7 @@
       =/  parsed=(unit action)
         %-  mole
         |.
-        =/  act  (mutation-action kind our.bowl args profile)
-        ?:  (levy mandatory |=(key=@t !=('worker_id' key)))  act
-        (worker-action args act)
+        (mutation-action kind our.bowl args profile)
       ?~  parsed
         (pure:m !>(^-(response:tool:mcp [%error 'invalid-action-arguments' `(error-json 'invalid-action-arguments' tool-name)])))
       (execute-action args u.parsed)
@@ -807,12 +693,7 @@
 ++  mutation-action
   |=  [kind=@tas our=@p args=(map name:parameter:tool:mcp argument:tool:mcp) profile=(unit assistant-model)]
   ^-  action
-  =/  worker  (fall (string-arg args 'worker_id') '')
   ?+  kind  !!
-    %issue-bridge-nonce
-      =/  nonce  (text-arg args 'nonce' 100)
-      ?>  =(nonce (scot %ux (slav %ux nonce)))
-      [%issue-bridge-nonce nonce]
     %begin-capture
       :*  %begin-capture
           (slug-arg args 'capture_id')  (text-arg args 'title' 1.024)
@@ -848,13 +729,6 @@
     %rename-context-source  [%rename-context-source (slug-arg args 'context_id') (text-arg args 'label' 240)]
     %remove-context-source  [%remove-context-source (slug-arg args 'context_id')]
     %refresh-context-source  [%refresh-context-source (slug-arg args 'context_id')]
-    %claim-context-source  [%claim-context-source (slug-arg args 'context_id') worker]
-    %finish-context-source
-      :*  %finish-context-source  (slug-arg args 'context_id')  worker
-          (text-arg args 'label' 240)  (text-arg args 'content' 131.072)
-          (text-arg args 'final_locator' 2.048)
-      ==
-    %fail-context-source  [%fail-context-source (slug-arg args 'context_id') worker (text-arg args 'error' 4.096)]
     %ask-card
       =/  raw-owner  (text-arg args 'owner' 64)
       =/  owner  (slav %p raw-owner)
@@ -867,60 +741,17 @@
           (decimal-arg args 'max_bytes' 131.072 131.072)
           (decimal-arg args 'excerpt_bytes' 32.768 131.072)
       ==
-    %replace-assistant-models
-      [%replace-assistant-models worker (turn (array-arg args 'profiles' 128) input-model)]
-    %claim-card-question  [%claim-card-question (slug-arg args 'question_id') worker]
-    %answer-card-question
-      [%answer-card-question (slug-arg args 'question_id') worker (text-arg args 'answer' 65.536) (need (citations-arg args))]
-    %apply-card-edit
-      :*  %apply-card-edit  (slug-arg args 'question_id')  worker
-          (text-arg args 'title' 4.096)  (text-arg args 'front' 65.536)
-          (text-arg args 'back' 65.536)  (text-arg args 'summary' 16.384)
-          (need (citations-arg args))
-      ==
-    %fail-card-question  [%fail-card-question (slug-arg args 'question_id') worker (text-arg args 'error' 4.096)]
     %request-change
       :*  %request-change  (slug-arg args 'change_id')
           (need ((soft change-target) (slug-arg args 'target')))
           (need profile)  (text-arg args 'prompt' 16.384)
           %.n
       ==
-    %claim-change  [%claim-change (slug-arg args 'change_id') worker]
-    %prepare-change-packet
-      :*  %prepare-change-packet  (slug-arg args 'change_id')  worker
-          (preconditions-arg args 'observations' 128)  (text-arg args 'read_report' 16.384)
-          (selections-arg args)
-          (decimal-arg args 'max_bytes' 131.072 131.072)
-          (decimal-arg args 'excerpt_bytes' 32.768 131.072)
-      ==
     %propose-change
       :*  %propose-change  (slug-arg args 'change_id')
           (text-arg args 'prompt' 16.384)  (text-arg args 'summary' 16.384)
           (operations-arg args)  (preconditions-arg args 'preconditions' 256)
       ==
-    %finish-change
-      :*  %finish-change  (slug-arg args 'change_id')  worker
-          (text-arg args 'summary' 16.384)  (text-arg args 'artifact' 65.536)
-          (operations-arg args)  (need (citations-arg args))
-      ==
-    %fail-change  [%fail-change (slug-arg args 'change_id') worker (text-arg args 'error' 4.096)]
-    %claim-login  [%claim-login (slug-arg args 'login_id') worker]
-    %post-login-challenge
-      [%post-login-challenge (slug-arg args 'login_id') worker (text-arg args 'auth_url' 512) (text-arg args 'user_code' 256)]
-    %finish-login  [%finish-login (slug-arg args 'login_id') worker]
-    %fail-login  [%fail-login (slug-arg args 'login_id') worker (text-arg args 'error' 4.096)]
-    %consume-login-code  [%consume-login-code (slug-arg args 'login_id') worker (decimal-arg args 'content_revision' 0 4.294.967.295)]
-    %checkpoint-work
-      [%checkpoint-work (work-arg args) worker (need ((soft work-checkpoint) (slug-arg args 'stage')))]
-    %heartbeat-work  [%heartbeat-work (work-arg args) worker]
-    %recover-work  [%recover-work (work-arg args) worker]
-  ==
-::
-++  issue-bridge-nonce-tool
-  %-  mutation-tool
-  :*  'seer/issue-bridge-nonce'  %issue-bridge-nonce
-      'Issue a supplied cryptographically random canonical @ux nonce. Await receipt OK before using it; retries retain the same nonce and operation identity.'
-      ~['nonce']  ~
   ==
 ::
 ++  begin-capture-tool
@@ -954,7 +785,7 @@
 ++  attach-context-source-tool
   %-  mutation-tool
   :*  'seer/attach-context-source'  %add-context-source
-      'Attach owner text or a locator to an existing stack/card, capture, or draft change. Clay acquisition is source-owned; web acquisition requires the paired bridge. No implicit external egress.'
+      'Attach owner text or a locator to an existing stack/card, capture, or draft change. Clay acquisition is source-owned; web acquisition runs on this ship under its destination policy. No implicit external egress.'
       ~['context_id' 'scope_type' 'scope_id' 'kind' 'label']  ~['owner' 'card_id' 'locator' 'content']
   ==
 ::
@@ -979,62 +810,6 @@
       ~['context_id' 'label']  ~
   ==
 ::
-++  claim-context-source-tool
-  %-  mutation-tool
-  :*  'seer/claim-context-source'  %claim-context-source
-      'Claim one pending web acquisition with attempt=0 and lease=0x0; inspect returned work lease before execution.'
-      ~['context_id' 'worker_id']  ~
-  ==
-::
-++  finish-context-source-tool
-  %-  mutation-tool
-  :*  'seer/finish-context-source'  %finish-context-source
-      'Publish bounded extracted UTF-8 web evidence with its validated final locator using the current work lease.'
-      ~['context_id' 'worker_id' 'label' 'content' 'final_locator']  ~
-  ==
-::
-++  fail-context-source-tool
-  %-  mutation-tool
-  :*  'seer/fail-context-source'  %fail-context-source
-      'Record a safe bounded acquisition failure under the current attempt and lease.'
-      ~['context_id' 'worker_id' 'error']  ~
-  ==
-::
-++  replace-assistant-models-tool
-  %-  mutation-tool
-  :*  'seer/replace-assistant-models'  %replace-assistant-models
-      'Atomically replace the paired worker catalog, at most 128 definitions. Empty array withdraws the catalog. No raw account metadata. Use attempt=0 and lease=0x0.'
-      ~['worker_id' 'profiles']  ~
-  ==
-::
-++  claim-card-question-tool
-  %-  mutation-tool
-  :*  'seer/claim-card-question'  %claim-card-question
-      'Claim one pending question with attempt=0 and lease=0x0; source owns lease, deadline, packet and invocation budget.'
-      ~['question_id' 'worker_id']  ~
-  ==
-::
-++  answer-card-question-tool
-  %-  mutation-tool
-  :*  'seer/answer-card-question'  %answer-card-question
-      'Publish bounded generated output and exact citations under the current attempt and lease. Never treat the answer as primary evidence.'
-      ~['question_id' 'worker_id' 'answer' 'citations']  ~
-  ==
-::
-++  apply-card-edit-tool
-  %-  mutation-tool
-  :*  'seer/apply-card-edit'  %apply-card-edit
-      'Publish a source-fenced requested card edit and citations; receipt effect distinguishes admission from committed change.'
-      ~['question_id' 'worker_id' 'title' 'front' 'back' 'summary' 'citations']  ~
-  ==
-::
-++  fail-card-question-tool
-  %-  mutation-tool
-  :*  'seer/fail-card-question'  %fail-card-question
-      'Record a safe bounded question failure under the current attempt and lease.'
-      ~['question_id' 'worker_id' 'error']  ~
-  ==
-::
 ++  request-change-tool
   %-  mutation-tool
   :*  'seer/request-change'  %request-change
@@ -1042,95 +817,11 @@
       ~['change_id' 'target' 'model_id' 'prompt']  ~
   ==
 ::
-++  claim-change-tool
-  %-  mutation-tool
-  :*  'seer/claim-change'  %claim-change
-      'Claim a queued change with attempt=0 and lease=0x0. Inspect its authoritative work lease before planning.'
-      ~['change_id' 'worker_id']  ~
-  ==
-::
-++  prepare-change-packet-tool
-  %-  mutation-tool
-  :*  'seer/prepare-change-packet'  %prepare-change-packet
-      'Freeze a SOURCE-AUTHORED bounded observation packet from at most 128 explicit versioned refs. Include the exact bounded read report; omissions stay visible in the canonical input. Full-detail card observations and parent stack metadata require content=true. Source coverage independently rejects false completeness; no synthesized library blob is accepted.'
-      ~['change_id' 'worker_id' 'observations' 'read_report' 'selections']  ~['max_bytes' 'excerpt_bytes']
-  ==
-::
 ++  propose-change-tool
   %-  mutation-tool
   :*  'seer/propose-change'  %propose-change
       'Stage one complete ordered planner plan for approval without any provider invocation. Include explicit positive/negative preconditions; new stack plus cards is one atomic plan.'
       ~['change_id' 'prompt' 'summary' 'operations' 'preconditions']  ~
-  ==
-::
-++  finish-change-tool
-  %-  mutation-tool
-  :*  'seer/finish-change'  %finish-change
-      'Atomically publish the complete bounded operation list and citations for preview and approval. No incremental operation staging exists. Desk artifact is a brief, never executable installation.'
-      ~['change_id' 'worker_id' 'summary' 'artifact' 'operations' 'citations']  ~
-  ==
-::
-++  fail-change-tool
-  %-  mutation-tool
-  :*  'seer/fail-change'  %fail-change
-      'Record a safe bounded planning failure under the current attempt and lease.'
-      ~['change_id' 'worker_id' 'error']  ~
-  ==
-::
-++  claim-login-tool
-  %-  mutation-tool
-  :*  'seer/claim-login'  %claim-login
-      'Claim one pending account sign-in with attempt=0 and lease=0x0. This does not permit provider model invocation.'
-      ~['login_id' 'worker_id']  ~
-  ==
-::
-++  post-login-challenge-tool
-  %-  mutation-tool
-  :*  'seer/post-login-challenge'  %post-login-challenge
-      'Publish a provider-allowlisted HTTPS verification URL and user code under the current login lease.'
-      ~['login_id' 'worker_id' 'auth_url' 'user_code']  ~
-  ==
-::
-++  finish-login-tool
-  %-  mutation-tool
-  :*  'seer/finish-login'  %finish-login
-      'Publish verified sign-in completion under the current lease; source clears every transient code.'
-      ~['login_id' 'worker_id']  ~
-  ==
-::
-++  fail-login-tool
-  %-  mutation-tool
-  :*  'seer/fail-login'  %fail-login
-      'Publish a safe bounded account sign-in failure under the current lease.'
-      ~['login_id' 'worker_id' 'error']  ~
-  ==
-::
-++  consume-login-code-tool
-  %-  mutation-tool
-  :*  'seer/consume-login-code'  %consume-login-code
-      'Consume a submitted one-time authorization code under the exact paired login lease. A replay receipt never re-exposes a consumed code.'
-      ~['login_id' 'worker_id' 'content_revision']  ~
-  ==
-::
-++  checkpoint-work-tool
-  %-  mutation-tool
-  :*  'seer/checkpoint-work'  %checkpoint-work
-      'Publish an allowed work checkpoint. provider-started requires an authoritative OK receipt BEFORE any external invocation.'
-      ~['work_kind' 'owner' 'work_scope' 'work_id' 'worker_id' 'stage']  ~
-  ==
-::
-++  heartbeat-work-tool
-  %-  mutation-tool
-  :*  'seer/heartbeat-work'  %heartbeat-work
-      'Extend only the current source-owned lease within its hard deadline; cannot renew expired authority.'
-      ~['work_kind' 'owner' 'work_scope' 'work_id' 'worker_id']  ~
-  ==
-::
-++  recover-work-tool
-  %-  mutation-tool
-  :*  'seer/recover-work'  %recover-work
-      'Recover only after source-time lease expiry. Pre-invocation work may requeue; possible external execution becomes explicit blocked outcome-unknown, never a silent rerun.'
-      ~['work_kind' 'owner' 'work_scope' 'work_id' 'worker_id']  ~
   ==
 ::
 ++  inspection-tool
@@ -1191,7 +882,14 @@
       =/  provider  (need ((soft ai-provider) (slug-arg args 'provider')))
       =/  limit  (decimal-arg args 'limit' 20 32)
       ?>  (gth limit 0)
-      /seer/learning/(scot %uv (jam [scope objective provider limit max-bytes]))/json
+      =/  content=[@t @t @t]
+        :*  (fall (string-arg args 'title') '')
+            (fall (string-arg args 'front') '')
+            (fall (string-arg args 'back') '')
+        ==
+      =/  snapshot=(unit @ux)
+        ?~((string-arg args 'snapshot_ref') ~ `(hex-arg args 'snapshot_ref'))
+      /seer/learning/(scot %uv (jam [scope objective provider limit max-bytes content snapshot]))/json
   ==
 ::
 ++  context-packet-tool
@@ -1232,8 +930,8 @@
 ++  lookup-learning-tool
   %-  inspection-tool
   :*  'seer/lookup-learning'  %learning
-      'Retrieve bounded prior supported explanations, proposal decisions and corrections for the exact scope/objective/provider BEFORE generating. Metadata first; current sharing/egress and purged bodies remain explicit. Generated memory, approval and recall grades are not truth certificates.'
-      ~['scope_type' 'scope_id' 'objective' 'provider']  ~['owner' 'card_id' 'limit' 'max_bytes']
+      'Retrieve bounded prior supported explanations, proposal decisions and corrections for the exact scope/objective/provider BEFORE generating. Narrow deterministically with title/front/back (normalized card content) or snapshot_ref (an exact evidence source). Metadata first; current sharing/egress and purged bodies remain explicit. Generated memory, approval and recall grades are not truth certificates.'
+      ~['scope_type' 'scope_id' 'objective' 'provider']  ~['owner' 'card_id' 'limit' 'max_bytes' 'title' 'front' 'back' 'snapshot_ref']
   ==
 ::
 ++  string-arg
@@ -1507,9 +1205,9 @@
           (starts-with "https://platform.openai.com/" url)
       ==
     %claude
-      ?|  =("https://claude.com/cai/oauth/authorize" url)
-          (starts-with "https://claude.com/cai/oauth/authorize?" url)
-          (starts-with "https://claude.com/cai/oauth/authorize#" url)
+      ?|  (starts-with "https://platform.claude.com/oauth/authorize" url)
+          (starts-with "https://claude.ai/oauth/authorize" url)
+          (starts-with "https://claude.com/cai/oauth/authorize" url)
       ==
   ==
 ::
@@ -1608,7 +1306,7 @@
       ['model' s+model.profile]
       ['label' s+label.profile]
       ['description' s+description.profile]
-      ['worker_id' s+worker.profile]
+      ['origin' s+origin.profile]
       :-  'registered_at'
       s+(scot %da registered-at.profile)
   ==
@@ -1633,7 +1331,7 @@
       ['status' s+?:(active.source status.source %archived)]
       ['acquisition_status' s+status.source]
       ['error' s+error.source]
-      ['worker_id' s+worker.source]
+      ['attempt' (numb:enjs:format attempt.source)]
       ['active' b+active.source]
       ['created_at' s+(scot %da created-at.source)]
       ['updated_at' s+(scot %da updated-at.source)]
@@ -1665,7 +1363,7 @@
       ['model_label' s+label.profile.job]
       ['created_at' s+(scot %da created-at.job)]
       ['status' s+status.job]
-      ['worker_id' s+worker.job]
+      ['attempt' (numb:enjs:format attempt.job)]
       ['answer' s+response.job]
       ['result_title' s+result-title.job]
       ['result_front' s+result-front.job]
@@ -1706,7 +1404,7 @@
       ['auth_url' s+auth-url.req]
       ['user_code' s+user-code.req]
       ['message' s+message.req]
-      ['worker_id' s+worker.req]
+      ['attempt' (numb:enjs:format attempt.req)]
       ['created_at' s+(scot %da created-at.req)]
       ['updated_at' s+(scot %da updated-at.req)]
   ==
@@ -1745,7 +1443,7 @@
       ['model_label' ?:(profile-known s+label.profile.request ~)]
       ['created_at' s+(scot %da created-at.request)]
       ['status' s+status.request]
-      ['worker_id' s+worker.request]
+      ['attempt' (numb:enjs:format attempt.request)]
       ['summary' s+summary.request]
       :-  'operations'
       :-  %a
@@ -1874,7 +1572,9 @@
   ^-  json
   ?~  origin  ~
   %-  pairs:enjs:format
-  :~  ['capture_id' s+capture.u.origin]
+  :~  ['origin' s+kind.u.origin]
+      ['capture_id' ?:(=(%capture kind.u.origin) s+capture.u.origin ~)]
+      ['change_id' ?:(=(%plan kind.u.origin) s+capture.u.origin ~)]
       ['source' s+source.u.origin]
       ['rationale' s+rationale.u.origin]
       ['created_by' s+created-by.u.origin]

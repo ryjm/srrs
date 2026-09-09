@@ -3,6 +3,13 @@
 |%
 ::  Exact editorial identity, not semantic similarity. Only CRLF and the
 ::  existing serialized front matter are removed; code whitespace survives.
+::  admission follows live artifacts; purged artifacts keep tombstones only.
+::
+++  live-artifacts
+  |=  store=learning-state
+  ^-  @ud
+  (lent (skim ~(val by artifacts.store) |=(artifact=learning-artifact available.artifact)))
+::
 ++  normalize
   |=  text=@t
   ^-  @t
@@ -133,7 +140,7 @@
 ++  admission-error
   |=  [artifact=learning-artifact store=learning-state]
   ^-  (unit @tas)
-  ?:  (gte artifact-count.store 4.096)  `%artifact-limit
+  ?:  (gte (live-artifacts store) 4.096)  `%artifact-limit
   =/  bytes  (artifact-bytes artifact)
   ?:  ?|((gth bytes 65.536) (gth (met 3 (jam artifact)) 65.536))
     `%artifact-too-large
@@ -261,7 +268,7 @@
   =/  prior  (latest-artifact candidates store)
   =/  id=@ux  (shax (jam [our signature]))
   =/  staged  draft(artifact `id)
-  ::  Account/worker labels are not retained generation metadata.
+  ::  Catalog origins are not retained generation metadata.
   =/  retained  staged(created-by provider.profile.req)
   =/  artifact=learning-artifact
     %*  .  *learning-artifact
@@ -551,7 +558,7 @@
   ^-  json
   =/  omitted  (sub matched (lent rows))
   %-  pairs:enjs:format
-  :~  ['schema_version' (numb:enjs:format 2)]
+  :~  ['schema_version' (numb:enjs:format 3)]
       ['artifacts' a+rows]
       ['matched' (numb:enjs:format matched)]
       ['returned' (numb:enjs:format (lent rows))]
@@ -570,6 +577,8 @@
           provider=ai-provider
           limit=@ud
           max-bytes=@ud
+          content=[title=@t front=@t back=@t]
+          snapshot=(unit @ux)
           sources=(map @tas context-source)
           evidence=evidence-state
           versions=(map entity-key entity-version)
@@ -580,13 +589,21 @@
     (lookup-envelope ~ 0 0 max-bytes `%invalid-budget)
   ?.  ?&((scope-valid:ev scope) (bounded-text:ev objective 131.072))
     (lookup-envelope ~ 0 0 max-bytes `%invalid-scope)
+  ::  Deterministic retrieval keys: scope, exact objective, normalized card
+  ::  content, and an exact source snapshot reference.
+  =/  content-mark=(unit @ux)
+    ?:  ?&(=('' title.content) =('' front.content) =('' back.content))  ~
+    `(shax (jam [(normalize title.content) (card-body front.content) (card-body back.content)]))
   =/  ids  (fall (~(get by scope-index.store) scope) *(set @ux))
   =/  matched
     %+  skim  (sort ~(tap in ids) lth)
     |=  id=@ux
     =/  artifact  (~(get by artifacts.store) id)
     ?~  artifact  %.n
-    ?|(=(0 objective) =(objective objective.u.artifact) !available.u.artifact)
+    ?.  ?|(=(0 objective) =(objective objective.u.artifact) !available.u.artifact)  %.n
+    ?.  ?~(content-mark %.y =(u.content-mark fingerprint.u.artifact))  %.n
+    ?~  snapshot  %.y
+    (~(has in (artifact-snapshots u.artifact evidence)) u.snapshot)
   =/  total  (lent matched)
   =/  chosen=(list [artifact=learning-artifact error=(unit @tas)])  ~
   =/  rows=(list json)  ~
@@ -650,7 +667,7 @@
   ::  Preserve digest, source/range identity and exact model; erase cached
   ::  objective/card bodies. This is application retention, not log erasure.
   =.  req
-    req(objective '', title '', front '', back '', profile profile.req(label '', description '', worker '', registered-at *@da))
+    req(objective '', title '', front '', back '', profile profile.req(label '', description '', origin '', registered-at *@da))
   packet(request req, blocked ?:(=(`%purged blocked.packet) blocked.packet `reason))
 ::
 ++  purge-snapshots

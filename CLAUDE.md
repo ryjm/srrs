@@ -60,18 +60,55 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
 ## Build & Test
 
-_Add your build and test commands here_
+Seer is an Urbit desk under `desk/`; there is no build step. A development
+ship mounts the desk and Clay compiles it on commit:
 
 ```bash
-# Example:
-# npm install
-# npm test
+rsync -a desk/ /path/to/pier/seer/        # copy the desk into the mount
 ```
+
+```hoon
+|commit %seer                             # compile and reload the agent
+-test /=seer=/tests ~                     # run the desk tests
+```
+
+The MCP alignment canary in `tools/` is plain Node (no dependencies):
+
+```bash
+node --test tools/check-ship-alignment.test.mjs                 # hermetic tests
+SEER_MCP_URL=http://127.0.0.1:8080/mcp SEER_MCP_COOKIE='urbauth-~sampel=...' \
+  node tools/check-ship-alignment.mjs                           # live ship check
+```
+
+Compiling `desk/app/seer.hoon` takes about 25 seconds on a dev ship; check one
+file at a time rather than rebuilding everything after every edit.
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+`%seer` (`desk/app/seer.hoon`) is a single Gall agent that owns library state,
+review scheduling, evidence snapshots, work records, receipts, and provider
+accounts. It serves a server-rendered HTMX interface (`desk/app/seer/index.hoon`)
+whose POST routes decode into the same typed `action` union used everywhere
+else; MCP tool and prompt definitions (`desk/lib/seer-mcp.hoon`) run as threads
+that poke that union and scry bounded JSON reads (`desk/lib/seer-read.hoon`).
+Provider sign-in, token renewal, generation, catalog discovery, and web source
+fetching are ship-native: the agent issues Iris requests with attempt-scoped
+wires and Behn deadlines (`desk/lib/seer-net.hoon`, `desk/lib/seer-oauth.hoon`),
+so there is no external worker process. Types live in `desk/sur/seer.hoon`;
+validators and packet builders in `desk/lib/seer.hoon`, `seer-evidence.hoon`,
+`seer-effects.hoon`, and `seer-learning.hoon`.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- Pre-release: keep exactly one state shape and no migration chain. When the
+  shape changes, `|nuke %seer, =hard &`, `|commit %seer`, `|revive %seer` on the
+  development ship, then reimport the MCP tools and prompts. Same-shape reloads
+  keep state.
+- Every mutation, from the browser or MCP, is a `command` with an epoch,
+  operation id, and digest, and produces a receipt; do not add side doors.
+- Tool names, parameters, and the orientation's capability fields are a
+  contract: change `desk/lib/seer-mcp.hoon`, `tools/seer-tool-contract.json`,
+  and the README together, then run the canary.
+- Track work with `bd` (Beads); the current epic is `srrs-login-epic-d5n`.
+- README claims describe shipped behavior only; SYSTEM_DESIGN.md holds the
+  design rationale.

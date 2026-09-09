@@ -2,6 +2,21 @@
 |%
 ::  Source bytes are UTF-8, not Unicode code-point offsets. No body is
 ::  retained in a packet: the canonical input is reconstructed from refs.
+::  admission follows live records: purged snapshots and retired packets
+::  keep their tombstones but give their slots back.
+::
+++  live-snapshots
+  |=  store=evidence-state
+  ^-  @ud
+  (lent (skim ~(val by snapshots.store) |=(snapshot=evidence-snapshot available.snapshot)))
+::
+++  live-packets
+  |=  store=evidence-state
+  ^-  @ud
+  %-  lent
+  %+  skim  ~(val by packets.store)
+  |=(packet=context-packet !?=([~ ?(%purged %retired)] blocked.packet))
+::
 ++  utf8-valid
   |=  text=@t
   ^-  ?
@@ -132,7 +147,7 @@
           ?~(origin-revision %.y (bounded-text u.origin-revision 1.024))
       ==
     [source store `%metadata-too-large]
-  ?:  (gte snapshot-count.store 4.096)  [source store `%snapshot-limit]
+  ?:  (gte (live-snapshots store) 4.096)  [source store `%snapshot-limit]
   =/  digest=@ux  (shax content)
   =/  blob=@ux  (shax (jam [our scope.source digest]))
   =/  prior  (~(get by blobs.store) blob)
@@ -276,6 +291,12 @@
         ['included_range' (range-json start.entry end.entry)]
         ['included_bytes' (numb:enjs:format (sub end.entry start.entry))]
         ['reason' ?~(reason ~ s+u.reason)]
+        :-  'inclusion'
+        ?.  (included entry)  ~
+        ?:  mandatory.entry  s+'mandatory: selected as required evidence for this request'
+        ?:  ?|(!=(0 requested-start.entry) ?=(^ requested-end.entry))
+          s+'selected excerpt: the person or planner chose this exact range'
+        s+'selected: attached to this request\'s scope and chosen for it'
         ['freshness' s+'unknown']
         ['freshness_basis' s+'Immutable retrieval; no assertion about the live origin.']
         ['text_location' s+?:(include-text 'text' 'canonical_prompt')]
@@ -321,7 +342,7 @@
       citations
       '}. Operations and proposals are candidates, not authorized writes. Use empty arrays when unsupported; there is no minimum card count. Preserve exact original fields of existing targets. A listing is not file contents. Cite byte ranges only; do not invent references.'
       ?:  =(%library mode)
-        ' Library card.front contains source observations, independent source_coverage counts, and a worker read_report; incomplete coverage is not proof of absence or novelty. If unseen material is needed for the goal, stop with an empty plan and explain the required narrower or expanded read.'
+        ' Library card.front contains source observations, independent source_coverage counts, and its omissions; incomplete coverage is not proof of absence or novelty. If unseen material is needed for the goal, stop with an empty plan and explain the required narrower or expanded read.'
       ''
   ==
 ::
@@ -478,7 +499,7 @@
   =.  id.packet  (shax (jam [our work.request.packet attempt.request.packet now input-digest.packet blocked.packet]))
   ?:  (~(has by packets.store) id.packet)
     [packet store]
-  ?:  (gte packet-count.store 2.048)
+  ?:  (gte (live-packets store) 2.048)
     =.  blocked.packet  `%packet-limit
     =.  id.packet  (shax (jam [our work.request.packet attempt.request.packet now input-digest.packet blocked.packet]))
     [packet store]
@@ -503,14 +524,14 @@
           store=evidence-state
       ==
   ^-  [packet=context-packet store=evidence-state]
-  ::  A worker label/account registration is not provider input or identity.
-  =.  profile.request  profile.request(worker '', description '', registered-at *@da)
+  ::  A catalog origin or registration time is not provider input or identity.
+  =.  profile.request  profile.request(origin '', description '', registered-at *@da)
   =/  packet=context-packet
     %*  .  *context-packet
       request         request
       created-at      now
       prompt-version  2
-      schema-version  2
+      schema-version  3
     ==
   ?.  ?&((request-valid request) =(our owner.work.request))
     [packet(request *packet-request, blocked `%invalid-request) store]
@@ -638,7 +659,7 @@
   ^-  json
   ?.  ?&((gte max-bytes 1.024) (lte max-bytes 262.144))
     %-  pairs:enjs:format
-    :~  ['schema_version' (numb:enjs:format 2)]
+    :~  ['schema_version' (numb:enjs:format 3)]
         ['complete' b+%.n]
         ['blocked_reason' s+'invalid-budget']
         ['canonical_prompt' ~]
@@ -689,7 +710,7 @@
   =/  result=json  [%o (~(uni by p.extra) p.input)]
   ?:  (lte (met 3 (en:json:html result)) max-bytes)  result
   %-  pairs:enjs:format
-  :~  ['schema_version' (numb:enjs:format 2)]
+  :~  ['schema_version' (numb:enjs:format 3)]
       ['packet_ref' s+(scot %ux id.packet)]
       ['complete' b+%.n]
       ['blocked_reason' s+'limit-exceeded']
@@ -697,6 +718,49 @@
       ['max_bytes' (numb:enjs:format max-bytes)]
       ['maximum_projection_bytes' (numb:enjs:format 262.144)]
   ==
+::
+::  +anchor-citations: a model's byte offsets are advisory; the quoted
+::  bytes are the proof. a citation whose range does not hold its quote
+::  moves to the occurrence of that quote nearest the claimed start when
+::  the snapshot body contains it; anything else is left for validation.
+::
+++  anchor-citations
+  |=  [citations=(list evidence-citation) store=evidence-state]
+  ^-  (list evidence-citation)
+  %+  turn  citations
+  |=  citation=evidence-citation
+  ^-  evidence-citation
+  =/  text  (body snapshot.citation store)
+  ?~  text  citation
+  =/  length  (met 3 quote.citation)
+  ?:  =(0 length)  citation
+  ?:  ?&  (lth start.citation end.citation)
+          (lte end.citation (met 3 u.text))
+          =(quote.citation (cut 3 [start.citation (sub end.citation start.citation)] u.text))
+      ==
+    citation
+  =/  haystack  (trip u.text)
+  =/  needle  (trip quote.citation)
+  =/  best=(unit @ud)  ~
+  =/  offset=@ud  0
+  |-
+  =/  hit  (find needle (slag offset haystack))
+  ?~  hit
+    ?~  best  citation
+    citation(start u.best, end (add u.best length))
+  =/  at  (add offset u.hit)
+  =/  closer
+    ?~  best  %.y
+    (lth (dist at start.citation) (dist u.best start.citation))
+  %=  $
+    offset  +(at)
+    best    ?:(closer `at best)
+  ==
+::
+++  dist
+  |=  [a=@ud b=@ud]
+  ^-  @ud
+  ?:((gth a b) (sub a b) (sub b a))
 ::
 ++  validate-citations
   |=  [packet=context-packet citations=(list evidence-citation) store=evidence-state]
@@ -732,7 +796,7 @@
     |=  status=@t
     ^-  json
     %-  pairs:enjs:format
-    :~  ['schema_version' (numb:enjs:format 2)]
+    :~  ['schema_version' (numb:enjs:format 3)]
         ['status' s+status]
         ['complete' b+%.n]
         ['snapshot_ref' ?:(?|(=(0 id) (gth (met 3 id) 32)) ~ s+(scot %ux id))]
@@ -750,7 +814,7 @@
     =/  unavailable
       %-  pairs:enjs:format
       %+  weld  (snapshot-json u.snapshot)
-      :~  ['schema_version' (numb:enjs:format 2)]
+      :~  ['schema_version' (numb:enjs:format 3)]
           ['status' s+'purged']
           ['available' b+%.n]
           ['complete' b+%.n]
@@ -760,14 +824,16 @@
       ==
     ?:  (lte (met 3 (en:json:html unavailable)) max-bytes)  unavailable
     (error 'purged')
-  =/  requested-end  (add start length)
+  ::  a range past the end reads to the end; the response reports the
+  ::  included range, so a short snapshot never fails a default read.
+  =/  requested-end  (min (add start length) (met 3 u.text))
   ?.  (exact-range u.text start requested-end)  (error 'invalid')
   =/  render
     |=  end=@ud
     ^-  json
     %-  pairs:enjs:format
     %+  weld  (snapshot-json u.snapshot)
-    :~  ['schema_version' (numb:enjs:format 2)]
+    :~  ['schema_version' (numb:enjs:format 3)]
         ['status' s+?:(=(end requested-end) 'ok' 'budget-exhausted')]
         ['complete' b+=(end requested-end)]
         ['requested_range' (range-json start requested-end)]
