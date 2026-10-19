@@ -1490,6 +1490,33 @@
   =/  prepared  +:(on-poke:browser %handle-http-request !>(['web-check' request]))
   (expect-eq !>('ok') !>((json-text (peek-receipt prepared cmd) 'status')))
 ::
+++  test-aero-manifest-is-served-as-json
+  ^-  tang
+  =/  request=inbound-request:eyre
+    %*  .  *inbound-request:eyre
+      authenticated  %.y
+      request  [%'GET' '/apps/seer/aero.json' ~ ~]
+    ==
+  =/  web-bowl  bol
+  =/  shell  ~(. seer-agent web-bowl(sap /eyre))
+  =/  browser  +:(on-load:shell on-save:ag)
+  =/  cards  -:(on-poke:browser %handle-http-request !>(['aero' request]))
+  =/  facts=(map mark vase)
+    %-  malt
+    %+  murn  cards
+    |=  =card:agent:gall
+    ?.  ?=([%give %fact [[%http-response @ ~] ~] *] card)  ~
+    `cage.p.card
+  =/  header  !<(response-header:http (~(got by facts) %http-response-header))
+  =/  data  !<((unit octs) (~(got by facts) %http-response-data))
+  =/  expected=json
+    (pairs:enjs:format ~[['module' s+'seer'] ['minVersion' s+'1.0.0']])
+  ;:  weld
+    (expect-eq !>(200) !>(status-code.header))
+    (expect-eq !>(`'application/json') !>((get-header:http 'content-type' headers.header)))
+    (expect-eq !>(`expected) !>((de:json:html q:(need data))))
+  ==
+::
 ++  test-read-observation-dependencies
   ^-  tang
   =/  core  (do ag [%new-stack %s1 'One' ~])

@@ -780,6 +780,12 @@
       [[[~ %js] [%apps %seer %htmx-min ~]] ~]
     %+  respond-payload  eyre-id
     (js-response:gen (as-octs:mimes:html htmx-src))
+  ::  the aero ios shell opens its native seer screen when this hint parses.
+  ::
+      [[[~ %json] [%apps %seer %aero ~]] ~]
+    %+  respond-payload  eyre-id
+    %-  json-response:gen
+    (pairs:enjs:format ~[['module' s+'seer'] ['minVersion' s+'1.0.0']])
       [[~ [%apps %seer %stacks ~]] ~]
     (respond-page eyre-id [%stacks ~] ~)
       [[~ [%apps %seer %subscriptions ~]] ~]
