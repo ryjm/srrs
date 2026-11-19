@@ -851,4 +851,21 @@
   $%  stack-delta
       [%read who=@p stack=@tas item=@tas]
   ==
+::  review log: one event per answered card, for offline replay.
+::  .id is monotonic per ship and doubles as the idempotency key.
+::
++$  card-key  [owner=@p stack=@tas item=@tas]
++$  review-kind  ?(%learn %review %relearn %manual)
++$  review-event
+  $:  id=@ud
+      key=card-key
+      grade=recall-grade
+      kind=review-kind
+      shown-at=@da
+      answered-at=@da
+      deck=@tas
+      preset=@tas
+  ==
++$  revlog  ((mop @ud review-event) lth)
+++  revlog-on  ((on @ud review-event) lth)
 --

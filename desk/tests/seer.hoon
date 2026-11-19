@@ -423,6 +423,57 @@
     (expect-eq !>(~s5) !>(`@dr`interval.l3))
   ==
 ::
+::  Each answer appends one ordered review event; SM-2 state is unchanged.
+::
+++  test-review-log-records-answers
+  ^-  tang
+  =/  core  ag
+  =.  core  (do core [%new-stack %s1 'Stack one' ~])
+  =.  core
+    %+  do  core
+    :*  %new-item  ~zod  ~zod  %s1  %c1
+        'Card'  *perm-config  'front'  'back'
+    ==
+  =.  core  (do core [%review-stack ~zod %s1])
+  =/  request=inbound-request:eyre
+    %*  .  *inbound-request:eyre
+      authenticated  %.y
+      request  [%'GET' '/apps/seer/review' ~ ~]
+    ==
+  =/  shell  ~(. seer-agent %*(. bol sap /eyre))
+  =.  core  +:(on-load:shell on-save:core)
+  =.  core  +:(on-poke:core %handle-http-request !>(['review' request]))
+  =.  core  (at-time core in-one-hour)
+  =/  ans
+    |=  [c=agent:gall g=recall-grade]
+    (do c [%answered-item ~zod %s1 %c1 g])
+  =.  core  (ans core %good)
+  =/  l1=learn
+    learn:(~(got by items:(need (peek-stack core %s1))) %c1)
+  =.  core  (ans core %again)
+  =.  core  (ans core %good)
+  =/  l3=learn
+    learn:(~(got by items:(need (peek-stack core %s1))) %c1)
+  =/  res  (on-peek:core /x/revlog)
+  ?>  ?=([~ ~ *] res)
+  =/  log=(list (pair @ud review-event))
+    (need ((soft (list (pair @ud review-event))) q.q.u.u.res))
+  =/  key=card-key  [~zod %s1 %c1]
+  =/  expected=(list review-event)
+    :~  [0 key %good %learn fixed-now in-one-hour %s1 %default]
+        [1 key %again %review in-one-hour in-one-hour %s1 %default]
+        [2 key %good %relearn in-one-hour in-one-hour %s1 %default]
+    ==
+  ;:  weld
+    %+  expect-eq  !>(`(list @ud)`~[0 1 2])
+    !>((turn log |=(p=(pair @ud review-event) p.p)))
+    (expect-eq !>(expected) !>((turn log |=(p=(pair @ud review-event) q.p))))
+    (expect-eq !>(1) !>(`@`box.l1))
+    (expect-eq !>(~m15) !>(`@dr`interval.l1))
+    (expect-eq !>(1) !>(`@`box.l3))
+    (expect-eq !>(~m15) !>(`@dr`interval.l3))
+  ==
+::
 ::  A copy starts its own review history unless the learner keeps it.
 ::
 ++  test-copy-stack-resets-learning-unless-kept

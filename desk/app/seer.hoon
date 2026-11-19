@@ -33,6 +33,9 @@
       remote-manifests=(map @p remote-manifest)
       recent-clay=(list @t)
       context-revs=(map @tas @ud)
+      review-log=revlog
+      next-review-id=@ud
+      pending-show=(map card-key @da)
       operating=agent-state
   ==
 +$  card  card:agent:gall
@@ -385,6 +388,8 @@
       ``noun+!>(prompts)
         [%x %review ~]
       ``noun+!>(all-reviews)
+        [%x %revlog ~]
+      ``noun+!>((tap:revlog-on review-log.state))
         [%x %all ~]
       ``noun+!>(stacks.state)
         [%x %ai-state ~]
@@ -1407,7 +1412,7 @@
       ?:  =(%no-change reason.receipt)  `'No change was needed.'
       notice
     `(operation-outcome receipt)
-  :_  state
+  :_  (stamp-shown page)
   %+  weld  action-cards
   %+  give-simple-payload:app  eyre-id
   (render-action-page page notice)
@@ -1442,9 +1447,22 @@
 ++  respond-page
   |=  [eyre-id=@ta page=page:index notice=(unit @t)]
   ^-  (quip card _state)
-  :_  state
+  :_  (stamp-shown page)
   %+  give-simple-payload:app  eyre-id
   (render-page page notice)
+::
+::  +stamp-shown: record when the review page first shows its head card,
+::  so the answer can log shown-at. A reload keeps the first stamp.
+::
+++  stamp-shown
+  |=  page=page:index
+  ^+  state
+  ?.  ?=(%review -.page)  state
+  =/  reviews  all-reviews
+  ?~  reviews  state
+  =/  key=card-key  i.reviews
+  ?:  (~(has by pending-show.state) key)  state
+  state(pending-show (~(put by pending-show.state) key now.bol))
 ::
 ++  respond-payload
   |=  [eyre-id=@ta payload=simple-payload:http]
@@ -2542,6 +2560,19 @@
         (~(got by stacks) stak.act)
       (~(got by stack-subs) [owner.act stak.act])
     =/  =item  (~(got by items.stk) item.act)
+    =/  rkey=card-key  [owner.act stak.act item.act]
+    =/  kind=review-kind
+      ?.  =(0 box.learn.item)  %review
+      ?~(last-review.item %learn %relearn)
+    =/  shown-at=@da
+      (min now.bol (fall (~(get by pending-show.state) rkey) now.bol))
+    =.  review-log.state
+      %^  put:revlog-on  review-log.state  next-review-id.state
+      :*  next-review-id.state  rkey  answer.act  kind
+          shown-at  now.bol  stak.act  %default
+      ==
+    =.  next-review-id.state  +(next-review-id.state)
+    =.  pending-show.state  (~(del by pending-show.state) rkey)
     =?  learning.state  is-owner
       =/  key=entity-key  [%card our.bol stak.act item.act]
       =/  version  (~(get by versions.operating.state) key)
