@@ -9,34 +9,40 @@
 ::
 =,  seer-types
 |%
-+$  seer-state
-  $:  stacks=(map @tas stack)
-      paths=(list path)
-      stack-subs=(map [ship @tas] stack)
-      captures=(map @tas capture)
-      provenance=(map [@tas @tas] provenance)
-      questions=(map @tas card-question)
-      models=(map @tas assistant-model)
-      changes=(map @tas change-request)
-      logins=(map @tas login-request)
-      accounts=(map ai-provider provider-account)
-      catalog-pending=(set ai-provider)
-      catalog-active=(map ai-provider [serial=@ud deadline=@da])
-      catalog-serial=@ud
-      contexts=(map @tas context-source)
-      context-count=@ud
-      evidence=evidence-state
-      learning=learning-state
-      shared-context=(map path shared-entry)
-      shared-manifest-rev=@ud
-      outstanding-keens=(map @tas keen-track)
-      remote-manifests=(map @p remote-manifest)
-      recent-clay=(list @t)
-      context-revs=(map @tas @ud)
-      review-log=revlog
-      next-review-id=@ud
-      pending-show=(map card-key @da)
-      operating=agent-state
++$  versioned-state
+  $%  [%0 seer-state-0]
+      [%1 seer-state]
+  ==
+++  migrate-0-to-1
+  |=  old=seer-state-0
+  ^-  seer-state
+  :*  stacks.old
+      paths.old
+      stack-subs.old
+      captures.old
+      provenance.old
+      questions.old
+      models.old
+      changes.old
+      logins.old
+      accounts.old
+      catalog-pending.old
+      catalog-active.old
+      catalog-serial.old
+      contexts.old
+      context-count.old
+      evidence.old
+      learning.old
+      shared-context.old
+      shared-manifest-rev.old
+      outstanding-keens.old
+      remote-manifests.old
+      recent-clay.old
+      context-revs.old
+      review-log=*revlog
+      next-review-id=0
+      pending-show=~
+      operating.old
   ==
 +$  card  card:agent:gall
 ::
@@ -288,12 +294,27 @@
     =^  more  state  flush:sc
     [(weld cards more) this]
   ::
-  ++  on-save  !>(state)
+  ++  on-save  !>([%1 state])
   ++  on-load
     |=  old=vase
     ^-  (quip card _this)
-    ~|  'seer-state-shape-changed: nuke and revive %seer'
-    =.  state  !<(seer-state old)
+    ::  a bare state's head is the stacks map (a cell or ~), never %1;
+    ::  ~ collides with %0, so bare molds are tried before tagged %0
+    ::
+    =/  new=(unit seer-state)
+      =/  v1  ((soft ,[%1 seer-state]) q.old)
+      ?^  v1  `+.u.v1
+      =/  bare  ((soft seer-state) q.old)
+      ?^  bare  bare
+      =/  bare-0  ((soft seer-state-0) q.old)
+      ?^  bare-0  `(migrate-0-to-1 u.bare-0)
+      =/  v0  ((soft ,[%0 seer-state-0]) q.old)
+      ?^  v0  `(migrate-0-to-1 +.u.v0)
+      ~
+    ?~  new
+      ~|  'seer-state: unrecognized saved state; nuke %seer only as last resort'
+      !!
+    =.  state  u.new
     =^  overdue  state  settle-overdue:sc
     =^  cards  state  flush:sc
     [:(weld -:on-init overdue cards) this]

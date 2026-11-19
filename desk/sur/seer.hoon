@@ -866,6 +866,64 @@
       deck=@tas
       preset=@tas
   ==
+::  agent state: seer-state-0 is the pre-revlog mold, kept for on-load migration
+::
++$  seer-state
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+      accounts=(map ai-provider provider-account)
+      catalog-pending=(set ai-provider)
+      catalog-active=(map ai-provider [serial=@ud deadline=@da])
+      catalog-serial=@ud
+      contexts=(map @tas context-source)
+      context-count=@ud
+      evidence=evidence-state
+      learning=learning-state
+      shared-context=(map path shared-entry)
+      shared-manifest-rev=@ud
+      outstanding-keens=(map @tas keen-track)
+      remote-manifests=(map @p remote-manifest)
+      recent-clay=(list @t)
+      context-revs=(map @tas @ud)
+      review-log=revlog
+      next-review-id=@ud
+      pending-show=(map card-key @da)
+      operating=agent-state
+  ==
++$  seer-state-0
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+      accounts=(map ai-provider provider-account)
+      catalog-pending=(set ai-provider)
+      catalog-active=(map ai-provider [serial=@ud deadline=@da])
+      catalog-serial=@ud
+      contexts=(map @tas context-source)
+      context-count=@ud
+      evidence=evidence-state
+      learning=learning-state
+      shared-context=(map path shared-entry)
+      shared-manifest-rev=@ud
+      outstanding-keens=(map @tas keen-track)
+      remote-manifests=(map @p remote-manifest)
+      recent-clay=(list @t)
+      context-revs=(map @tas @ud)
+      operating=agent-state
+  ==
+::
 +$  revlog  ((mop @ud review-event) lth)
 ++  revlog-on  ((on @ud review-event) lth)
 --

@@ -391,6 +391,33 @@
   ^-  [cards=(list card:agent:gall) core=agent:gall]
   (run core [%add-context-source id [%stack ~zod %s1 ~] %web 'Web' url ''])
 ::
+::  on-load: a bare pre-revlog save keeps its stacks and starts an empty revlog.
+::
+++  test-on-load-migrates-pre-revlog-state
+  ^-  tang
+  =/  core  ag
+  =.  core  (do core [%new-stack %s1 'Stack one' ~])
+  =.  core
+    %+  do  core
+    :*  %new-item  ~zod  ~zod  %s1  %c1
+        'Card'  *perm-config  'front'  'back'
+    ==
+  =/  before=stack  (need (peek-stack core %s1))
+  =/  old=seer-state-0
+    %*  .  *seer-state-0
+      stacks  (my [%s1 before]~)
+    ==
+  =.  core  +:(on-load:core !>(old))
+  =/  after=stack  (need (peek-stack core %s1))
+  =/  res  (on-peek:core /x/revlog)
+  ?>  ?=([~ ~ *] res)
+  =/  log=(list (pair @ud review-event))
+    (need ((soft (list (pair @ud review-event))) q.q.u.u.res))
+  ;:  weld
+    (expect-eq !>(items.before) !>(items.after))
+    (expect-eq !>(`(list (pair @ud review-event))`~) !>(log))
+  ==
+::
 ::  sm-2: box walks the fixed intervals on %good and resets on %again.
 ::
 ++  test-sm2-scheduling
