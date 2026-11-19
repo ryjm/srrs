@@ -456,17 +456,18 @@
     learn:(~(got by items:(need (peek-stack core %s1))) %c1)
   =/  res  (on-peek:core /x/revlog)
   ?>  ?=([~ ~ *] res)
-  =/  log  (need ((soft (list [@ud review-event])) q.q.u.u.res))
+  =/  log=(list (pair @ud review-event))
+    (need ((soft (list (pair @ud review-event))) q.q.u.u.res))
   =/  key=card-key  [~zod %s1 %c1]
+  =/  expected=(list review-event)
+    :~  [0 key %good %learn fixed-now in-one-hour %s1 %default]
+        [1 key %again %review in-one-hour in-one-hour %s1 %default]
+        [2 key %good %relearn in-one-hour in-one-hour %s1 %default]
+    ==
   ;:  weld
-    %+  expect-eq  !>(~[0 1 2])
-    !>((turn log |=([k=@ud *] k)))
-    %+  expect-eq
-      !>  :~  [0 key %good %learn fixed-now in-one-hour %s1 %default]
-              [1 key %again %review in-one-hour in-one-hour %s1 %default]
-              [2 key %good %relearn in-one-hour in-one-hour %s1 %default]
-          ==
-    !>((turn log |=([@ud e=review-event] e)))
+    %+  expect-eq  !>(`(list @ud)`~[0 1 2])
+    !>((turn log |=(p=(pair @ud review-event) p.p)))
+    (expect-eq !>(expected) !>((turn log |=(p=(pair @ud review-event) q.p))))
     (expect-eq !>(1) !>(`@`box.l1))
     (expect-eq !>(~m15) !>(`@dr`interval.l1))
     (expect-eq !>(1) !>(`@`box.l3))
