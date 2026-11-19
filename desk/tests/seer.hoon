@@ -1762,10 +1762,11 @@
   =.  core  (do core [%add-context-source %remote [%stack ~nec %orphan ~] %note 'Remote' '' 'Remote evidence'])
   =/  before  (peek-ai core)
   =/  source  (~(got by contexts.before) %orphan)
-  ::  Preserve the current saved vase/mold; remove its first field's parent
+  ::  Preserve the current saved vase/mold ([%1 seer-state]); remove the
+  ::  first state field's parent
   ::  without invoking deletion. This is not an old-state migration fixture.
   =/  saved  on-save:core
-  =.  saved  saved(q [(~(del by stacks.before) %orphan) +.q.saved])
+  =.  saved  saved(q [%1 (~(del by stacks.before) %orphan) +>.q.saved])
   =.  core  +:(on-load:ag saved)
   =.  core  (do core [%archive-orphan-contexts ~])
   =/  swept  (peek-ai core)
