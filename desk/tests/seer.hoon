@@ -440,7 +440,7 @@
       authenticated  %.y
       request  [%'GET' '/apps/seer/review' ~ ~]
     ==
-  =/  shell  ~(. seer-agent bol(sap /eyre))
+  =/  shell  ~(. seer-agent %*(. bol sap /eyre))
   =.  core  +:(on-load:shell on-save:core)
   =.  core  +:(on-poke:core %handle-http-request !>(['review' request]))
   =.  core  (at-time core in-one-hour)
