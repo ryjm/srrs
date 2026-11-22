@@ -418,6 +418,127 @@
     (expect-eq !>(`(list (pair @ud review-event))`~) !>(log))
   ==
 ::
+::  on-load: a [%1 ...] save keeps its stacks and starts with rwkv off.
+::
+++  test-on-load-upgrades-v1-state
+  ^-  tang
+  =/  core  ag
+  =.  core  (do core [%new-stack %s1 'Stack one' ~])
+  =.  core
+    %+  do  core
+    :*  %new-item  ~zod  ~zod  %s1  %c1
+        'Card'  *perm-config  'front'  'back'
+    ==
+  =/  before=stack  (need (peek-stack core %s1))
+  =/  old=seer-state-1
+    %*  .  *seer-state-1
+      stacks  (my [%s1 before]~)
+    ==
+  =.  core  +:(on-load:core !>([%1 old]))
+  =/  after=stack  (need (peek-stack core %s1))
+  =/  cfg  (peek-rwkv core)
+  ;:  weld
+    (expect-eq !>(items.before) !>(items.after))
+    (expect-eq !>(review-items.before) !>(review-items.after))
+    (expect-eq !>(b+%.n) !>((json-field cfg 'enabled')))
+    (expect-eq !>(n+'900000') !>((json-field cfg 'target_ppm')))
+    (expect-eq !>(n+'200') !>((json-field cfg 'max_daily')))
+    (expect-eq !>(%.y) !>(?=([%2 *] q:on-save:core)))
+  ==
+::
+::  rwkv: fixtures and queue scheduling
+::
+++  peek-queue
+  |=  core=agent:gall
+  ^-  (list review)
+  =/  res  (on-peek:core /x/review)
+  ?>  ?=([~ ~ *] res)
+  (need ((soft (list review)) q.q.u.u.res))
+++  peek-rwkv
+  |=  core=agent:gall
+  ^-  json
+  =/  res  (on-peek:core /x/rwkv)
+  ?>  ?=([~ ~ *] res)
+  (need ((soft json) q.q.u.u.res))
+::  +rwkv-deck: c1..c5 due under sm-2, then c1 answered, so revlog id 0
+::  is the newest and the sm-2 queue is c2..c5
+::
+++  rwkv-deck
+  ^-  agent:gall
+  =/  core  (do ag [%new-stack %s1 'Stack one' ~])
+  =/  names=(list @tas)  ~[%c1 %c2 %c3 %c4 %c5]
+  |-
+  ?~  names  (do core [%answered-item ~zod %s1 %c1 %good])
+  %=  $
+    names  t.names
+    core   (do core [%new-item ~zod ~zod %s1 i.names 'Card' *perm-config 'front' 'back'])
+  ==
+++  predict
+  |=  [top=@ud rows=(list [@tas @rd])]
+  ^-  action
+  :+  %rwkv-predictions  top
+  :-  fixed-now
+  %-  malt
+  (turn rows |=([item=@tas p=@rd] [`card-key`[~zod %s1 item] p]))
+++  card-in
+  |=  item=@tas
+  ^-  review
+  [~zod %s1 item]
+::  +rwkv-on: default config, enabled, with a queue cap
+::
+++  rwkv-on
+  |=  max=@ud
+  ^-  rwkv-config
+  =/  cfg  rwkv-default
+  cfg(enabled %.y, max-daily max)
+::
+++  test-rwkv-disabled-keeps-sm2-queue
+  ^-  tang
+  =/  core  rwkv-deck
+  =/  sm2  (peek-queue core)
+  =.  core  (do core (predict 0 ~[[%c2 .~0.1] [%c3 .~0.2]]))
+  ;:  weld
+    (expect-eq !>(4) !>((lent sm2)))
+    (expect-eq !>(sm2) !>((peek-queue core)))
+  ==
+::
+++  test-rwkv-fresh-orders-by-retrievability
+  ^-  tang
+  =/  core  rwkv-deck
+  =.  core  (do core [%set-rwkv-config (rwkv-on 2)])
+  =.  core
+    (do core (predict 0 ~[[%c1 .~0.5] [%c2 .~0.95] [%c3 .~0.2] [%c4 .~0.7]]))
+  =/  capped  (peek-queue core)
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  uncapped  (peek-queue core)
+  ;:  weld
+    (expect-eq !>(b+%.y) !>((json-field (peek-rwkv core) 'fresh')))
+    ::  c3 and c1 below target, capped at 2; unpredicted c5 keeps sm-2
+    (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1) (card-in %c5)]) !>(capped))
+    (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1) (card-in %c4) (card-in %c5)]) !>(uncapped))
+  ==
+::
+++  test-rwkv-stale-predictions-fall-back
+  ^-  tang
+  =/  core  rwkv-deck
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  sm2  (peek-queue core)
+  =.  core  (do core (predict 5 ~[[%c1 .~0.2]]))
+  =/  rejected  (peek-queue core)
+  =/  fresh-rejected  (json-field (peek-rwkv core) 'fresh')
+  =.  core  (do core (predict 0 ~[[%c1 .~0.2]]))
+  =/  accepted  (peek-queue core)
+  ::  a new answer makes the stored predictions stale
+  =.  core  (do core [%answered-item ~zod %s1 %c2 %good])
+  =/  later  (peek-queue core)
+  ;:  weld
+    (expect-eq !>(sm2) !>(rejected))
+    (expect-eq !>(b+%.n) !>(fresh-rejected))
+    (expect-eq !>(`(list review)`[(card-in %c1) sm2]) !>(accepted))
+    (expect-eq !>(b+%.n) !>((json-field (peek-rwkv core) 'fresh')))
+    (expect-eq !>((skip sm2 |=(rev=review =(%c2 item.rev)))) !>(later))
+  ==
+::
 ::  sm-2: box walks the fixed intervals on %good and resets on %again.
 ::
 ++  test-sm2-scheduling
@@ -1762,11 +1883,11 @@
   =.  core  (do core [%add-context-source %remote [%stack ~nec %orphan ~] %note 'Remote' '' 'Remote evidence'])
   =/  before  (peek-ai core)
   =/  source  (~(got by contexts.before) %orphan)
-  ::  Preserve the current saved vase/mold ([%1 seer-state]); remove the
+  ::  Preserve the current saved vase/mold ([%2 seer-state]); remove the
   ::  first state field's parent
   ::  without invoking deletion. This is not an old-state migration fixture.
   =/  saved  on-save:core
-  =.  saved  saved(q [%1 (~(del by stacks.before) %orphan) +>.q.saved])
+  =.  saved  saved(q [%2 (~(del by stacks.before) %orphan) +>.q.saved])
   =.  core  +:(on-load:ag saved)
   =.  core  (do core [%archive-orphan-contexts ~])
   =/  swept  (peek-ai core)
