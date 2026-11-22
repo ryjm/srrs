@@ -11,11 +11,12 @@
 |%
 +$  versioned-state
   $%  [%0 seer-state-0]
-      [%1 seer-state]
+      [%1 seer-state-1]
+      [%2 seer-state]
   ==
 ++  migrate-0-to-1
   |=  old=seer-state-0
-  ^-  seer-state
+  ^-  seer-state-1
   :*  stacks.old
       paths.old
       stack-subs.old
@@ -44,6 +45,59 @@
       pending-show=~
       operating.old
   ==
+++  migrate-1-to-2
+  |=  old=seer-state-1
+  ^-  seer-state
+  :*  stacks.old
+      paths.old
+      stack-subs.old
+      captures.old
+      provenance.old
+      questions.old
+      models.old
+      changes.old
+      logins.old
+      accounts.old
+      catalog-pending.old
+      catalog-active.old
+      catalog-serial.old
+      contexts.old
+      context-count.old
+      evidence.old
+      learning.old
+      shared-context.old
+      shared-manifest-rev.old
+      outstanding-keens.old
+      remote-manifests.old
+      recent-clay.old
+      context-revs.old
+      review-log.old
+      next-review-id.old
+      pending-show.old
+      rwkv=rwkv-default
+      predictions=~
+      operating.old
+  ==
+::  +rwkv-queue: due cards from fresh predictions. cards with r below
+::  target, ascending r, padded to min-daily and capped at max-daily;
+::  unpredicted cards keep their sm-2 due rule (membership in .sm2).
+::
+++  rwkv-queue
+  |=  [cfg=rwkv-config r=(map card-key @rd) cards=(list review) sm2=(list review)]
+  ^-  (list review)
+  =/  scored=(list [rev=review p=@rd])
+    %+  sort
+      %+  murn  cards
+      |=  rev=review
+      =/  p  (~(get by r) `card-key`[who.rev stack.rev item.rev])
+      ?~  p  ~
+      `[rev u.p]
+    |=([a=[rev=review p=@rd] b=[rev=review p=@rd]] (lth:rd p.a p.b))
+  =/  below  (skim scored |=([rev=review p=@rd] (lth:rd p target.cfg)))
+  =?  below  (lth (lent below) min-daily.cfg)  (scag min-daily.cfg scored)
+  %+  weld
+    (turn (scag max-daily.cfg below) |=([rev=review p=@rd] rev))
+  (skip sm2 |=(rev=review (~(has by r) `card-key`[who.rev stack.rev item.rev])))
 +$  card  card:agent:gall
 ::
 --
@@ -62,7 +116,7 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    :_  this(epoch.operating.state now.bol)
+    :_  this(epoch.operating.state now.bol, rwkv.state rwkv-default)
     :~
       [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]
       [%pass /bind/seer %arvo %e %connect [~ /apps/seer] dap.bol]
@@ -294,7 +348,7 @@
     =^  more  state  flush:sc
     [(weld cards more) this]
   ::
-  ++  on-save  !>([%1 state])
+  ++  on-save  !>([%2 state])
   ++  on-load
     |=  old=vase
     ^-  (quip card _this)
@@ -302,14 +356,16 @@
     ::  ~ collides with %0, so bare molds are tried before tagged %0
     ::
     =/  new=(unit seer-state)
-      =/  v1  ((soft ,[%1 seer-state]) q.old)
-      ?^  v1  `+.u.v1
-      =/  bare  ((soft seer-state) q.old)
-      ?^  bare  bare
+      =/  v2  ((soft ,[%2 seer-state]) q.old)
+      ?^  v2  `+.u.v2
+      =/  v1  ((soft ,[%1 seer-state-1]) q.old)
+      ?^  v1  `(migrate-1-to-2 +.u.v1)
+      =/  bare  ((soft seer-state-1) q.old)
+      ?^  bare  `(migrate-1-to-2 u.bare)
       =/  bare-0  ((soft seer-state-0) q.old)
-      ?^  bare-0  `(migrate-0-to-1 u.bare-0)
+      ?^  bare-0  `(migrate-1-to-2 (migrate-0-to-1 u.bare-0))
       =/  v0  ((soft ,[%0 seer-state-0]) q.old)
-      ?^  v0  `(migrate-0-to-1 +.u.v0)
+      ?^  v0  `(migrate-1-to-2 (migrate-0-to-1 +.u.v0))
       ~
     ?~  new
       ~|  'seer-state: unrecognized saved state; nuke %seer only as last resort'
@@ -411,6 +467,8 @@
       ``noun+!>(all-reviews)
         [%x %revlog ~]
       ``noun+!>((tap:revlog-on review-log.state))
+        [%x %rwkv ~]
+      ``json+!>(rwkv-json:sc)
         [%x %all ~]
       ``noun+!>(stacks.state)
         [%x %ai-state ~]
@@ -2628,6 +2686,15 @@
     %.  [item answer.act]
     %~  update-learn  stack-emit  stk
       %update-review
+    =<  abet  update-review:stack-emit
+      %set-rwkv-config
+    =.  rwkv.state  config.act
+    =<  abet  update-review:stack-emit
+      %rwkv-predictions
+    =/  newest  (ram:revlog-on review-log.state)
+    ~|  'seer-rwkv: stale predictions; head must be the newest revlog id'
+    ?>  ?&(?=(^ newest) =(key.u.newest head.predictions.act))
+    =.  predictions.state  `predictions.act
     =<  abet  update-review:stack-emit
       %import
     =/  =wire  /import/(scot %p who.act)/[stack.act]
@@ -5192,7 +5259,65 @@
   ^-  stack
   (create-stack:effects info items)
 ::
+::  +all-reviews: the review queue. rwkv order while enabled and its
+::  predictions are fresh, else sm-2.
+::
 ++  all-reviews
+  ^-  (list review)
+  =/  pred  predictions.state
+  ?.  ?&(enabled.rwkv.state ?=(^ pred) =(`head.u.pred newest-review-id))
+    sm2-reviews
+  (rwkv-queue rwkv.state r.u.pred all-cards sm2-reviews)
+::
+++  newest-review-id
+  ^-  (unit @ud)
+  =/  newest  (ram:revlog-on review-log.state)
+  ?~(newest ~ `key.u.newest)
+::
+++  all-cards
+  ^-  (list review)
+  %-  zing
+  %+  turn  ~(val by stacks)
+  |=  =stack
+  %+  turn  ~(val by items.stack)
+  |=  =item  [author.content.item name.stack name.item]
+::
+::  +rwkv-json: what the browser loader needs to run the engine.
+::  probabilities cross the boundary as integer parts per million.
+::
+++  rwkv-json
+  ^-  json
+  =,  enjs:format
+  =/  cfg  rwkv.state
+  =/  newest  newest-review-id
+  =/  pred  predictions.state
+  %-  pairs
+  :~  ['enabled' [%b enabled.cfg]]
+      ['target_ppm' (numb (abs:si (need (toi:rd (mul:rd target.cfg (sun:rd 1.000.000))))))]
+      ['max_daily' (numb max-daily.cfg)]
+      ['min_daily' (numb min-daily.cfg)]
+      ['artifact_url' ?~(artifact-url.cfg ~ [%s u.artifact-url.cfg])]
+      ['artifact_hash' ?~(artifact-hash.cfg ~ [%s (crip ((x-co:co 64) u.artifact-hash.cfg))])]
+      ['head' ?~(newest ~ (numb u.newest))]
+      ['fresh' [%b ?~(pred %.n =(`head.u.pred newest))]]
+      ['idempotency_epoch' [%s (scot %da epoch.operating.state)]]
+      :-  'revlog'
+      :-  %a
+      %+  turn  (tap:revlog-on review-log.state)
+      |=  [id=@ud ev=review-event]
+      %-  pairs
+      :~  ['id' (numb id)]
+          ['owner' [%s (scot %p owner.key.ev)]]
+          ['stack' [%s stack.key.ev]]
+          ['item' [%s item.key.ev]]
+          ['grade' [%s grade.ev]]
+          ['kind' [%s kind.ev]]
+          ['shown_at' (time shown-at.ev)]
+          ['answered_at' (time answered-at.ev)]
+      ==
+  ==
+::
+++  sm2-reviews
   ^-  (list review)
   %-  zing
   %+  turn  ~(val by stacks)

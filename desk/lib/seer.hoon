@@ -18,6 +18,8 @@
     %edit-stack               'Rename stack'
     %edit-item                'Edit card'
     %update-review            'Update review queue'
+    %set-rwkv-config          'Change RWKV scheduling'
+    %rwkv-predictions         'Save RWKV predictions'
     %import                   'Import stack'
     %import-file              'Import file'
     %copy-stack               'Copy stack'
@@ -83,7 +85,7 @@
           !=(%outcome-unknown reason.receipt)
       ==
     %.n
-  ?:  ?=(?(%answered-item %update-review) action.receipt)  %.y
+  ?:  ?=(?(%answered-item %update-review %rwkv-predictions) action.receipt)  %.y
   ?&  !=(%operator authority.receipt)
       ?=(?(%collect-retained %archive-orphan-contexts %replace-assistant-models %dispatch-work %rotate-account) action.receipt)
   ==
@@ -1297,6 +1299,8 @@
     ::  or account state that no read index describes; import-file emits a
     ::  later new-stack.
       %update-review           control
+      %set-rwkv-config         control
+      %rwkv-predictions        control
       %import-file             control
       %share-clay-context      control
       %unshare-clay-context    control
