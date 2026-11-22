@@ -1,0 +1,92 @@
+import assert from "node:assert/strict";
+import { createRequire } from "node:module";
+import test from "node:test";
+
+const { run, sha256Hex } = createRequire(import.meta.url)("../desk/lib/web/rwkv-loader.js");
+
+const bytes = (text) => new TextEncoder().encode(text);
+const engineBytes = bytes("engine");
+const weightBytes = bytes("weights");
+
+async function manifestBytes() {
+  return bytes(JSON.stringify({
+    engine: { url: "engine.wasm", sha256: await sha256Hex(engineBytes) },
+    weights: { url: "weights.bin", sha256: await sha256Hex(weightBytes) },
+  }));
+}
+
+function config(artifactHash) {
+  return {
+    enabled: true, target_ppm: 900000, max_daily: 200, min_daily: 0,
+    artifact_url: "https://cdn.example/rwkv/manifest.json", artifact_hash: artifactHash,
+    head: 3, fresh: false, idempotency_epoch: "~2026.9.2",
+    revlog: [{ id: 3, owner: "~zod", stack: "s1", item: "c1", grade: "good" }],
+  };
+}
+
+function stubFetch(files) {
+  const posts = [];
+  const fetch = async (url, init) => {
+    if (init?.method === "POST") {
+      posts.push({ url, body: init.body });
+      return { ok: true };
+    }
+    const body = files[url];
+    if (body === undefined) return { ok: false, status: 404 };
+    return {
+      ok: true,
+      json: async () => body,
+      arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength),
+    };
+  };
+  return { fetch, posts };
+}
+
+async function files(artifactHash) {
+  return {
+    "/~/scry/seer/rwkv.json": config(artifactHash),
+    "https://cdn.example/rwkv/manifest.json": await manifestBytes(),
+    "https://cdn.example/rwkv/engine.wasm": engineBytes,
+    "https://cdn.example/rwkv/weights.bin": weightBytes,
+  };
+}
+
+const stubEngine = async (engine, weights) => {
+  assert.deepEqual(engine, engineBytes);
+  assert.deepEqual(weights, weightBytes);
+  return {
+    predict: (input) => {
+      assert.equal(input.events.length, 1);
+      return [
+        { owner: "~zod", stack: "s1", item: "c1", r: 0.25 },
+        { owner: "~zod", stack: "s1", item: "c2", r: 0.9123456 },
+      ];
+    },
+  };
+};
+
+test("manifest hash mismatch never pokes", async () => {
+  const { fetch, posts } = stubFetch(await files("00".repeat(32)));
+  const warn = console.warn;
+  console.warn = () => {};
+  try {
+    const body = await run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" });
+    assert.equal(body, null);
+  } finally {
+    console.warn = warn;
+  }
+  assert.deepEqual(posts, []);
+});
+
+test("verified artifact with stub engine pokes predictions", async () => {
+  const { fetch, posts } = stubFetch(await files(await sha256Hex(await manifestBytes())));
+  await run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" });
+  assert.equal(posts.length, 1);
+  assert.equal(posts[0].url, "/apps/seer/actions/rwkv-predictions");
+  assert.deepEqual(Object.fromEntries(new URLSearchParams(posts[0].body)), {
+    "idempotency-epoch": "~2026.9.2",
+    "operation-id": "rwkv-3-1000",
+    head: "3",
+    r: "~zod,s1,c1,250000\n~zod,s1,c2,912346",
+  });
+});

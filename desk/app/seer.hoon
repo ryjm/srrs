@@ -7,6 +7,8 @@
 ::
 /*  htmx-src  %js  /lib/web/htmx-min/js
 ::
+/*  rwkv-loader-src  %js  /lib/web/rwkv-loader/js
+::
 =,  seer-types
 |%
 +$  versioned-state
@@ -864,6 +866,9 @@
       [[[~ %js] [%apps %seer %htmx-min ~]] ~]
     %+  respond-payload  eyre-id
     (js-response:gen (as-octs:mimes:html htmx-src))
+      [[[~ %js] [%apps %seer %rwkv-loader ~]] ~]
+    %+  respond-payload  eyre-id
+    (js-response:gen (as-octs:mimes:html rwkv-loader-src))
   ::  the aero ios shell opens its native seer screen when this hint parses.
   ::
       [[[~ %json] [%apps %seer %aero ~]] ~]
@@ -1061,6 +1066,19 @@
       [%review ~]
       ~
     ==
+  ::
+      [[~ [%apps %seer %actions %rwkv-predictions ~]] ~]
+    =/  top=@ud  (rash (form-got fields 'head') dem)
+    =/  rows=(list [@p @tas @tas @ud])
+      %+  rash  (form-got fields 'r')
+      %+  more  (just '\0a')
+      ;~((glue com) ;~(pfix sig fed:ag) sym sym dem)
+    =/  r=(map card-key @rd)
+      %-  malt
+      %+  turn  rows
+      |=  [who=@p stak=@tas name=@tas ppm=@ud]
+      [[who stak name] (div:rd (sun:rd ppm) (sun:rd 1.000.000))]
+    (apply-web-action eyre-id [%rwkv-predictions top now.bol r] [%review ~] ~)
   ::
       [[~ [%apps %seer %actions %request-change ~]] ~]
     =/  prompt  (form-got fields 'prompt')
@@ -1593,6 +1611,10 @@
     operating.state
     learning.state
     account-views
+    ?&  enabled.rwkv.state
+        ?=(^ artifact-url.rwkv.state)
+        ?=(^ artifact-hash.rwkv.state)
+    ==
   ==
 ::
 ++  get-arg
