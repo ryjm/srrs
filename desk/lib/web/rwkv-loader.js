@@ -101,18 +101,28 @@
     module.exports = { sha256Hex: sha256Hex, pokeBody: pokeBody, run: run };
     return;
   }
-  run({
+  // htmx re-runs this script on every swap of #seer-app; one run at a time.
+  if (window.seerRwkvRunning) return;
+  window.seerRwkvRunning = true;
+  var deps = {
     fetch: function (url, init) {
       return fetch(url, Object.assign({ credentials: "include" }, init));
     },
     engine: wasmEngine,
     now: Date.now,
     base: location.href,
-  }).then(function (body) {
-    if (body && window.htmx) {
-      htmx.ajax("GET", "/apps/seer/review", {
-        target: "#seer-app", select: "#seer-app", swap: "outerHTML",
-      });
-    }
+  };
+  run(deps).then(async function (body) {
+    if (!body || !window.htmx) return;
+    // refresh only if the ship accepted the predictions
+    var config = await (await deps.fetch(CONFIG_URL)).json();
+    if (!config.fresh) return;
+    htmx.ajax("GET", "/apps/seer/review", {
+      target: "#seer-app", select: "#seer-app", swap: "outerHTML",
+    });
+  }).catch(function (err) {
+    console.warn(err);
+  }).finally(function () {
+    window.seerRwkvRunning = false;
   });
 })();
