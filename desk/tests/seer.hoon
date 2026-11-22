@@ -437,13 +437,14 @@
   =.  core  +:(on-load:core !>([%1 old]))
   =/  after=stack  (need (peek-stack core %s1))
   =/  cfg  (peek-rwkv core)
+  =/  saved=*  q:on-save:core
   ;:  weld
     (expect-eq !>(items.before) !>(items.after))
     (expect-eq !>(review-items.before) !>(review-items.after))
     (expect-eq !>(b+%.n) !>((json-field cfg 'enabled')))
     (expect-eq !>(n+'900000') !>((json-field cfg 'target_ppm')))
     (expect-eq !>(n+'200') !>((json-field cfg 'max_daily')))
-    (expect-eq !>(%.y) !>(?=([%2 *] q:on-save:core)))
+    (expect-eq !>(%.y) !>(?=([%2 *] saved)))
   ==
 ::
 ::  rwkv: fixtures and queue scheduling
