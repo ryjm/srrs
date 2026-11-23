@@ -86,7 +86,7 @@
       [%collect-retained ~]
       [%retire-operation-epoch ~]
       [%set-rwkv-config config=rwkv-config]
-      [%rwkv-predictions predictions=rwkv-predictions]
+      [%rwkv-predictions head=@ud r=(map card-key @rd)]
       $:  %add-context-source
           id=@tas
           scope=context-scope
@@ -870,7 +870,8 @@
   ==
 ::  rwkv scheduling: the browser computes retrievability from the revlog
 ::  and pokes it back. predictions are fresh only while .head is the
-::  newest revlog id; otherwise the sm-2 queue applies.
+::  newest revlog id and .computed-at, the ship's time at receipt, is
+::  less than +rwkv-max-age ago; otherwise the sm-2 queue applies.
 ::
 +$  rwkv-config
   $:  enabled=?
@@ -881,6 +882,7 @@
       artifact-hash=(unit @ux)
   ==
 ++  rwkv-default  `rwkv-config`[%.n .~0.9 200 0 ~ ~]
+++  rwkv-max-age  ~m15
 +$  rwkv-predictions
   $:  head=@ud
       computed-at=@da

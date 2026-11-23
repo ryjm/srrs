@@ -19,12 +19,12 @@ The review page loads `/apps/seer/rwkv-loader.js` only when `enabled` is set and
 
 ## Queue
 
-Predictions are fresh while their `head` equals the newest revlog id. With fresh predictions the queue is:
+Predictions are fresh while RWKV is enabled, their `head` equals the newest revlog id, and the ship received them less than 15 minutes ago (`rwkv-max-age`). The queue and the `fresh` field of the scry use the same rule. With fresh predictions the queue is:
 
 1. cards with a prediction below `target`, ascending R, padded to `min-daily` and capped at `max-daily`;
 2. then SM-2 due cards that have no prediction.
 
-Any new answer appends to the revlog, so the stored predictions go stale until the browser sends new ones. A `%rwkv-predictions` poke whose `head` is not the newest revlog id is rejected and stores nothing.
+Any new answer appends to the revlog, so the stored predictions go stale until the browser sends new ones. They also go stale with age, because the engine predicts recall at the time it ran; without that bound, a card held back by a high score would stay out of the queue until the next answer. A `%rwkv-predictions` poke whose `head` is not the newest revlog id is rejected and stores nothing.
 
 ## Loader
 

@@ -466,7 +466,7 @@
         [%x %mcp %prompts ~]
       ``noun+!>(prompts)
         [%x %review ~]
-      ``noun+!>(all-reviews)
+      ``noun+!>(all-reviews:sc)
         [%x %revlog ~]
       ``noun+!>((tap:revlog-on review-log.state))
         [%x %rwkv ~]
@@ -1078,7 +1078,7 @@
       %+  turn  rows
       |=  [who=@p stak=@tas name=@tas ppm=@ud]
       [[who stak name] (div:rd (sun:rd ppm) (sun:rd 1.000.000))]
-    (apply-web-action eyre-id [%rwkv-predictions top now.bol r] [%review ~] ~)
+    (apply-web-action eyre-id [%rwkv-predictions top r] [%review ~] ~)
   ::
       [[~ [%apps %seer %actions %request-change ~]] ~]
     =/  prompt  (form-got fields 'prompt')
@@ -2715,8 +2715,8 @@
       %rwkv-predictions
     =/  newest  (ram:revlog-on review-log.state)
     ~|  'seer-rwkv: stale predictions; head must be the newest revlog id'
-    ?>  ?&(?=(^ newest) =(key.u.newest head.predictions.act))
-    =.  predictions.state  `predictions.act
+    ?>  ?&(?=(^ newest) =(key.u.newest head.act))
+    =.  predictions.state  `[head.act now.bol r.act]
     =<  abet  update-review:stack-emit
       %import
     =/  =wire  /import/(scot %p who.act)/[stack.act]
@@ -5281,15 +5281,29 @@
   ^-  stack
   (create-stack:effects info items)
 ::
-::  +all-reviews: the review queue. rwkv order while enabled and its
-::  predictions are fresh, else sm-2.
+::  +all-reviews: the review queue. rwkv order while +live-predictions
+::  has scores, else sm-2.
 ::
 ++  all-reviews
   ^-  (list review)
+  =/  r  live-predictions
+  ?~  r  sm2-reviews
+  (rwkv-queue rwkv.state u.r all-cards sm2-reviews)
+::
+::  +live-predictions: the stored scores while rwkv is on and they are
+::  fresh: made at the newest revlog head, less than +rwkv-max-age ago.
+::  the queue and the /x/rwkv scry both read freshness here.
+::
+++  live-predictions
+  ^-  (unit (map card-key @rd))
   =/  pred  predictions.state
-  ?.  ?&(enabled.rwkv.state ?=(^ pred) =(`head.u.pred newest-review-id))
-    sm2-reviews
-  (rwkv-queue rwkv.state r.u.pred all-cards sm2-reviews)
+  ?~  pred  ~
+  ?.  ?&  enabled.rwkv.state
+          =(`head.u.pred newest-review-id)
+          (lth now.bol (add computed-at.u.pred rwkv-max-age))
+      ==
+    ~
+  `r.u.pred
 ::
 ++  newest-review-id
   ^-  (unit @ud)
@@ -5312,7 +5326,6 @@
   =,  enjs:format
   =/  cfg  rwkv.state
   =/  newest  newest-review-id
-  =/  pred  predictions.state
   %-  pairs
   :~  ['enabled' [%b enabled.cfg]]
       ['target_ppm' (numb (abs:si (need (toi:rd (mul:rd target.cfg (sun:rd 1.000.000))))))]
@@ -5321,7 +5334,7 @@
       ['artifact_url' ?~(artifact-url.cfg ~ [%s u.artifact-url.cfg])]
       ['artifact_hash' ?~(artifact-hash.cfg ~ [%s (crip ((x-co:co 64) u.artifact-hash.cfg))])]
       ['head' ?~(newest ~ (numb u.newest))]
-      ['fresh' [%b ?~(pred %.n =(`head.u.pred newest))]]
+      ['fresh' [%b ?=(^ live-predictions)]]
       ['idempotency_epoch' [%s (scot %da epoch.operating.state)]]
       :-  'revlog'
       :-  %a

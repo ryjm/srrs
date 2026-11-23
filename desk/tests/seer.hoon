@@ -478,7 +478,6 @@
   |=  [top=@ud rows=(list [@tas @rd])]
   ^-  action
   :+  %rwkv-predictions  top
-  :-  fixed-now
   %-  malt
   (turn rows |=([item=@tas p=@rd] [`card-key`[~zod %s1 item] p]))
 ++  card-in
@@ -538,6 +537,28 @@
     (expect-eq !>(`(list review)`[(card-in %c1) sm2]) !>(accepted))
     (expect-eq !>(b+%.n) !>((json-field (peek-rwkv core) 'fresh')))
     (expect-eq !>((skip sm2 |=(rev=review =(%c2 item.rev)))) !>(later))
+  ==
+::
+::  predictions expire by ship time: with no new answer, sm-2 due cards
+::  held back by high scores come back once the scores are too old.
+::
+++  test-rwkv-predictions-expire-by-time
+  ^-  tang
+  =/  core  rwkv-deck
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  sm2  (peek-queue core)
+  =.  core
+    (do core (predict 0 ~[[%c2 .~0.99] [%c3 .~0.99] [%c4 .~0.99] [%c5 .~0.99]]))
+  =/  held  (peek-queue core)
+  =.  core  (at-time core (add fixed-now (sub rwkv-max-age ~s1)))
+  =/  still  (peek-queue core)
+  =.  core  (at-time core (add fixed-now rwkv-max-age))
+  ;:  weld
+    (expect-eq !>(4) !>((lent sm2)))
+    (expect-eq !>(`(list review)`~) !>(held))
+    (expect-eq !>(`(list review)`~) !>(still))
+    (expect-eq !>(sm2) !>((peek-queue core)))
+    (expect-eq !>(b+%.n) !>((json-field (peek-rwkv core) 'fresh')))
   ==
 ::
 ::  sm-2: box walks the fixed intervals on %good and resets on %again.
