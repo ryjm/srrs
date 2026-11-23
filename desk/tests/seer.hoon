@@ -545,7 +545,9 @@
 ::
 ++  engine-url
   '/apps/seer/rwkv/c66243794e2df3a6f1aa3845aebf84fd38b0fb66c12525c5768727237bab22d0'
-++  wasm-head  `octs`[8 0x1.6d73.6100]
+++  wasm-head
+  ^-  octs
+  [8 0x1.6d73.6100]
 ++  wasm-head-url
   '/apps/seer/rwkv/93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476'
 ::
@@ -583,7 +585,8 @@
 ::
 ++  test-rwkv-blob-hash-counts-trailing-zeros
   ^-  tang
-  =/  short=octs  [5 q.wasm-head]
+  =/  head=octs   wasm-head
+  =/  short=octs  [5 q.head]
   =/  core  ag
   =^  truncated  core  (put-blob core owner wasm-head-url 'application/wasm' short)
   =^  stored     core  (put-blob core owner wasm-head-url 'application/wasm' wasm-head)
