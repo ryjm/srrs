@@ -447,8 +447,12 @@
     (expect-eq !>(%.y) !>(?=([%3 *] saved)))
   ==
 ::
-::  on-load: a [%2 ...] save keeps its stacks, revlog, rwkv config and
-::  predictions, and starts with an empty rwkv store
+::  on-load: a [%2 ...] save keeps every field it holds, the operating
+::  record included, and starts with an empty rwkv store. the save is a
+::  bare noun laid out as the base desk saved it, in the field order of
+::  its seer-state, so no head mold shapes it; its operating record
+::  carries the receipts of the pokes that built it and counters a fresh
+::  agent-state does not have
 ::
 ++  test-on-load-upgrades-v2-state
   ^-  tang
@@ -457,8 +461,10 @@
   =/  cur=seer-state  +:(need ((soft ,[%3 seer-state]) q:on-save:core))
   ::  distinct values in the @ud fields, so a swap between them shows
   =.  cur  cur(catalog-serial 11, context-count 12, shared-manifest-rev 13)
-  =/  old=seer-state-2
-    :*  stacks.cur  paths.cur  stack-subs.cur  captures.cur
+  =.  operating.cur  operating.cur(revision 21, catalog-revision 22, next-incarnation 23)
+  =/  save=*
+    :*  %2
+        stacks.cur  paths.cur  stack-subs.cur  captures.cur
         provenance.cur  questions.cur  models.cur  changes.cur
         logins.cur  accounts.cur  catalog-pending.cur  catalog-active.cur
         catalog-serial.cur  contexts.cur  context-count.cur  evidence.cur
@@ -467,14 +473,26 @@
         context-revs.cur  review-log.cur  next-review-id.cur
         pending-show.cur  rwkv.cur  predictions.cur  operating.cur
     ==
-  =/  loaded  +:(on-load:ag !>([%2 old]))
+  =/  loaded  +:(on-load:ag !>(save))
   =/  saved=seer-state  +:(need ((soft ,[%3 seer-state]) q:on-save:loaded))
+  =/  kept=agent-state  operating.saved
   ;:  weld
-    (expect-eq !>(%.y) !>(?=(^ predictions.old)))
-    (expect-eq !>(%.y) !>(?=(^ review-log.old)))
+    (expect-eq !>(%.y) !>(?=(^ predictions.cur)))
+    (expect-eq !>(%.y) !>(?=(^ review-log.cur)))
+    (expect-eq !>(%.y) !>(?=(^ receipts.operating.cur)))
+    (expect-eq !>(`rwkv-store`~) !>(rwkv-blobs.saved))
+    (expect-eq !>(`@ud`21) !>(revision.kept))
+    (expect-eq !>(`@ud`22) !>(catalog-revision.kept))
+    (expect-eq !>(`@ud`23) !>(next-incarnation.kept))
+    (expect-eq !>(epoch.operating.cur) !>(epoch.kept))
+    (expect-eq !>(receipts.operating.cur) !>(receipts.kept))
+    (expect-eq !>(receipt-count.operating.cur) !>(receipt-count.kept))
+    (expect-eq !>(versions.operating.cur) !>(versions.kept))
+    (expect-eq !>(jobs.operating.cur) !>(jobs.kept))
+    ::  changed and failure describe one event only
     %+  expect-eq
-      !>(cur(rwkv-blobs ~, operating *agent-state))
-    !>(saved(operating *agent-state))
+      !>(cur(rwkv-blobs ~, operating operating.cur(changed ~, failure ~)))
+    !>(saved(operating kept(changed ~, failure ~)))
   ==
 ::
 ::  rwkv artifact store over eyre
@@ -521,6 +539,15 @@
 ++  status
   |=(res=simple-payload:http status-code.response-header.res)
 ++  engine-octs  (as-octs:mimes:html 'engine bytes')
+::  known answers, from a sha-256 computed outside hoon: of the 12 bytes
+::  'engine bytes', and of the 8-byte wasm header 00 61 73 6d 01 00 00 00,
+::  whose last three bytes are zero and so absent from its atom
+::
+++  engine-url
+  '/apps/seer/rwkv/c66243794e2df3a6f1aa3845aebf84fd38b0fb66c12525c5768727237bab22d0'
+++  wasm-head  `octs`[8 0x1.6d73.6100]
+++  wasm-head-url
+  '/apps/seer/rwkv/93a44bbb96c751218e4c00d479e4c14358122a389acca16205b1e4d0dc5f9476'
 ::
 ::  an upload is stored only under the sha-256 of its own bytes, and only
 ::  with an allowed content-type; the same bytes again change nothing
@@ -528,7 +555,7 @@
 ++  test-rwkv-blob-upload-checks-hash
   ^-  tang
   =/  other=octs  (as-octs:mimes:html 'other bytes')
-  =/  url  (blob-url engine-octs)
+  =/  url  engine-url
   =/  core  ag
   =^  mismatch  core  (put-blob core owner url 'application/wasm' other)
   =^  untyped   core  (put-blob core owner url 'text/html' engine-octs)
@@ -538,6 +565,7 @@
   =^  again     core  (put-blob core owner url 'application/octet-stream' engine-octs)
   =^  served    core  (get-blob core owner url)
   ;:  weld
+    (expect-eq !>(engine-url) !>((blob-url engine-octs)))
     (expect-eq !>(400) !>((status mismatch)))
     (expect-eq !>(415) !>((status untyped)))
     (expect-eq !>(404) !>((status missing)))
@@ -547,6 +575,24 @@
     (expect-eq !>(`(unit octs)``engine-octs) !>(data.served))
     %+  expect-eq  !>(`(unit @t)``'application/wasm')
     !>((get-header:http 'content-type' headers.response-header.served))
+  ==
+::
+::  bytes are hashed at their full length: a body ending in zero bytes is
+::  stored under the hash of all its bytes, not of its atom, and the same
+::  atom at a shorter length does not match that path
+::
+++  test-rwkv-blob-hash-counts-trailing-zeros
+  ^-  tang
+  =/  short=octs  [5 q.wasm-head]
+  =/  core  ag
+  =^  truncated  core  (put-blob core owner wasm-head-url 'application/wasm' short)
+  =^  stored     core  (put-blob core owner wasm-head-url 'application/wasm' wasm-head)
+  =^  served     core  (get-blob core owner wasm-head-url)
+  ;:  weld
+    (expect-eq !>(wasm-head-url) !>((blob-url wasm-head)))
+    (expect-eq !>(400) !>((status truncated)))
+    (expect-eq !>(201) !>((status stored)))
+    (expect-eq !>(`(unit octs)``wasm-head) !>(data.served))
   ==
 ::
 ::  a present blob is served with its bytes, its content-type, and
