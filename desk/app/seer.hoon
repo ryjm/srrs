@@ -971,7 +971,8 @@
       [[[~ %js] [%apps %seer %rwkv-loader ~]] ~]
     %+  respond-payload  eyre-id
     (js-response:gen (as-octs:mimes:html rwkv-loader-src))
-  ::  the rwkv store; on-poke answers anyone but the owner with 403
+  ::  the rwkv store; on-poke answers anyone but the owner with 403. a
+  ::  cached copy is reused only under the same session cookie
   ::
       [[~ [%apps %seer %rwkv @t ~]] ~]
     =/  blob  (biff (rwkv-blob-sha i.t.t.t.site.request-line) ~(get by rwkv-blobs.state))
@@ -981,6 +982,7 @@
     :-  200
     :~  ['content-type' type.u.blob]
         ['cache-control' 'private, max-age=31536000, immutable']
+        ['vary' 'Cookie']
     ==
   ::  the aero ios shell opens its native seer screen when this hint parses.
   ::

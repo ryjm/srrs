@@ -550,7 +550,7 @@
   ==
 ::
 ::  a present blob is served with its bytes, its content-type, and
-::  immutable caching; an absent one is 404
+::  immutable caching keyed to the session cookie; an absent one is 404
 ::
 ++  test-rwkv-blob-get-serves-immutable
   ^-  tang
@@ -567,6 +567,7 @@
           :-  200
           :~  ['content-type' 'application/wasm']
               ['cache-control' 'private, max-age=31536000, immutable']
+              ['vary' 'Cookie']
           ==
     !>(served)
   ==

@@ -168,7 +168,7 @@ The weights carry no license from the fork, and the release that ships the same 
 The ship can serve the artifact itself. %seer keeps an owner-only store of files, each keyed by the SHA-256 of its bytes, at `/apps/seer/rwkv/<sha256>` (64 hex digits).
 
 - `PUT /apps/seer/rwkv/<sha256>` stores the request body. The ship computes the body's SHA-256 and refuses the upload unless it equals the path. The `Content-Type` must be one of `application/json`, `application/wasm`, `application/octet-stream`, `application/x-tar`, `text/plain; charset=utf-8`, or `text/markdown; charset=utf-8`, and is served back with the file.
-- `GET /apps/seer/rwkv/<sha256>` returns the stored bytes with their `Content-Type` and `Cache-Control: private, max-age=31536000, immutable`: the bytes at a hash never change.
+- `GET /apps/seer/rwkv/<sha256>` returns the stored bytes with their `Content-Type`, `Cache-Control: private, max-age=31536000, immutable`, and `Vary: Cookie`: the bytes at a hash never change, and the browser reuses a cached copy only for a request carrying the same session cookie.
 - All stored files together hold at most 16 MiB (`rwkv-store-cap` in `desk/sur/seer.hoon`). An upload that would take the total past it is refused. Uploading bytes already stored adds nothing to the total. There is no delete.
 - Only the owner, authenticated with the ship's session cookie, reads or writes the store. Any other request to `/apps/seer/rwkv/`, unauthenticated or from another ship, gets `403` with no body, not the login redirect the pages give.
 
