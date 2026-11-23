@@ -13,8 +13,10 @@
     }).join("");
   }
 
+  // artifacts are public and hash-pinned: no cookies, so a CDN serving
+  // Access-Control-Allow-Origin: * can answer
   async function fetchVerified(fetchFn, url, hex) {
-    var res = await fetchFn(url);
+    var res = await fetchFn(url, { credentials: "omit" });
     if (!res.ok) throw new Error("rwkv: fetch " + url + " " + res.status);
     var bytes = new Uint8Array(await res.arrayBuffer());
     var got = await sha256Hex(bytes);
@@ -77,7 +79,7 @@
   // deps: {fetch, engine, now}. Returns the poke body sent, or null.
   async function run(deps) {
     try {
-      var configRes = await deps.fetch(CONFIG_URL);
+      var configRes = await deps.fetch(CONFIG_URL, { credentials: "same-origin" });
       if (!configRes.ok) throw new Error("rwkv: config " + configRes.status);
       var config = await configRes.json();
       if (!config.enabled || !config.artifact_url || !config.artifact_hash) return null;
@@ -97,6 +99,7 @@
       var body = pokeBody(config, rows, "rwkv-" + config.head + "-" + deps.now());
       var res = await deps.fetch(POKE_URL, {
         method: "POST",
+        credentials: "same-origin",
         headers: { "content-type": "application/x-www-form-urlencoded" },
         body: body,
       });
@@ -116,9 +119,7 @@
   if (window.seerRwkvRunning) return;
   window.seerRwkvRunning = true;
   var deps = {
-    fetch: function (url, init) {
-      return fetch(url, Object.assign({ credentials: "include" }, init));
-    },
+    fetch: window.fetch.bind(window),
     engine: wasmEngine,
     now: Date.now,
     base: location.href,

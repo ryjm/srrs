@@ -44,6 +44,8 @@ Any new answer appends to the revlog, so the stored predictions go stale until t
 
 Any failure is logged with `console.warn` and nothing is sent.
 
+Requests to the ship use `credentials: "same-origin"`. The manifest, engine, and weights are fetched with `credentials: "omit"`: they are public and pinned by hash, and a CDN that answers `Access-Control-Allow-Origin: *` cannot serve a credentialed request.
+
 ### Manifest
 
 ```json

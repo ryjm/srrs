@@ -140,3 +140,15 @@ test("a failed config fetch stops before any artifact fetch", async () => {
   assert.deepEqual(stub.requests, []);
   assert.match(warnings[0], /config 503/);
 });
+
+test("artifact fetches omit credentials; ship requests stay same-origin", async () => {
+  const { fetch, requests } = stubFetch(await files(await sha256Hex(await manifestBytes())));
+  await run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" });
+  assert.deepEqual(requests.map(({ url, init }) => [url, init?.credentials]), [
+    ["/~/scry/seer/rwkv.json", "same-origin"],
+    ["https://cdn.example/rwkv/manifest.json", "omit"],
+    ["https://cdn.example/rwkv/engine.wasm", "omit"],
+    ["https://cdn.example/rwkv/weights.bin", "omit"],
+    ["/apps/seer/actions/rwkv-predictions", "same-origin"],
+  ]);
+});
