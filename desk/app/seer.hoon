@@ -80,9 +80,10 @@
       predictions=~
       operating.old
   ==
-::  +rwkv-queue: due cards from fresh predictions. cards with r below
-::  target, ascending r, padded to min-daily and capped at max-daily;
-::  unpredicted cards keep their sm-2 due rule (membership in .sm2).
+::  +rwkv-queue: due cards from fresh predictions, capped at max-daily:
+::  cards with r below target, ascending r; then sm-2 due cards with no
+::  prediction, in sm-2 order; then, while short of min-daily, the
+::  lowest-r cards left.
 ::
 ++  rwkv-queue
   |=  [cfg=rwkv-config r=(map card-key @rd) cards=(list review) sm2=(list review)]
@@ -95,11 +96,13 @@
       ?~  p  ~
       `[rev u.p]
     |=([a=[rev=review p=@rd] b=[rev=review p=@rd]] (lth:rd p.a p.b))
-  =/  below  (skim scored |=([rev=review p=@rd] (lth:rd p target.cfg)))
-  =?  below  (lth (lent below) min-daily.cfg)  (scag min-daily.cfg scored)
-  %+  weld
-    (turn (scag max-daily.cfg below) |=([rev=review p=@rd] rev))
-  (skip sm2 |=(rev=review (~(has by r) `card-key`[who.rev stack.rev item.rev])))
+  =/  low  |=([rev=review p=@rd] (lth:rd p target.cfg))
+  =/  due=(list review)
+    %+  weld  (turn (skim scored low) head)
+    (skip sm2 |=(rev=review (~(has by r) `card-key`[who.rev stack.rev item.rev])))
+  =/  short  (sub (max min-daily.cfg (lent due)) (lent due))
+  %+  scag  max-daily.cfg
+  (weld due (turn (scag short (skip scored low)) head))
 +$  card  card:agent:gall
 ::
 --

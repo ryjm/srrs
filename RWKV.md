@@ -10,7 +10,7 @@
 | --- | --- | --- |
 | `enabled` | `%.n` | use predictions when fresh |
 | `target` | `.~0.9` | cards with predicted R below this are due |
-| `max-daily` | `200` | cap on predicted-due cards in the queue |
+| `max-daily` | `200` | cap on the whole queue, unpredicted SM-2 cards included |
 | `min-daily` | `0` | pad with the lowest-R cards up to this many |
 | `artifact-url` | `~` | manifest URL |
 | `artifact-hash` | `~` | SHA-256 of the manifest bytes |
@@ -21,8 +21,11 @@ The review page loads `/apps/seer/rwkv-loader.js` only when `enabled` is set and
 
 Predictions are fresh while RWKV is enabled, their `head` equals the newest revlog id, and the ship received them less than 15 minutes ago (`rwkv-max-age`). The queue and the `fresh` field of the scry use the same rule. With fresh predictions the queue is:
 
-1. cards with a prediction below `target`, ascending R, padded to `min-daily` and capped at `max-daily`;
-2. then SM-2 due cards that have no prediction.
+1. cards with a prediction below `target`, ascending R;
+2. then SM-2 due cards that have no prediction, in SM-2 order;
+3. then, while the queue is shorter than `min-daily`, the lowest-R cards not yet in it.
+
+The result is cut to its first `max-daily` cards. Neither field counts cards answered earlier in the day; both bound the queue as it stands.
 
 Any new answer appends to the revlog, so the stored predictions go stale until the browser sends new ones. They also go stale with age, because the engine predicts recall at the time it ran; without that bound, a card held back by a high score would stay out of the queue until the next answer. A `%rwkv-predictions` poke whose `head` is not the newest revlog id is rejected and stores nothing.
 

@@ -508,14 +508,38 @@
   =.  core  (do core [%set-rwkv-config (rwkv-on 2)])
   =.  core
     (do core (predict 0 ~[[%c1 .~0.5] [%c2 .~0.95] [%c3 .~0.2] [%c4 .~0.7]]))
-  =/  capped  (peek-queue core)
+  =/  two  (peek-queue core)
+  =.  core  (do core [%set-rwkv-config (rwkv-on 3)])
+  =/  three  (peek-queue core)
   =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
   =/  uncapped  (peek-queue core)
   ;:  weld
     (expect-eq !>(b+%.y) !>((json-field (peek-rwkv core) 'fresh')))
-    ::  c3 and c1 below target, capped at 2; unpredicted c5 keeps sm-2
-    (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1) (card-in %c5)]) !>(capped))
+    ::  c3, c1, c4 below target, ascending; then unpredicted c5 from sm-2.
+    ::  max-daily caps the whole queue, fallback included.
+    (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1)]) !>(two))
+    (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1) (card-in %c4)]) !>(three))
     (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1) (card-in %c4) (card-in %c5)]) !>(uncapped))
+  ==
+::
+::  min-daily counts unpredicted sm-2 cards before padding with the
+::  lowest-r cards above target.
+::
+++  test-rwkv-floor-counts-fallback-first
+  ^-  tang
+  =/  core  rwkv-deck
+  =/  sm2  (peek-queue core)
+  =/  cfg  (rwkv-on 200)
+  =.  core  (do core [%set-rwkv-config cfg(min-daily 3)])
+  =.  core  (do core (predict 0 ~[[%c1 .~0.95] [%c2 .~0.99] [%c3 .~0.97]]))
+  =/  floor-three  (peek-queue core)
+  =.  core  (do core [%set-rwkv-config cfg(min-daily 4)])
+  =/  floor-four  (peek-queue core)
+  =/  unpredicted  (skip sm2 |=(rev=review ?=(?(%c2 %c3) item.rev)))
+  ;:  weld
+    (expect-eq !>(2) !>((lent unpredicted)))
+    (expect-eq !>((weld unpredicted ~[(card-in %c1)])) !>(floor-three))
+    (expect-eq !>((weld unpredicted ~[(card-in %c1) (card-in %c3)])) !>(floor-four))
   ==
 ::
 ++  test-rwkv-stale-predictions-fall-back
