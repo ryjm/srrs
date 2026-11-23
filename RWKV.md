@@ -41,7 +41,7 @@ The ship keeps every answer in its revlog. The replay uses only the answers of l
 - An incarnation starts with its card's last `learn` answer, the first answer of a new or reset item.
 - The incarnation's answers are live while the item's last review is that incarnation's newest answer. A deleted card has no live answers. A card recreated under a used name is a new card: none of the old card's answers are live, and it has none of its own until its first answer.
 
-`head` is the low 52 bits of a hash of the live answers' ids, or `null` when there are none. Deleting a card that has answers, or answering any card, changes it. Adding a card, or deleting one never answered, leaves it alone: neither changes the replay.
+`head` is the low 52 bits of a hash of the live answers' ids, or `null` when there are none. Answering a card in one of our stacks, or deleting one that has answers, changes it. Adding a card, or deleting one never answered, leaves it alone: neither changes the replay.
 
 ## Loader
 
@@ -100,7 +100,7 @@ The engine in `rwkv-engine/` runs RWKV-Instant model SM98 from the Anki fork [JS
 | day | Unix time rolled over at 04:00 UTC; the scry has no time zone |
 | elapsed time | since the card's previous answer, in days and seconds; none on its first answer |
 | state | `learn` 0 (learning start); `relearn` 1 before the card's first `review` (Anki's later learning step), 3 after; `review` 2; `manual` 5 |
-| query | at `now_ms`, as the fork queries a card when it is shown: seconds since the card's last answer, and scheduler days since it, except for a card in the learning state, whose days the fork leaves unset so the model counts whole days of seconds. A card is learning after an `again` before its first `review`: `again` resets %seer's box to 0, so its next answer is a learning `relearn` (state 1). |
+| query | at `now_ms`, as the fork queries a card when it is shown: seconds since the card's last answer, and scheduler days since it, except for a card in the learning state, whose days the fork leaves unset so the model counts whole days of seconds. A card is learning until an answer moves it to box 2, the first one-day interval: `easy` from box 0, or any grade but `again` on a `review`. Box 1 is a 15-minute step, so a card there is learning although the desk logs its next answer as `review`. The state labels in the table above are unchanged. |
 
 Each card's answers must be one incarnation, as the live revlog sends them: a `learn` answer only as the card's first. `predict` fails on an input with a later `learn` for a card. Replayed as the same card, a second learning start would put the card's cumulative elapsed time outside the model's input domain, and the shared deck, preset and global state would carry it to every card, which can collapse all scores to one plausible value.
 
@@ -155,7 +155,7 @@ The engine is reproducible in a clean environment: no `CARGO_PROFILE_*`, `CARGO_
 
 Local evaluation means building the artifact and running it on your own machine: `rwkv-engine/parity/run.sh`, the Node tests, and the native examples. Serving `weights.bin` to browsers from any host is redistribution. Uploading your own copy to your own ship is redistribution too: the ship serves the file over HTTP like any other host.
 
-This repository documents no way to publish the artifact. Do not publish `weights.bin` for others, or upload it to a ship, until permission is documented or weights under a license that allows it replace these. A matching SHA-256 proves which file a browser received; it grants no right to send it.
+This repository gives no hosting recipe. Do not publish `weights.bin` for others until permission is documented or weights under a license that allows it replace these. An upload to your own ship is redistribution under the same notice. A matching SHA-256 proves which file a browser received; it grants no right to send it. Any upload of `engine.wasm` carries the files listed in [Licenses](#licenses).
 
 ### Licenses
 

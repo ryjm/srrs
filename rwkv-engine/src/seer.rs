@@ -79,10 +79,12 @@ struct CardHistory {
     deck: i64,
     last_answered_at: i64,
     reviewed: bool,
-    /// In Anki's learning state after its last answer: an `again` before the
-    /// card's first `review`. %seer's `again` resets the box to 0, so the
-    /// next answer is a `relearn`, state 1 (see `dataset_state`).
-    learning: bool,
+    /// Has left %seer's sub-day steps: some answer moved it to box 2 or
+    /// later, a one-day interval or more. Until then the card is in Anki's
+    /// learning state, whatever the desk logs its box-1 answers as
+    /// (`next-box`: `again` goes to box 0, `easy` from box 0 to box 2,
+    /// anything else one box up; box 0 waits 5 s, box 1 15 min).
+    graduated: bool,
 }
 
 impl CardHistory {
@@ -101,7 +103,8 @@ impl CardHistory {
             duration_millis: None,
             card_type: None,
             day_offset: Some(day(now_ms)),
-            current_elapsed_days: (!self.learning)
+            current_elapsed_days: self
+                .graduated
                 .then(|| (day(now_ms) - day(self.last_answered_at)).max(0)),
             current_elapsed_seconds: Some(((now_ms - self.last_answered_at) / 1_000).max(0)),
         }
@@ -183,7 +186,7 @@ fn walk(input: &Input, show_times: bool) -> Result<Plan<'_>, String> {
                 deck,
                 last_answered_at: event.answered_at,
                 reviewed: false,
-                learning: false,
+                graduated: false,
             }
         });
         if show_times {
@@ -213,7 +216,13 @@ fn walk(input: &Input, show_times: bool) -> Result<Plan<'_>, String> {
         });
         card.last_answered_at = event.answered_at;
         card.reviewed |= matches!(event.kind, Kind::Review);
-        card.learning = matches!(event.grade, Grade::Again) && !card.reviewed;
+        // `review` means the box was 1 or more, so anything but `again`
+        // reaches box 2; from box 0 only `easy` does.
+        card.graduated |= match (event.kind, event.grade) {
+            (Kind::Review, grade) => !matches!(grade, Grade::Again),
+            (Kind::Learn | Kind::Relearn, Grade::Easy) => true,
+            _ => false,
+        };
     }
 
     let queries = card_events
