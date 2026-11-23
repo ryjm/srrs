@@ -21,5 +21,17 @@ quantization, curves, intervals and forecasts; added the %seer revlog
 mapping (src/seer.rs) and the WebAssembly ABI (src/abi.rs).
 
 The model weights are not part of this crate or its repository. The build
-fetches qt/aqt/rwkv_inference/sm98/weights.int8.bin from the commit above;
-the fork states no license for them.
+fetches qt/aqt/rwkv_inference/sm98/weights.int8.bin from the commit above
+(SHA-256 b2f335bd712b9d602150201de41ab5a0f0a4c291644705e2aa1ed2a1bf1592c3);
+the fork states no license for them. The same bytes are
+rwkv-small-instant-only/weights.int8.bin in the SM98 release of
+
+  https://github.com/JSchoreels/anki-rwkv/releases/tag/rwkv-family-2026-11-13
+
+whose WEIGHTS-NOTICE.md, copied unchanged to WEIGHTS-NOTICE.md here, says
+the weights are not covered by the MIT License, that whether they may be
+redistributed is an open question upstream, and that until it is settled
+they are for personal and research use only and the dataset's owners should
+be asked before the weights are shipped in an application. Serving
+weights.bin to browsers, from any host including your own ship, is
+redistribution.

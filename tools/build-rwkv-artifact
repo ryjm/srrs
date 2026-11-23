@@ -1,14 +1,18 @@
 #!/usr/bin/env bash
 # Builds the RWKV artifact of RWKV.md into OUT (default rwkv-engine/dist):
 # engine.wasm from rwkv-engine/, weights.bin fetched from the pinned upstream
-# commit and checked against its pinned SHA-256, and manifest.json. Prints
-# the manifest SHA-256, the value of `artifact-hash`.
+# commit and checked against its pinned SHA-256 with the upstream
+# WEIGHTS-NOTICE.md beside it, and manifest.json. Prints the manifest
+# SHA-256, the value of `artifact-hash`. The weights are for local
+# evaluation only: see RWKV.md, "Weights: evaluation only".
 set -euo pipefail
 
 UPSTREAM=https://raw.githubusercontent.com/JSchoreels/anki
 UPSTREAM_COMMIT=17c63ab7f985b11c013dc02b35d8606b5bb0a586 # tag 26.09.4+fsrs7.build.115
 WEIGHTS_PATH=qt/aqt/rwkv_inference/sm98/weights.int8.bin
 WEIGHTS_SHA256=b2f335bd712b9d602150201de41ab5a0f0a4c291644705e2aa1ed2a1bf1592c3
+# WEIGHTS-NOTICE.md of the anki-rwkv release that ships the same weights
+WEIGHTS_NOTICE_SHA256=0df9a1edf83fd54acee89565a9923ba0d12da1159e8eb64b257a7e56255ab080
 
 root=$(cd "$(dirname "$0")/.." && pwd)
 engine=$root/rwkv-engine
@@ -30,6 +34,12 @@ if [ "$got" != "$WEIGHTS_SHA256" ]; then
   exit 1
 fi
 mv -f "$out/weights.bin.part" "$out/weights.bin"
+got=$(sha256 "$engine/WEIGHTS-NOTICE.md")
+if [ "$got" != "$WEIGHTS_NOTICE_SHA256" ]; then
+  echo "rwkv-engine/WEIGHTS-NOTICE.md differs from the upstream notice: got $got" >&2
+  exit 1
+fi
+cp -f "$engine/WEIGHTS-NOTICE.md" "$out/WEIGHTS-NOTICE.md"
 
 # Paths in panic locations would otherwise embed this machine's directories.
 (
@@ -44,5 +54,5 @@ cp -f "$target/wasm32-unknown-unknown/release/rwkv_engine.wasm" "$out/engine.was
 printf '{\n  "engine": { "url": "engine.wasm", "sha256": "%s" },\n  "weights": { "url": "weights.bin", "sha256": "%s" }\n}\n' \
   "$(sha256 "$out/engine.wasm")" "$(sha256 "$out/weights.bin")" >"$out/manifest.json"
 
-wc -c "$out/engine.wasm" "$out/weights.bin" "$out/manifest.json"
+wc -c "$out/engine.wasm" "$out/weights.bin" "$out/WEIGHTS-NOTICE.md" "$out/manifest.json"
 echo "manifest sha256: $(sha256 "$out/manifest.json")"

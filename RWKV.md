@@ -120,14 +120,24 @@ The response is JSON, never a page:
 
 ## Artifact
 
-`tools/build-rwkv-artifact [OUT]` writes `engine.wasm`, `weights.bin` and `manifest.json` to `OUT` (default `rwkv-engine/dist/`, not committed) and prints the manifest SHA-256, the value for `artifact-hash`. It builds the engine with the toolchain pinned in `rwkv-engine/rust-toolchain.toml` and `Cargo.lock`, and downloads the weights, `sm98/weights.int8.bin` from the fork at commit `17c63ab7f985b11c013dc02b35d8606b5bb0a586` (tag `26.09.4+fsrs7.build.115`), refusing any file whose SHA-256 is not the one pinned in the script. Two builds from the same commit give the same bytes. Needs `rustup`, `curl` and `sha256sum` or `shasum`.
-
-To host it, put the three files in one directory on any static host that answers with `Access-Control-Allow-Origin: *`, then poke `%set-rwkv-config` with `artifact-url` set to the URL of `manifest.json` and `artifact-hash` set to the printed hash. The loader checks every file against the hashes, so the host does not need to be trusted, only reachable.
+`tools/build-rwkv-artifact [OUT]` writes `engine.wasm`, `weights.bin`, `WEIGHTS-NOTICE.md` and `manifest.json` to `OUT` (default `rwkv-engine/dist/`, not committed) and prints the manifest SHA-256, the value for `artifact-hash`. It builds the engine with the toolchain pinned in `rwkv-engine/rust-toolchain.toml` and `Cargo.lock`, and downloads the weights, `sm98/weights.int8.bin` from the fork at commit `17c63ab7f985b11c013dc02b35d8606b5bb0a586` (tag `26.09.4+fsrs7.build.115`), refusing any file whose SHA-256 is not the one pinned in the script. Two builds from the same commit give the same bytes. Needs `rustup`, `curl` and `sha256sum` or `shasum`.
 
 `rwkv-engine/parity/run.sh` checks the engine against the fork: it builds the fork's own runtime at the pinned commit, runs it and this engine on the synthetic revlog in `rwkv-engine/tests/fixtures/`, and fails if any card's final R, or the R predicted before any answer, differs by more than `1e-4`. `node --test tools/rwkv-artifact.test.mjs` then runs the built artifact through the loader with a stubbed ship.
+
+### Weights: evaluation only
+
+`weights.bin` is byte for byte `rwkv-small-instant-only/weights.int8.bin` from the SM98 release [`rwkv-family-2026-11-13`](https://github.com/JSchoreels/anki-rwkv/releases/tag/rwkv-family-2026-11-13) of anki-rwkv (SHA-256 `b2f335bd712b9d602150201de41ab5a0f0a4c291644705e2aa1ed2a1bf1592c3`). That release ships [`WEIGHTS-NOTICE.md`](rwkv-engine/WEIGHTS-NOTICE.md), copied unchanged into `rwkv-engine/` and by the build into `OUT`. It says:
+
+- the weights are not covered by the MIT License of the anki-rwkv code;
+- whether models trained on the anki-revlogs-10k dataset may be redistributed and shipped in applications is an [open question upstream](https://github.com/open-spaced-repetition/srs-benchmark/issues/353);
+- until that is settled, the weights are for personal and research use only, and the dataset's owners should be asked before the weights are shipped in an application.
+
+Local evaluation means building the artifact and running it on your own machine: `rwkv-engine/parity/run.sh`, the Node tests, and the native examples. Serving `weights.bin` to browsers from any host is redistribution. Uploading your own copy to your own ship is redistribution too: the ship serves the file over HTTP like any other host.
+
+This repository documents no way to publish the artifact. Do not publish `weights.bin` for others, or upload it to a ship, until permission is documented or weights under a license that allows it replace these. A matching SHA-256 proves which file a browser received; it grants no right to send it.
 
 ### Licenses
 
 The engine is the fork's code and stays under AGPL-3.0-or-later; its source is `rwkv-engine/`. The fork's own `LICENSE` names the AGPL without its text, so `rwkv-engine/LICENSE` is the GNU AGPL v3 text and `NOTICE` quotes the fork's statement and names the upstream files. Whoever serves `engine.wasm` to browsers distributes AGPL object code and must offer that source.
 
-The weights carry no stated license. This repository does not contain or redistribute them: the build fetches them from the fork. An operator who hosts `weights.bin` redistributes them.
+The weights carry no license from the fork, and the release that ships the same bytes limits them as above. This repository does not contain them: the build fetches them from the fork.
