@@ -545,6 +545,9 @@
 ++  guest     [guest-id %.n]
 ::  another ship signed in through eauth: eyre deals as that ship
 ++  stranger  [~nec %.n]
+::  another ship's deal flagged authenticated: only a deal from this
+::  ship is the owner's, whatever the request claims
+++  forged    [~nec %.y]
 ++  sha-hex
   |=  data=octs
   ^-  @t
@@ -654,21 +657,25 @@
   =/  core  ag
   =^  guest-put     core  (put-blob core guest url 'application/wasm' engine-octs)
   =^  stranger-put  core  (put-blob core stranger url 'application/wasm' engine-octs)
+  =^  forged-put    core  (put-blob core forged url 'application/wasm' engine-octs)
   =^  unwritten     core  (get-blob core owner url)
   =^  guest-absent  core  (get-blob core guest url)
   =^  owner-put     core  (put-blob core owner url 'application/wasm' engine-octs)
   =^  guest-get     core  (get-blob core guest url)
   =^  stranger-get  core  (get-blob core stranger url)
+  =^  forged-get    core  (get-blob core forged url)
   =^  owner-get     core  (get-blob core owner url)
   =^  page          core  (get-blob core guest '/apps/seer/review')
   ;:  weld
     (expect-eq !>([[403 ~] ~]) !>(guest-put))
     (expect-eq !>([[403 ~] ~]) !>(stranger-put))
+    (expect-eq !>([[403 ~] ~]) !>(forged-put))
     (expect-eq !>(404) !>((status unwritten)))
     (expect-eq !>([[403 ~] ~]) !>(guest-absent))
     (expect-eq !>(201) !>((status owner-put)))
     (expect-eq !>([[403 ~] ~]) !>(guest-get))
     (expect-eq !>([[403 ~] ~]) !>(stranger-get))
+    (expect-eq !>([[403 ~] ~]) !>(forged-get))
     (expect-eq !>(`(unit octs)``engine-octs) !>(data.owner-get))
     (expect-eq !>(307) !>((status page)))
   ==
