@@ -136,18 +136,17 @@ fn kernel_warm_up_steps_match_the_fork() {
         .collect();
     let fork = reference().steps;
     assert_eq!(steps.len(), fork.len());
-    let max = steps
-        .iter()
-        .zip(&fork)
-        .map(|(native, fork)| (native - fork).abs())
-        .fold(0f64, f64::max);
+    let mut max = 0f64;
+    for (index, (native, fork)) in steps.iter().zip(&fork).enumerate() {
+        assert!(
+            (0.0..=1.0).contains(native) && (native - fork).abs() <= 1e-4,
+            "answer {index}: native {native}, fork {fork}"
+        );
+        max = max.max((native - fork).abs());
+    }
     println!(
         "max |native - fork| R before each answer = {max:e} over {} answers",
         steps.len()
-    );
-    assert!(
-        max <= 1e-4,
-        "max |native - fork| R before each answer = {max:e}"
     );
 }
 
