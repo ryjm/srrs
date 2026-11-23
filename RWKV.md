@@ -12,7 +12,7 @@
 | `target` | `.~0.9` | cards with predicted R below this are due |
 | `max-daily` | `200` | cap on the whole queue, unpredicted SM-2 cards included |
 | `min-daily` | `0` | pad with the lowest-R cards up to this many |
-| `artifact-url` | `~` | manifest URL |
+| `artifact-url` | `~` | manifest URL; `/apps/seer/rwkv/<sha256>` for one in the [ship's store](#ship-hosting) |
 | `artifact-hash` | `~` | SHA-256 of the manifest bytes |
 
 The ship rejects a config whose `target` is not a finite number in `[0, 1]`, whose `min-daily` exceeds `max-daily`, or whose `artifact-hash` is wider than 256 bits (receipt status `invalid`, reason `invalid-rwkv-config`), and keeps the previous config. It rejects a predictions batch with any probability outside `[0, 1]` (`invalid-predictions`), a stale `head` (`conflict`, `stale-predictions`), or an `artifact` other than the configured `artifact-hash` (`conflict`, `stale-artifact`), and keeps the stored predictions.
@@ -54,7 +54,7 @@ The ship keeps every answer in its revlog. The replay uses only the answers of l
 
 Any failure is logged with `console.warn` and nothing is sent.
 
-Requests to the ship use `credentials: "same-origin"`. The manifest, engine, and weights are fetched with `credentials: "omit"`: they are public and pinned by hash, and a CDN that answers `Access-Control-Allow-Origin: *` cannot serve a credentialed request.
+Every request uses `credentials: "same-origin"`. The ship's store answers only the owner's session cookie, which the browser sends only to the ship's own origin; a manifest, engine, or weights file on another origin is fetched without cookies, so a host that answers `Access-Control-Allow-Origin: *` can serve it.
 
 htmx runs the script again each time it swaps in a review view. One run is in flight per page. A request that arrives during a run waits, replacing any earlier waiting request, and gets one more run against the latest config and head when the current run ends. After a run the ship accepted (HTTP 200), the loader refreshes `#seer-app` only if the review view that made the latest request is still in the document, so a late result never replaces another page.
 
@@ -67,7 +67,7 @@ htmx runs the script again each time it swaps in a review view. One run is in fl
 }
 ```
 
-URLs resolve relative to the manifest URL.
+URLs resolve relative to the manifest URL, except for a manifest in the [ship's store](#ship-hosting): its engine and weights are fetched from `/apps/seer/rwkv/<sha256>`, the `sha256` the manifest lists, and `url` is not used.
 
 ### Engine ABI
 
@@ -162,3 +162,38 @@ This repository gives no hosting recipe. Do not publish `weights.bin` for others
 The engine is the fork's code and stays under AGPL-3.0-or-later. The fork's own `LICENSE` names the AGPL without its text, so `rwkv-engine/LICENSE` is the GNU AGPL v3 text and `NOTICE` quotes the fork's statement, names the upstream files, and dates the changes. Whoever serves `engine.wasm` to browsers conveys AGPL object code (sections 4 to 6). They must serve, from the same place, `LICENSE`, `NOTICE`, `THIRD-PARTY-LICENSES`, and `rwkv-engine-source.tar`, the Corresponding Source of that exact `engine.wasm`, and keep them there as long as they serve it. Hashes in the manifest do not replace any of these.
 
 The weights carry no license from the fork, and the release that ships the same bytes limits them as above. This repository does not contain them: the build fetches them from the fork.
+
+## Ship hosting
+
+The ship can serve the artifact itself. %seer keeps an owner-only store of files, each keyed by the SHA-256 of its bytes, at `/apps/seer/rwkv/<sha256>` (64 hex digits).
+
+- `PUT /apps/seer/rwkv/<sha256>` stores the request body. The ship computes the body's SHA-256 and refuses the upload unless it equals the path. The `Content-Type` must be one of `application/json`, `application/wasm`, `application/octet-stream`, `application/x-tar`, `text/plain; charset=utf-8`, or `text/markdown; charset=utf-8`, and is served back with the file.
+- `GET /apps/seer/rwkv/<sha256>` returns the stored bytes with their `Content-Type` and `Cache-Control: private, max-age=31536000, immutable`: the bytes at a hash never change.
+- All stored files together hold at most 16 MiB (`rwkv-store-cap` in `desk/sur/seer.hoon`). An upload that would take the total past it is refused. Uploading bytes already stored adds nothing to the total. There is no delete.
+- Only the owner, authenticated with the ship's session cookie, reads or writes the store. Any other request to `/apps/seer/rwkv/`, unauthenticated or from another ship, gets `403` with no body, not the login redirect the pages give.
+
+| method | status | body | meaning |
+| --- | --- | --- | --- |
+| `PUT` | `201` | | stored |
+| `PUT` | `204` | | already stored |
+| `PUT` | `400` | `{"code": "invalid-sha256"}` or `{"code": "hash-mismatch"}` | the path is not 64 hex digits, or the body does not hash to it; nothing stored |
+| `PUT` | `413` | `{"code": "store-full"}` | the store would pass its cap; nothing stored |
+| `PUT` | `415` | `{"code": "unsupported-type"}` | `Content-Type` not in the list; nothing stored |
+| `GET` | `200` | the file | |
+| `GET` | `404` | | no file at that hash |
+| any | `403` | | not the owner |
+
+With `artifact-url` set to `/apps/seer/rwkv/<manifest sha256>`, the loader fetches the manifest, engine, and weights from the store as described in [Manifest](#manifest), each with the session cookie and each checked against its SHA-256.
+
+### Uploading
+
+`tools/upload-rwkv-artifact SHIP-URL [DIR]` uploads a built artifact directory (default `rwkv-engine/dist/`): `manifest.json`, `engine.wasm`, `weights.bin`, and the files [Licenses](#licenses) requires beside `engine.wasm` (`LICENSE`, `NOTICE`, `THIRD-PARTY-LICENSES`, `rwkv-engine-source.tar`) and `WEIGHTS-NOTICE.md`. It checks every file is present before it uploads any, PUTs each to `/apps/seer/rwkv/<its sha256>`, stops at the first refusal, and prints each file's path on the ship. It reads the owner's session cookie from `SEER_COOKIE` and passes it to curl on stdin, so the cookie is never on a command line or in a file. Needs `curl` and `sha256sum` or `shasum`.
+
+1. Build the artifact: `tools/build-rwkv-artifact`.
+2. Log in to the ship's web interface as its owner, and copy the session cookie, `urbauth-~<ship>=<value>`, from the browser.
+3. Read the cookie into the environment without echoing it or writing it to shell history: `read -rs SEER_COOKIE && export SEER_COOKIE`, then paste.
+4. Upload: `tools/upload-rwkv-artifact <ship URL>`. It ends with `artifact-url` and `artifact-hash`.
+5. `unset SEER_COOKIE`.
+6. To use the uploaded artifact, set `artifact-url` and `artifact-hash` to those two values with `%set-rwkv-config`. The upload does not change the config.
+
+Running the script again uploads nothing new: each file answers `204`.
