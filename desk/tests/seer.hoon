@@ -820,6 +820,15 @@
     (expect-eq !>(`(list review)`~[(card-in %a)]) !>((peek-queue core)))
   ==
 ::
+::  the engine queries at the ship's time, the clock the revlog uses, so
+::  a lagging browser clock cannot query before the newest answer
+::
+++  test-rwkv-scry-carries-ship-time
+  ^-  tang
+  =/  core  (at-time rwkv-deck in-one-hour)
+  %+  expect-eq  !>((time:enjs:format in-one-hour))
+  !>((json-field (peek-rwkv core) 'now_ms'))
+::
 ::  sm-2: box walks the fixed intervals on %good and resets on %again.
 ::
 ++  test-sm2-scheduling

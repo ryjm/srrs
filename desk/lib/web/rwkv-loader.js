@@ -120,7 +120,7 @@
     };
   }
 
-  // deps: {fetch, engine, now}. Returns the poke body sent, or null.
+  // deps: {fetch, engine, base}. Returns the poke body sent, or null.
   async function run(deps) {
     try {
       var configRes = await deps.fetch(CONFIG_URL, { credentials: "same-origin" });
@@ -139,8 +139,10 @@
         deps.fetch, new URL(manifest.weights.url, base).href, manifest.weights.sha256,
       );
       var engine = await deps.engine(engineBytes, weightBytes);
-      var rows = await engine.predict({ now_ms: deps.now(), events: config.revlog });
-      var body = pokeBody(config, rows, "rwkv-" + config.head + "-" + deps.now());
+      // the ship's clock, the one its revlog uses: a browser clock behind
+      // the newest answer would query before the history it replays
+      var rows = await engine.predict({ now_ms: config.now_ms, events: config.revlog });
+      var body = pokeBody(config, rows, "rwkv-" + config.head + "-" + config.now_ms);
       var res = await deps.fetch(POKE_URL, {
         method: "POST",
         credentials: "same-origin",
@@ -200,7 +202,6 @@
     window.seerRwkvRequest = scheduler({
       fetch: window.fetch.bind(window),
       engine: workerEngine(function () { return new Worker(LOADER_URL); }),
-      now: Date.now,
       base: location.href,
       refresh: function () {
         if (!window.htmx) return;

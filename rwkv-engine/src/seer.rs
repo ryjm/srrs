@@ -143,6 +143,14 @@ pub fn show_time_plan(input: &Input) -> Result<Plan<'_>, String> {
 fn walk(input: &Input, show_times: bool) -> Result<Plan<'_>, String> {
     let mut order: Vec<&Event> = input.events.iter().collect();
     order.sort_by_key(|event| (event.answered_at, event.id));
+    // A query day before the last replayed day puts the model's day-offset
+    // input outside its domain, and every card can come out the same.
+    if let Some(last) = order.last().filter(|last| input.now_ms < last.answered_at) {
+        return Err(format!(
+            "now_ms {} is before revlog id {}, answered at {}",
+            input.now_ms, last.id, last.answered_at
+        ));
+    }
 
     let mut cards: HashMap<(&str, &str, &str), CardHistory> = HashMap::new();
     let mut decks: HashMap<(&str, &str), i64> = HashMap::new();
@@ -280,5 +288,16 @@ mod tests {
         );
         let err = plan(&retired).err().expect("rejected");
         assert!(err.contains("revlog id 2"), "{err}");
+    }
+
+    #[test]
+    fn a_query_before_the_newest_answer_is_rejected() {
+        let t = 1_782_896_400_000;
+        let early = input(
+            t - 1_000,
+            serde_json::json!([event(0, "a", "good", "learn", t)]),
+        );
+        let err = plan(&early).err().expect("rejected");
+        assert!(err.contains("before revlog id 0"), "{err}");
     }
 }

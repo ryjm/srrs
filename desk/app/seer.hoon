@@ -5457,6 +5457,7 @@
       ['head' ?~(top ~ (numb u.top))]
       ['fresh' [%b ?=(^ live-predictions)]]
       ['idempotency_epoch' [%s (scot %da epoch.operating.state)]]
+      ['now_ms' (time now.bol)]
       :-  'revlog'
       :-  %a
       %+  turn  live

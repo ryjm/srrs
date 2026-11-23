@@ -61,14 +61,14 @@ async function quiet(fn) {
 }
 
 // The ship's scry serving `revlog` and the real artifact on a CDN.
-async function stubShip(revlog, head) {
+async function stubShip(revlog, head, shipNow) {
   const manifestBytes = read("manifest.json");
   const artifactHash = await sha256Hex(manifestBytes);
   const files = {
     "/~/scry/seer/rwkv.json": {
       enabled: true, target_ppm: 900000, max_daily: 200, min_daily: 0,
       artifact_url: "https://cdn.example/rwkv/manifest.json", artifact_hash: artifactHash,
-      head, fresh: false, idempotency_epoch: "~2026.9.2", revlog,
+      head, fresh: false, idempotency_epoch: "~2026.9.2", now_ms: shipNow, revlog,
     },
     "https://cdn.example/rwkv/manifest.json": manifestBytes,
     "https://cdn.example/rwkv/engine.wasm": read("engine.wasm"),
@@ -93,8 +93,8 @@ async function stubShip(revlog, head) {
 
 test("real artifact: verified, predicted, and poked as RWKV.md says", { skip }, async () => {
   const head = events.at(-1).id;
-  const { fetch, posts, artifactHash } = await stubShip(events, head);
-  const body = await run({ fetch, engine: wasmEngine, now: () => now_ms, base: "https://ship.example/" });
+  const { fetch, posts, artifactHash } = await stubShip(events, head, now_ms);
+  const body = await run({ fetch, engine: wasmEngine, base: "https://ship.example/" });
   assert.notEqual(body, null, "the run verified every hash and posted");
   assert.equal(posts.length, 1);
   assert.equal(posts[0].url, "/apps/seer/actions/rwkv-predictions");
@@ -135,15 +135,24 @@ test("real artifact: a recreated card is a new card, not the old one", { skip },
   const engine = await wasmEngine(read("engine.wasm"), read("weights.bin"));
   const at = { now_ms: T + 10 * MINUTE };
   assert.throws(() => engine.predict({ ...at, events: withRetired }), /predict failed/);
-  const { fetch, posts } = await stubShip(withRetired, 3);
+  const { fetch, posts } = await stubShip(withRetired, 3, at.now_ms);
   const body = await quiet(() =>
-    run({ fetch, engine: wasmEngine, now: () => at.now_ms, base: "https://ship.example/" }));
+    run({ fetch, engine: wasmEngine, base: "https://ship.example/" }));
   assert.equal(body, null);
   assert.equal(posts.length, 0, "a retired incarnation in the input posts nothing");
 
   const rows = engine.predict({ ...at, events: live });
   assert.equal(new Set(rows.map((row) => row.r)).size, 3, JSON.stringify(rows));
   assert.deepEqual(engine.predict({ ...at, events: [] }), [], "recreated, not yet answered: no score");
+});
+
+test("real artifact: a query before the newest answer gets no scores", { skip }, async () => {
+  const engine = await wasmEngine(read("engine.wasm"), read("weights.bin"));
+  const early = events.at(-1).answered_at - 48 * 3_600_000;
+  assert.throws(() => engine.predict({ now_ms: early, events }), /predict failed/);
+  const { fetch, posts } = await stubShip(events, events.at(-1).id, early);
+  assert.equal(await quiet(() => run({ fetch, engine: wasmEngine, base: "https://ship.example/" })), null);
+  assert.equal(posts.length, 0);
 });
 
 test("real artifact: wasm R equals the native engine and the fork", { skip: skipNative }, async () => {
@@ -162,8 +171,8 @@ test("real artifact: the worker engine posts what the page-thread engine would",
   const head = events.at(-1).id;
   const bodies = [];
   for (const engine of [wasmEngine, workerEngine(nodeWorker)]) {
-    const { fetch } = await stubShip(events, head);
-    bodies.push(await run({ fetch, engine, now: () => now_ms, base: "https://ship.example/" }));
+    const { fetch } = await stubShip(events, head, now_ms);
+    bodies.push(await run({ fetch, engine, base: "https://ship.example/" }));
   }
   assert.notEqual(bodies[1], null);
   assert.equal(bodies[1], bodies[0], "same head, artifact and scores");

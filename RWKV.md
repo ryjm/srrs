@@ -45,7 +45,7 @@ The ship keeps every answer in its revlog. The replay uses only the answers of l
 
 ## Loader
 
-1. `GET /~/scry/seer/rwkv.json`. Fields: `enabled`, `target_ppm`, `max_daily`, `min_daily`, `artifact_url`, `artifact_hash` (64 hex chars), `head` (names the live revlog, or `null` when it is empty), `fresh`, `idempotency_epoch`, and `revlog`, the [live revlog](#live-revlog): a list of `{id, owner, stack, item, grade, kind, shown_at, answered_at}` in id order, with times in Unix milliseconds. A non-2xx response stops the run.
+1. `GET /~/scry/seer/rwkv.json`. Fields: `enabled`, `target_ppm`, `max_daily`, `min_daily`, `artifact_url`, `artifact_hash` (64 hex chars), `head` (names the live revlog, or `null` when it is empty), `fresh`, `idempotency_epoch`, `now_ms` (the ship's time), and `revlog`, the [live revlog](#live-revlog): a list of `{id, owner, stack, item, grade, kind, shown_at, answered_at}` in id order, with times in Unix milliseconds. A non-2xx response stops the run.
 2. Stop if disabled, unconfigured, `head` is `null`, or `fresh` is true.
 3. Fetch the manifest and check its SHA-256 against `artifact_hash`.
 4. Fetch the engine and weights named in the manifest and check each against its listed SHA-256.
@@ -83,7 +83,7 @@ URLs resolve relative to the manifest URL.
 
 A buffer from `alloc` belongs to the call it is passed to; `load_weights` and `predict` free it.
 
-Input: `{"now_ms": <Unix ms>, "events": <revlog from the scry>}`.
+Input: `{"now_ms": <now_ms from the scry>, "events": <revlog from the scry>}`. `now_ms` is the ship's time, the clock the revlog uses, not the browser's. `predict` fails when `now_ms` is earlier than the newest `answered_at`: a query day before the last replayed day is outside the model's input domain and can give every card the same score.
 
 Output: UTF-8 JSON `[{"owner": "~zod", "stack": "s1", "item": "c1", "r": 0.83}, ...]`, with `r` the predicted probability of recall now, in `[0, 1]`, one row per card in the revlog.
 
