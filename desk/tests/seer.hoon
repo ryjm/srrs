@@ -444,7 +444,186 @@
     (expect-eq !>(b+%.n) !>((json-field cfg 'enabled')))
     (expect-eq !>(n+'900000') !>((json-field cfg 'target_ppm')))
     (expect-eq !>(n+'200') !>((json-field cfg 'max_daily')))
-    (expect-eq !>(%.y) !>(?=([%2 *] saved)))
+    (expect-eq !>(%.y) !>(?=([%3 *] saved)))
+  ==
+::
+::  on-load: a [%2 ...] save keeps its stacks, revlog, rwkv config and
+::  predictions, and starts with an empty rwkv store
+::
+++  test-on-load-upgrades-v2-state
+  ^-  tang
+  =/  core  (do rwkv-deck [%set-rwkv-config (rwkv-on 200)])
+  =.  core  (do core (predict (head-of core) ~[[%c2 .~0.1]]))
+  =/  cur=seer-state  +:(need ((soft ,[%3 seer-state]) q:on-save:core))
+  =/  old=seer-state-2
+    %*  .  *seer-state-2
+      stacks          stacks.cur
+      review-log      review-log.cur
+      next-review-id  next-review-id.cur
+      rwkv            rwkv.cur
+      predictions     predictions.cur
+      operating       operating.cur
+    ==
+  =/  loaded  +:(on-load:ag !>([%2 old]))
+  =/  saved=seer-state  +:(need ((soft ,[%3 seer-state]) q:on-save:loaded))
+  ;:  weld
+    (expect-eq !>(%.y) !>(?=(^ predictions.old)))
+    (expect-eq !>(stacks.old) !>(stacks.saved))
+    (expect-eq !>(review-log.old) !>(review-log.saved))
+    (expect-eq !>(next-review-id.old) !>(next-review-id.saved))
+    (expect-eq !>(rwkv.old) !>(rwkv.saved))
+    (expect-eq !>(predictions.old) !>(predictions.saved))
+    (expect-eq !>(*rwkv-store) !>(rwkv-blobs.saved))
+  ==
+::
+::  rwkv artifact store over eyre
+::
+::  +send: one request as eyre pokes it, from .who, authenticated or
+::  not; the response eyre would send and the next core
+::
+++  send
+  |=  $:  core=agent:gall
+          who=[src=ship authed=?]
+          [method=method:http url=@t headers=header-list:http body=(unit octs)]
+      ==
+  ^-  [simple-payload:http agent:gall]
+  =/  shell  ~(. seer-agent %*(. bol sap /eyre, src src.who))
+  =/  agent  +:(on-load:shell on-save:core)
+  =/  request=inbound-request:eyre
+    %*(. *inbound-request:eyre authenticated authed.who, request [method url headers body])
+  =/  res  (on-poke:agent %handle-http-request !>(['blob' request]))
+  =/  facts=(list cage)
+    %+  murn  -.res
+    |=  =card:agent:gall
+    ?.  ?=([%give %fact [[%http-response %blob ~] ~] *] card)  ~
+    `cage.p.card
+  ?>  ?=([[%http-response-header *] [%http-response-data *] ~] facts)
+  :_  +.res
+  [!<(response-header:http q.i.facts) !<((unit octs) q.i.t.facts)]
+++  owner     [~zod %.y]
+++  guest     [~zod %.n]
+++  stranger  [~nec %.y]
+++  sha-hex
+  |=  data=octs
+  ^-  @t
+  (crip ((x-co:co 64) (rev 3 32 (shay data))))
+++  blob-url
+  |=  data=octs
+  ^-  @t
+  (cat 3 '/apps/seer/rwkv/' (sha-hex data))
+++  put-blob
+  |=  [core=agent:gall who=[ship ?] url=@t type=@t data=octs]
+  (send core who %'PUT' url ~[['content-type' type]] `data)
+++  get-blob
+  |=  [core=agent:gall who=[ship ?] url=@t]
+  (send core who %'GET' url ~ ~)
+++  status
+  |=(res=simple-payload:http status-code.response-header.res)
+++  engine-octs  (as-octs:mimes:html 'engine bytes')
+::
+::  an upload is stored only under the sha-256 of its own bytes, and only
+::  with an allowed content-type; the same bytes again change nothing
+::
+++  test-rwkv-blob-upload-checks-hash
+  ^-  tang
+  =/  other=octs  (as-octs:mimes:html 'other bytes')
+  =/  url  (blob-url engine-octs)
+  =/  core  ag
+  =^  mismatch  core  (put-blob core owner url 'application/wasm' other)
+  =^  untyped   core  (put-blob core owner url 'text/html' engine-octs)
+  =^  missing   core  (get-blob core owner url)
+  =^  stray     core  (get-blob core owner (blob-url other))
+  =^  stored    core  (put-blob core owner url 'application/wasm' engine-octs)
+  =^  again     core  (put-blob core owner url 'application/wasm' engine-octs)
+  =^  served    core  (get-blob core owner url)
+  ;:  weld
+    (expect-eq !>(400) !>((status mismatch)))
+    (expect-eq !>(415) !>((status untyped)))
+    (expect-eq !>(404) !>((status missing)))
+    (expect-eq !>(404) !>((status stray)))
+    (expect-eq !>(201) !>((status stored)))
+    (expect-eq !>(204) !>((status again)))
+    (expect-eq !>(`(unit octs)``engine-octs) !>(data.served))
+  ==
+::
+::  a present blob is served with its bytes, its content-type, and
+::  immutable caching; an absent one is 404
+::
+++  test-rwkv-blob-get-serves-immutable
+  ^-  tang
+  =/  url  (blob-url engine-octs)
+  =/  core  ag
+  =^  absent  core  (get-blob core owner url)
+  =^  stored  core  (put-blob core owner url 'application/wasm' engine-octs)
+  =^  served  core  (get-blob core owner url)
+  ;:  weld
+    (expect-eq !>(`simple-payload:http`[[404 ~] ~]) !>(absent))
+    %+  expect-eq
+      !>  ^-  simple-payload:http
+          :_  `engine-octs
+          :-  200
+          :~  ['content-type' 'application/wasm']
+              ['cache-control' 'private, max-age=31536000, immutable']
+          ==
+    !>(served)
+  ==
+::
+::  only the owner reads or writes the store: a guest or another ship
+::  gets 403 and no bytes, present or not, and never the login redirect
+::  the pages give
+::
+++  test-rwkv-blob-owner-only
+  ^-  tang
+  =/  url  (blob-url engine-octs)
+  =/  core  ag
+  =^  guest-put     core  (put-blob core guest url 'application/wasm' engine-octs)
+  =^  stranger-put  core  (put-blob core stranger url 'application/wasm' engine-octs)
+  =^  unwritten     core  (get-blob core owner url)
+  =^  guest-absent  core  (get-blob core guest url)
+  =^  owner-put     core  (put-blob core owner url 'application/wasm' engine-octs)
+  =^  guest-get     core  (get-blob core guest url)
+  =^  stranger-get  core  (get-blob core stranger url)
+  =^  owner-get     core  (get-blob core owner url)
+  =^  page          core  (get-blob core guest '/apps/seer/review')
+  ;:  weld
+    (expect-eq !>([[403 ~] ~]) !>(guest-put))
+    (expect-eq !>([[403 ~] ~]) !>(stranger-put))
+    (expect-eq !>(404) !>((status unwritten)))
+    (expect-eq !>([[403 ~] ~]) !>(guest-absent))
+    (expect-eq !>(201) !>((status owner-put)))
+    (expect-eq !>([[403 ~] ~]) !>(guest-get))
+    (expect-eq !>([[403 ~] ~]) !>(stranger-get))
+    (expect-eq !>(`(unit octs)``engine-octs) !>(data.owner-get))
+    (expect-eq !>(307) !>((status page)))
+  ==
+::
+::  all blobs together stay within +rwkv-store-cap: an upload past it is
+::  refused and not stored; one that lands exactly on it is stored, and
+::  bytes already stored do not count twice
+::
+++  test-rwkv-blob-store-cap
+  ^-  tang
+  =/  huge=octs  [+(rwkv-store-cap) 0]
+  =/  big=octs   [(sub rwkv-store-cap 10) 0]
+  =/  eleven=octs  (as-octs:mimes:html 'eleven byte')
+  =/  ten=octs     (as-octs:mimes:html 'ten bytes!')
+  =/  bin  'application/octet-stream'
+  =/  core  ag
+  =^  alone      core  (put-blob core owner (blob-url huge) bin huge)
+  =^  big-put    core  (put-blob core owner (blob-url big) bin big)
+  =^  over       core  (put-blob core owner (blob-url eleven) bin eleven)
+  =^  over-get   core  (get-blob core owner (blob-url eleven))
+  =^  fits       core  (put-blob core owner (blob-url ten) bin ten)
+  =^  big-again  core  (put-blob core owner (blob-url big) bin big)
+  =^  ten-get    core  (get-blob core owner (blob-url ten))
+  ;:  weld
+    (expect-eq !>(413) !>((status alone)))
+    (expect-eq !>(201) !>((status big-put)))
+    (expect-eq !>(413) !>((status over)))
+    (expect-eq !>(404) !>((status over-get)))
+    (expect-eq !>(201) !>((status fits)))
+    (expect-eq !>(204) !>((status big-again)))
+    (expect-eq !>(`(unit octs)``ten) !>(data.ten-get))
   ==
 ::
 ::  rwkv: fixtures and queue scheduling
@@ -2197,11 +2376,11 @@
   =.  core  (do core [%add-context-source %remote [%stack ~nec %orphan ~] %note 'Remote' '' 'Remote evidence'])
   =/  before  (peek-ai core)
   =/  source  (~(got by contexts.before) %orphan)
-  ::  Preserve the current saved vase/mold ([%2 seer-state]); remove the
+  ::  Preserve the current saved vase/mold ([%3 seer-state]); remove the
   ::  first state field's parent
   ::  without invoking deletion. This is not an old-state migration fixture.
   =/  saved  on-save:core
-  =.  saved  saved(q [%2 (~(del by stacks.before) %orphan) +>.q.saved])
+  =.  saved  saved(q [%3 (~(del by stacks.before) %orphan) +>.q.saved])
   =.  core  +:(on-load:ag saved)
   =.  core  (do core [%archive-orphan-contexts ~])
   =/  swept  (peek-ai core)
