@@ -903,12 +903,12 @@
   ?~  sha  (refuse 400 'invalid-sha256')
   ?~  type  (refuse 415 'unsupported-type')
   ?.  =(u.sha (rev 3 32 (shay data)))  (refuse 400 'hash-mismatch')
-  =/  others  (~(del by rwkv-blobs.state) u.sha)
-  ?:  (gth (add p.data (rwkv-store-bytes others)) rwkv-store-cap)
+  ?:  (~(has by rwkv-blobs.state) u.sha)
+    (respond-payload eyre-id [[204 ~] ~])
+  ?:  (gth (add p.data (rwkv-store-bytes rwkv-blobs.state)) rwkv-store-cap)
     (refuse 413 'store-full')
-  =/  status  ?:((~(has by rwkv-blobs.state) u.sha) 204 201)
-  =.  rwkv-blobs.state  (~(put by others) u.sha [u.type data])
-  (respond-payload eyre-id [[status ~] ~])
+  =.  rwkv-blobs.state  (~(put by rwkv-blobs.state) u.sha [u.type data])
+  (respond-payload eyre-id [[201 ~] ~])
 ::
 ++  web-get
   |=  [eyre-id=@ta =request-line]

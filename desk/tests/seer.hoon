@@ -455,25 +455,26 @@
   =/  core  (do rwkv-deck [%set-rwkv-config (rwkv-on 200)])
   =.  core  (do core (predict (head-of core) ~[[%c2 .~0.1]]))
   =/  cur=seer-state  +:(need ((soft ,[%3 seer-state]) q:on-save:core))
+  ::  distinct values in the @ud fields, so a swap between them shows
+  =.  cur  cur(catalog-serial 11, context-count 12, shared-manifest-rev 13)
   =/  old=seer-state-2
-    %*  .  *seer-state-2
-      stacks          stacks.cur
-      review-log      review-log.cur
-      next-review-id  next-review-id.cur
-      rwkv            rwkv.cur
-      predictions     predictions.cur
-      operating       operating.cur
+    :*  stacks.cur  paths.cur  stack-subs.cur  captures.cur
+        provenance.cur  questions.cur  models.cur  changes.cur
+        logins.cur  accounts.cur  catalog-pending.cur  catalog-active.cur
+        catalog-serial.cur  contexts.cur  context-count.cur  evidence.cur
+        learning.cur  shared-context.cur  shared-manifest-rev.cur
+        outstanding-keens.cur  remote-manifests.cur  recent-clay.cur
+        context-revs.cur  review-log.cur  next-review-id.cur
+        pending-show.cur  rwkv.cur  predictions.cur  operating.cur
     ==
   =/  loaded  +:(on-load:ag !>([%2 old]))
   =/  saved=seer-state  +:(need ((soft ,[%3 seer-state]) q:on-save:loaded))
   ;:  weld
     (expect-eq !>(%.y) !>(?=(^ predictions.old)))
-    (expect-eq !>(stacks.old) !>(stacks.saved))
-    (expect-eq !>(review-log.old) !>(review-log.saved))
-    (expect-eq !>(next-review-id.old) !>(next-review-id.saved))
-    (expect-eq !>(rwkv.old) !>(rwkv.saved))
-    (expect-eq !>(predictions.old) !>(predictions.saved))
-    (expect-eq !>(*rwkv-store) !>(rwkv-blobs.saved))
+    (expect-eq !>(%.y) !>(?=(^ review-log.old)))
+    %+  expect-eq
+      !>(cur(rwkv-blobs ~, operating *agent-state))
+    !>(saved(operating *agent-state))
   ==
 ::
 ::  rwkv artifact store over eyre
@@ -534,7 +535,7 @@
   =^  missing   core  (get-blob core owner url)
   =^  stray     core  (get-blob core owner (blob-url other))
   =^  stored    core  (put-blob core owner url 'application/wasm' engine-octs)
-  =^  again     core  (put-blob core owner url 'application/wasm' engine-octs)
+  =^  again     core  (put-blob core owner url 'application/octet-stream' engine-octs)
   =^  served    core  (get-blob core owner url)
   ;:  weld
     (expect-eq !>(400) !>((status mismatch)))
@@ -544,6 +545,8 @@
     (expect-eq !>(201) !>((status stored)))
     (expect-eq !>(204) !>((status again)))
     (expect-eq !>(`(unit octs)``engine-octs) !>(data.served))
+    %+  expect-eq  !>(`(unit @t)``'application/wasm')
+    !>((get-header:http 'content-type' headers.response-header.served))
   ==
 ::
 ::  a present blob is served with its bytes, its content-type, and
