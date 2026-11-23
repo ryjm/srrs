@@ -160,14 +160,53 @@ test("a failed config fetch stops before any artifact fetch", async () => {
   assert.match(warnings[0], /config 503/);
 });
 
-test("artifact fetches omit credentials; ship requests stay same-origin", async () => {
+test("every fetch is same-origin: a cross-origin artifact host gets no cookies", async () => {
   const { fetch, requests } = stubFetch(await files(await sha256Hex(await manifestBytes())));
   await run({ fetch, engine: stubEngine, base: "http://ship/" });
   assert.deepEqual(requests.map(({ url, init }) => [url, init?.credentials]), [
     ["/~/scry/seer/rwkv.json", "same-origin"],
-    ["https://cdn.example/rwkv/manifest.json", "omit"],
-    ["https://cdn.example/rwkv/engine.wasm", "omit"],
-    ["https://cdn.example/rwkv/weights.bin", "omit"],
+    ["https://cdn.example/rwkv/manifest.json", "same-origin"],
+    ["https://cdn.example/rwkv/engine.wasm", "same-origin"],
+    ["https://cdn.example/rwkv/weights.bin", "same-origin"],
+    ["/apps/seer/actions/rwkv-predictions", "same-origin"],
+  ]);
+});
+
+// The ship's artifact store as the ship answers it: a request without the
+// owner's session cookie gets 403.
+async function shipStore() {
+  const manifest = await manifestBytes();
+  const hash = await sha256Hex(manifest);
+  const blobs = {};
+  for (const blob of [manifest, engineBytes, weightBytes]) {
+    blobs[`http://ship/apps/seer/rwkv/${await sha256Hex(blob)}`] = blob;
+  }
+  const stub = stubFetch({
+    "/~/scry/seer/rwkv.json": { ...config(hash), artifact_url: `/apps/seer/rwkv/${hash}` },
+    ...blobs,
+  });
+  const fetch = async (url, init) => {
+    if (url in blobs && (init?.credentials ?? "same-origin") === "omit") {
+      stub.requests.push({ url, init });
+      return { ok: false, status: 403 };
+    }
+    return stub.fetch(url, init);
+  };
+  return { ...stub, fetch, hash };
+}
+
+test("a manifest in the ship's store loads each file from the store by sha-256, with the cookie", async () => {
+  const ship = await shipStore();
+  const [body, warnings] = await quiet(() =>
+    run({ fetch: ship.fetch, engine: stubEngine, base: "http://ship/apps/seer/review" }));
+  assert.deepEqual(warnings, []);
+  assert.notEqual(body, null);
+  assert.equal(ship.posts.length, 1);
+  assert.deepEqual(ship.requests.map(({ url, init }) => [url, init?.credentials]), [
+    ["/~/scry/seer/rwkv.json", "same-origin"],
+    [`http://ship/apps/seer/rwkv/${ship.hash}`, "same-origin"],
+    [`http://ship/apps/seer/rwkv/${await sha256Hex(engineBytes)}`, "same-origin"],
+    [`http://ship/apps/seer/rwkv/${await sha256Hex(weightBytes)}`, "same-origin"],
     ["/apps/seer/actions/rwkv-predictions", "same-origin"],
   ]);
 });

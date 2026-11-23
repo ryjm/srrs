@@ -7,6 +7,8 @@
   var POKE_URL = "/apps/seer/actions/rwkv-predictions";
   // this script; as a Web Worker it runs the engine (serveEngine)
   var LOADER_URL = "/apps/seer/rwkv-loader.js";
+  // the ship's artifact store; each file is at its sha-256
+  var STORE_PATH = "/apps/seer/rwkv/";
 
   async function sha256Hex(bytes) {
     var digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -15,10 +17,10 @@
     }).join("");
   }
 
-  // artifacts are public and hash-pinned: no cookies, so a CDN serving
-  // Access-Control-Allow-Origin: * can answer
+  // same-origin: the ship's store answers only the owner's session cookie,
+  // and a cross-origin host gets no cookies either way
   async function fetchVerified(fetchFn, url, hex) {
-    var res = await fetchFn(url, { credentials: "omit" });
+    var res = await fetchFn(url, { credentials: "same-origin" });
     if (!res.ok) throw new Error("rwkv: fetch " + url + " " + res.status);
     var bytes = new Uint8Array(await res.arrayBuffer());
     var got = await sha256Hex(bytes);
@@ -132,14 +134,19 @@
       if (!config.enabled || !config.artifact_url || !config.artifact_hash) return null;
       if (config.head === null || config.fresh) return null;
       var base = new URL(config.artifact_url, deps.base);
+      var onShip = base.href.startsWith(new URL(STORE_PATH, deps.base).href);
+      // a manifest in the ship's store names its files by sha-256 there
+      var fileUrl = function (file) {
+        return new URL(onShip ? STORE_PATH + file.sha256 : file.url, base).href;
+      };
       var manifest = JSON.parse(new TextDecoder().decode(
         await fetchVerified(deps.fetch, base.href, config.artifact_hash),
       ));
       var engineBytes = await fetchVerified(
-        deps.fetch, new URL(manifest.engine.url, base).href, manifest.engine.sha256,
+        deps.fetch, fileUrl(manifest.engine), manifest.engine.sha256,
       );
       var weightBytes = await fetchVerified(
-        deps.fetch, new URL(manifest.weights.url, base).href, manifest.weights.sha256,
+        deps.fetch, fileUrl(manifest.weights), manifest.weights.sha256,
       );
       var engine = await deps.engine(engineBytes, weightBytes);
       // the ship's clock, the one its revlog uses: a browser clock behind
