@@ -9,6 +9,8 @@
 //!   written by hand from the fork's rules (tests/fixtures/cases.json).
 //!
 //! Needs RWKV_WEIGHTS, the weights.bin of tools/build-rwkv-artifact.
+//! RWKV_REFERENCE, when set, names fork numbers to use instead of the
+//! committed golden; parity/run.sh sets it to the numbers it just made.
 
 use rwkv_engine::seer;
 use rwkv_engine::Engine;
@@ -39,7 +41,11 @@ struct Reference {
 }
 
 fn reference() -> Reference {
-    serde_json::from_str(include_str!("fixtures/reference-r.json")).expect("reference json")
+    let text = match std::env::var("RWKV_REFERENCE") {
+        Ok(path) => std::fs::read_to_string(&path).expect("read RWKV_REFERENCE"),
+        Err(_) => include_str!("fixtures/reference-r.json").to_owned(),
+    };
+    serde_json::from_str(&text).expect("reference json")
 }
 
 /// Translation: each %seer input of tests/fixtures/cases.json through this
