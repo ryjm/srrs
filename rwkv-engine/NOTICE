@@ -1,0 +1,24 @@
+rwkv-engine is extracted from the RWKV inference runtime of an Anki fork:
+
+  https://github.com/JSchoreels/anki
+  commit 17c63ab7f985b11c013dc02b35d8606b5bb0a586 (tag 26.09.4+fsrs7.build.115)
+
+  rslib/src/rwkv/engine.rs        feature builder, weight loader, model, scalar kernels
+  rslib/src/rwkv/architecture.rs  small-model dimensions and layer plan
+  rslib/src/rwkv/runtime.rs       SM98 load rules (card layers, leak-free inputs)
+
+Copyright: Ankitects Pty Ltd and contributors. The fork's LICENSE states:
+"Anki is licensed under the GNU Affero General Public License, version 3 or
+later, with portions contributed by Anki users licensed under the BSD-3
+license (see CONTRIBUTORS)." This crate is distributed under the same terms,
+AGPL-3.0-or-later; LICENSE holds the license text.
+
+Changes from upstream: kept only the inference path of the SM98
+instant-only model with f32 state and scalar kernels; removed the Anki
+collection, protobuf, SQLite state cache, Rayon, SIMD kernels, state
+quantization, curves, intervals and forecasts; added the %seer revlog
+mapping (src/seer.rs) and the WebAssembly ABI (src/abi.rs).
+
+The model weights are not part of this crate or its repository. The build
+fetches qt/aqt/rwkv_inference/sm98/weights.int8.bin from the commit above;
+the fork states no license for them.
