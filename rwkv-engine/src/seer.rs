@@ -67,6 +67,11 @@ pub struct Plan<'a> {
     pub answers: Vec<ReviewInput>,
     pub queries: Vec<ReviewInput>,
     pub cards: Vec<&'a Event>,
+    /// Only from `show_time_plan`: per answer, the live query the loader
+    /// would have sent for its card at `shown_at`, from the card's history
+    /// before that answer; `None` for a card's first answer, which has no
+    /// prediction.
+    pub shown: Vec<Option<ReviewInput>>,
 }
 
 struct CardHistory {
@@ -127,6 +132,15 @@ fn dataset_state(kind: Kind, reviewed: bool) -> i64 {
 /// start would add a second creation sentinel to the card's cumulative
 /// elapsed time, outside the model's input domain.
 pub fn plan(input: &Input) -> Result<Plan<'_>, String> {
+    walk(input, false)
+}
+
+/// `plan` with `shown` filled in, for the show-time parity check.
+pub fn show_time_plan(input: &Input) -> Result<Plan<'_>, String> {
+    walk(input, true)
+}
+
+fn walk(input: &Input, show_times: bool) -> Result<Plan<'_>, String> {
     let mut order: Vec<&Event> = input.events.iter().collect();
     order.sort_by_key(|event| (event.answered_at, event.id));
 
@@ -134,6 +148,7 @@ pub fn plan(input: &Input) -> Result<Plan<'_>, String> {
     let mut decks: HashMap<(&str, &str), i64> = HashMap::new();
     let mut card_events = Vec::new();
     let mut answers = Vec::with_capacity(order.len());
+    let mut shown = Vec::new();
 
     for event in order {
         let next_deck = decks.len() as i64 + 1;
@@ -163,6 +178,9 @@ pub fn plan(input: &Input) -> Result<Plan<'_>, String> {
                 learning: false,
             }
         });
+        if show_times {
+            shown.push(previous.map(|_| card.query(event.shown_at)));
+        }
         let (elapsed_days, elapsed_seconds) = match previous {
             Some(previous) => (
                 (day(event.answered_at) - day(previous)).max(0),
@@ -206,6 +224,7 @@ pub fn plan(input: &Input) -> Result<Plan<'_>, String> {
         answers,
         queries,
         cards: card_events,
+        shown,
     })
 }
 

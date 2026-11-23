@@ -47,19 +47,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let weights = args.next().ok_or(usage)?;
     let plan: Value = serde_json::from_slice(&std::fs::read(args.next().ok_or(usage)?)?)?;
     let cases: Value = serde_json::from_slice(&std::fs::read(args.next().ok_or(usage)?)?)?;
+    let answers = rows(&plan["answers"]);
 
+    // Kernel parity on the candidate's own rows. Steps: the recall the fork
+    // predicts just before each answer from the answer's own elapsed time,
+    // its historical warm-up. Cards: each card's recall at the fixture's
+    // now, after every answer.
     let mut fixture = runtime(&weights)?;
-    // Kernel parity on the candidate's own rows: the recall the fork predicts
-    // just before each answer, from the answer's own elapsed time.
     let steps: Vec<f32> = fixture
-        .warm_up_reviews(rows(&plan["answers"]), true)?
+        .warm_up_reviews(answers.clone(), true)?
         .into_iter()
         .map(|(_, r)| r)
         .collect();
     let rs = fixture.predict_retrievability_many_from_warm_up(rows(&plan["queries"]))?;
     let cards: Vec<Value> = plan["cards"]
         .as_array()
-        .unwrap()
+        .expect("cards")
         .iter()
         .zip(rs)
         .map(|(card, r)| {
@@ -67,6 +70,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             card["r"] = serde_json::json!(r);
             card
         })
+        .collect();
+
+    // Kernel parity at show time: before each answer, the live query the
+    // loader would have sent for that card when it was shown, as the
+    // candidate builds it. A card's first answer has none; it gets the
+    // answer-time query, and the test skips it.
+    let shown_queries: Vec<ReviewInput> = plan["shown"]
+        .as_array()
+        .expect("shown")
+        .iter()
+        .zip(&answers)
+        .map(|(shown, answer)| {
+            if shown.is_null() {
+                let mut query = answer.clone();
+                query.is_query = true;
+                query.ease = None;
+                query.duration_millis = None;
+                query
+            } else {
+                input(shown)
+            }
+        })
+        .collect();
+    let shown: Vec<f32> = runtime(&weights)?
+        .warm_up_reviews_query(answers, shown_queries, false)?
+        .into_iter()
+        .map(|(_, r)| r)
         .collect();
 
     // Translation: the fork on rows written by hand from its own rules, one
@@ -79,7 +109,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         case_rs.push(serde_json::json!({ "name": case["name"], "r": r }));
     }
 
-    let out = serde_json::json!({ "steps": steps, "cards": cards, "cases": case_rs });
+    let out = serde_json::json!({
+        "steps": steps,
+        "shown": shown,
+        "cards": cards,
+        "cases": case_rs,
+    });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
 }

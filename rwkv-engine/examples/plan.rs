@@ -10,10 +10,11 @@ fn main() {
         .expect("usage: plan <engine-input.json>");
     let input: seer::Input =
         serde_json::from_slice(&std::fs::read(path).expect("read input")).expect("parse input");
-    let plan = seer::plan(&input).expect("plan");
+    let plan = seer::show_time_plan(&input).expect("plan");
     let out = json!({
         "answers": plan.answers,
         "queries": plan.queries,
+        "shown": plan.shown,
         "cards": plan.cards.iter().map(|e| json!({"owner": e.owner, "stack": e.stack, "item": e.item})).collect::<Vec<_>>(),
     });
     println!("{out}");

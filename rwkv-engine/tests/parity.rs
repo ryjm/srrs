@@ -1,3 +1,15 @@
+//! The engine against the fork's runtime (parity/run.sh writes the fork's
+//! numbers to tests/fixtures/reference-r.json). Three kinds of check:
+//!
+//! - kernel parity: both runtimes on the same model rows, built by this
+//!   crate's `seer::plan`, so a wrong translation would pass;
+//! - show time: kernel parity on the live query the loader sends when a
+//!   card is shown, separate from the answer-time warm-up rows;
+//! - translation: %seer inputs through this crate against the fork on rows
+//!   written by hand from the fork's rules (tests/fixtures/cases.json).
+//!
+//! Needs RWKV_WEIGHTS, the weights.bin of tools/build-rwkv-artifact.
+
 use rwkv_engine::seer;
 use rwkv_engine::Engine;
 use serde::Deserialize;
@@ -21,6 +33,7 @@ struct CaseR {
 #[derive(Deserialize)]
 struct Reference {
     steps: Vec<f64>,
+    shown: Vec<f64>,
     cards: Vec<Row>,
     cases: Vec<CaseR>,
 }
@@ -33,7 +46,7 @@ fn reference() -> Reference {
 /// crate, against the fork's runtime on that case's rows, which are written
 /// by hand from the fork's rules rather than by `seer::plan`.
 #[test]
-fn hand_written_cases_match_the_fork() {
+fn translation_matches_the_fork_on_hand_written_rows() {
     #[derive(Deserialize)]
     struct Case {
         name: String,
@@ -76,8 +89,10 @@ fn predict(engine: &mut Engine) -> Vec<Row> {
     serde_json::from_slice(&out).expect("output json")
 }
 
+/// Kernel parity: this crate and the fork's runtime on the same rows, which
+/// `seer::plan` builds; each card's recall at the fixture's now.
 #[test]
-fn fixture_recall_matches_the_fork_runtime() {
+fn kernel_final_recall_matches_the_fork() {
     let mut engine = engine();
     let native = predict(&mut engine);
     let fork = reference().cards;
@@ -98,8 +113,11 @@ fn fixture_recall_matches_the_fork_runtime() {
     assert!(max <= 1e-4, "max |native - fork| R = {max:e}");
 }
 
+/// Kernel parity on the fork's historical warm-up: before each answer, the
+/// answer-time row with grade and duration cleared, as the fork's bulk
+/// replay predicts. Not what the loader asks when a card is shown.
 #[test]
-fn recall_before_every_answer_matches_the_fork_runtime() {
+fn kernel_warm_up_steps_match_the_fork() {
     let input: seer::Input = serde_json::from_slice(REVLOG).expect("revlog json");
     let plan = seer::plan(&input).expect("plan");
     let mut engine = engine();
@@ -131,6 +149,36 @@ fn recall_before_every_answer_matches_the_fork_runtime() {
         max <= 1e-4,
         "max |native - fork| R before each answer = {max:e}"
     );
+}
+
+/// Kernel parity at show time: before each answer, the live query the
+/// loader would have sent for that card at its `shown_at`, from its history
+/// before the answer. A card's first answer has no query and is skipped.
+#[test]
+fn kernel_show_time_recall_matches_the_fork() {
+    let input: seer::Input = serde_json::from_slice(REVLOG).expect("revlog json");
+    let plan = seer::show_time_plan(&input).expect("plan");
+    let fork = reference().shown;
+    assert_eq!(plan.answers.len(), fork.len());
+    let mut engine = engine();
+    let mut max = 0f64;
+    let mut checked = 0;
+    for (index, ((answer, shown), fork)) in
+        plan.answers.iter().zip(&plan.shown).zip(&fork).enumerate()
+    {
+        if let Some(query) = shown {
+            let native = f64::from(engine.retrievability(std::slice::from_ref(query))[0]);
+            assert!(
+                (0.0..=1.0).contains(&native) && (native - fork).abs() <= 1e-4,
+                "answer {index}: native {native}, fork {fork}"
+            );
+            max = max.max((native - fork).abs());
+            checked += 1;
+        }
+        engine.answer(answer);
+    }
+    println!("max |native - fork| R at show time = {max:e} over {checked} answers");
+    assert!(checked > 0);
 }
 
 #[test]
