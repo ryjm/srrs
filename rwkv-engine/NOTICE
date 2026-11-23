@@ -4,6 +4,7 @@ rwkv-engine is extracted from the RWKV inference runtime of an Anki fork:
   commit 17c63ab7f985b11c013dc02b35d8606b5bb0a586 (tag 26.09.4+fsrs7.build.115)
 
   rslib/src/rwkv/engine.rs        feature builder, weight loader, model, scalar kernels
+  rslib/src/rwkv/api.rs           ReviewInput
   rslib/src/rwkv/architecture.rs  small-model dimensions and layer plan
   rslib/src/rwkv/runtime.rs       SM98 load rules (card layers, leak-free inputs)
 

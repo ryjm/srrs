@@ -79,7 +79,7 @@ Output: UTF-8 JSON `[{"owner": "~zod", "stack": "s1", "item": "c1", "r": 0.83}, 
 
 ### Replay
 
-The engine in `rwkv-engine/` runs the fork's RWKV-Instant model SM98 (see [Artifact](#artifact)). It was trained on Anki revlog rows, so each predict replays the whole scry revlog as Anki rows, from a fresh state, in `answered_at` order (ties by `id`), then asks for each card's recall at `now_ms`:
+The engine in `rwkv-engine/` runs RWKV-Instant model SM98 from the Anki fork [JSchoreels/anki](https://github.com/JSchoreels/anki) ("the fork"; commit in [Artifact](#artifact)). It was trained on Anki revlog rows, so each predict replays the whole scry revlog as Anki rows, from a fresh state, in `answered_at` order (ties by `id`), then asks for each card's recall at `now_ms`:
 
 | model input | from the scry |
 | --- | --- |
@@ -112,10 +112,10 @@ The response is JSON, never a page:
 
 To host it, put the three files in one directory on any static host that answers with `Access-Control-Allow-Origin: *`, then poke `%set-rwkv-config` with `artifact-url` set to the URL of `manifest.json` and `artifact-hash` set to the printed hash. The loader checks every file against the hashes, so the host does not need to be trusted, only reachable.
 
-`rwkv-engine/parity/run.sh` checks the engine against the fork: it builds the fork's own runtime at the pinned commit, runs it and this engine on the synthetic revlog in `rwkv-engine/tests/fixtures/`, and fails if any card's R differs by more than `1e-4`. `node --test tools/rwkv-artifact.test.mjs` then runs the built artifact through the loader with a stubbed ship.
+`rwkv-engine/parity/run.sh` checks the engine against the fork: it builds the fork's own runtime at the pinned commit, runs it and this engine on the synthetic revlog in `rwkv-engine/tests/fixtures/`, and fails if any card's final R, or the R predicted before any answer, differs by more than `1e-4`. `node --test tools/rwkv-artifact.test.mjs` then runs the built artifact through the loader with a stubbed ship.
 
 ### Licenses
 
-The engine is the fork's code and stays under AGPL-3.0-or-later; its source is `rwkv-engine/` (`LICENSE`, and `NOTICE` for the upstream files). Whoever serves `engine.wasm` to browsers distributes AGPL object code and must offer that source.
+The engine is the fork's code and stays under AGPL-3.0-or-later; its source is `rwkv-engine/`. The fork's own `LICENSE` names the AGPL without its text, so `rwkv-engine/LICENSE` is the GNU AGPL v3 text and `NOTICE` quotes the fork's statement and names the upstream files. Whoever serves `engine.wasm` to browsers distributes AGPL object code and must offer that source.
 
 The weights carry no stated license. This repository does not contain or redistribute them: the build fetches them from the fork. An operator who hosts `weights.bin` redistributes them.
