@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,13 +31,15 @@ function artifactDir(names = Object.keys(types)) {
   return dir;
 }
 
-async function withStore(fn) {
+// handle(req, res, body) may answer a request itself and return true
+async function withStore(fn, handle = () => false) {
   const stored = new Map();
   const server = createServer((req, res) => {
     const chunks = [];
     req.on("data", (chunk) => chunks.push(chunk));
     req.on("end", () => {
       const body = Buffer.concat(chunks);
+      if (handle(req, res, body)) return;
       const sha = req.url.match(/^\/apps\/seer\/rwkv\/([0-9a-f]{64})$/)?.[1];
       if (req.headers.cookie !== cookie) return res.writeHead(403).end();
       if (req.method !== "PUT" || !sha) return res.writeHead(405).end();
@@ -55,9 +57,11 @@ async function withStore(fn) {
   }
 }
 
-function upload(args, env) {
+// run with `bash -x` when trace is set
+function upload(args, env, { trace = false } = {}) {
+  const [file, argv] = trace ? ["bash", ["-x", script, ...args]] : [script, args];
   return new Promise((resolve) => {
-    execFile(script, args, { env: { PATH: process.env.PATH, ...env } }, (error, stdout, stderr) =>
+    execFile(file, argv, { env: { PATH: process.env.PATH, ...env } }, (error, stdout, stderr) =>
       resolve({ code: error ? error.code : 0, stdout, stderr }));
   });
 }
@@ -102,5 +106,49 @@ test("refuses to start without a cookie or a complete artifact, and stops on a r
   } finally {
     rmSync(dir, { recursive: true });
     rmSync(partial, { recursive: true });
+  }
+});
+
+// An operator's curl config turning on verbose output and a trace file,
+// and shell tracing, would each print the cookie if the uploader let them.
+test("keeps the cookie out of curl traces, shell traces and refusals", async () => {
+  const dir = artifactDir();
+  const home = mkdtempSync(join(tmpdir(), "rwkv curl home "));
+  const traceFile = join(home, "trace.log");
+  writeFileSync(join(home, ".curlrc"), `verbose\ntrace-ascii = "${traceFile}"\n`);
+  const env = { HOME: home, CURL_HOME: home, XDG_CONFIG_HOME: home, SEER_COOKIE: cookie };
+  const secret = cookie.split("=")[1];
+  // a refusing ship that echoes the request's cookie in its error body
+  const echo = (status, code) => (req, res) => {
+    res.writeHead(status).end(JSON.stringify({ code, value: req.headers.cookie }));
+    return true;
+  };
+  try {
+    await withStore(async (ship) => {
+      for (const trace of [false, true]) {
+        const ok = await upload([ship, dir], env, { trace });
+        assert.equal(ok.code, 0, ok.stderr);
+        assert.ok(!(ok.stdout + ok.stderr).includes(secret), `success, trace ${trace}: cookie printed`);
+      }
+    });
+    for (const [status, code, shown] of [
+      [400, "hash-mismatch", "HTTP 400 hash-mismatch"],
+      [413, "store-full", "HTTP 413 store-full"],
+      [403, cookie, "HTTP 403"],
+    ]) {
+      await withStore(async (ship) => {
+        for (const trace of [false, true]) {
+          const refused = await upload([ship, dir], env, { trace });
+          assert.equal(refused.code, 1);
+          assert.match(refused.stderr, new RegExp(`refused: ${shown}$`, "m"));
+          assert.ok(!(refused.stdout + refused.stderr).includes(secret),
+            `HTTP ${status}, trace ${trace}: cookie printed`);
+        }
+      }, echo(status, code));
+    }
+    assert.ok(!existsSync(traceFile), "curl config ignored: no trace file");
+  } finally {
+    rmSync(dir, { recursive: true });
+    rmSync(home, { recursive: true });
   }
 });

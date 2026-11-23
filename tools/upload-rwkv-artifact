@@ -8,7 +8,11 @@
 #
 # SHIP-URL is the ship's web address. DIR defaults to rwkv-engine/dist.
 # SEER_COOKIE is the owner's session cookie, `urbauth-~<ship>=<value>`. curl
-# reads it from stdin, so it is never on a command line.
+# reads it from stdin, so it is never on a command line. Nothing may print
+# it: shell tracing is off before it is read, curl ignores any config file
+# (verbose or trace options there would log the request headers), and a
+# refusal reports only its status and a known error code, never the body.
+{ set +xv; } 2>/dev/null
 set -euo pipefail
 export LC_ALL=C
 
@@ -45,18 +49,24 @@ for entry in "${files[@]}"; do
   [ -f "$dir/${entry%%|*}" ] || { echo "missing $dir/${entry%%|*}: run tools/build-rwkv-artifact" >&2; exit 1; }
 done
 
+# the error codes the ship's store answers a refused PUT with
+known='"code": *"(invalid-sha256|hash-mismatch|unsupported-type|store-full)"'
 for entry in "${files[@]}"; do
   name=${entry%%|*}
   sha=$(sha256 "$dir/$name")
+  # --disable must come first to keep curl from reading a config file
   out=$(printf 'Cookie: %s\n' "$SEER_COOKIE" |
-    curl --silent --show-error --write-out '\n%{http_code}' \
+    curl --disable --silent --show-error --write-out '\n%{http_code}' \
       --request PUT --header @- --header "Content-Type: ${entry#*|}" \
       --data-binary "@$dir/$name" "$ship/apps/seer/rwkv/$sha")
-  case ${out##*$'\n'} in
+  status=${out##*$'\n'}
+  case $status in
     201) echo "stored   $name /apps/seer/rwkv/$sha" ;;
     204) echo "present  $name /apps/seer/rwkv/$sha" ;;
     *)
-      echo "upload of $name refused: HTTP ${out##*$'\n'} ${out%$'\n'*}" >&2
+      code=
+      if [[ ${out%$'\n'*} =~ $known ]]; then code=" ${BASH_REMATCH[1]}"; fi
+      echo "upload of $name refused: HTTP $status$code" >&2
       exit 1
       ;;
   esac
