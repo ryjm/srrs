@@ -6,9 +6,30 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { Worker } from "node:worker_threads";
 
 const require = createRequire(import.meta.url);
-const { run, sha256Hex, wasmEngine } = require("../desk/lib/web/rwkv-loader.js");
+const loaderPath = fileURLToPath(new URL("../desk/lib/web/rwkv-loader.js", import.meta.url));
+const { run, sha256Hex, wasmEngine, workerEngine } = require(loaderPath);
+
+// A Node worker thread behind the Web Worker interface workerEngine uses,
+// running the loader's own worker side.
+function nodeWorker() {
+  const thread = new Worker(`
+    const { parentPort } = require("node:worker_threads");
+    const scope = { postMessage: (message) => parentPort.postMessage(message) };
+    parentPort.on("message", (data) => scope.onmessage({ data }));
+    require(${JSON.stringify(loaderPath)}).serveEngine(scope);
+  `, { eval: true });
+  const worker = {
+    postMessage: (message) => thread.postMessage(message),
+    terminate: () => thread.terminate(),
+  };
+  thread.on("message", (data) => worker.onmessage({ data }));
+  thread.on("error", (error) => worker.onerror(error));
+  return worker;
+}
 
 const dir = process.env.RWKV_ARTIFACT_DIR ??
   new URL("../rwkv-engine/dist/", import.meta.url).pathname;
@@ -135,4 +156,64 @@ test("real artifact: wasm R equals the native engine and the fork", { skip: skip
   console.log(`max |wasm - native| R = ${vsNative}; max |wasm - fork| R = ${vsFork}; ${rows.length} cards`);
   assert.ok(vsNative <= 1e-6, `wasm vs native: ${vsNative}`);
   assert.ok(vsFork <= 1e-4, `wasm vs fork: ${vsFork}`);
+});
+
+test("real artifact: the worker engine posts what the page-thread engine would", { skip }, async () => {
+  const head = events.at(-1).id;
+  const bodies = [];
+  for (const engine of [wasmEngine, workerEngine(nodeWorker)]) {
+    const { fetch } = await stubShip(events, head);
+    bodies.push(await run({ fetch, engine, now: () => now_ms, base: "https://ship.example/" }));
+  }
+  assert.notEqual(bodies[1], null);
+  assert.equal(bodies[1], bodies[0], "same head, artifact and scores");
+});
+
+// 4,096 answers over 256 cards, one learning start each, a day apart.
+function largeRevlog() {
+  const grades = ["again", "hard", "good", "easy"];
+  const DAY = 86_400_000;
+  const log = [];
+  for (let i = 0; i < 4096; i++) {
+    const card = i % 256;
+    const round = Math.floor(i / 256);
+    const at = T + round * DAY + card * 60_000;
+    log.push({
+      id: i, owner: "~zod", stack: `s${card % 4}`, item: `c${card}`,
+      grade: grades[(i * 7) % 4], kind: round === 0 ? "learn" : "review",
+      shown_at: at - 8_000, answered_at: at,
+    });
+  }
+  return { now_ms: T + 16 * DAY, events: log };
+}
+
+test("real artifact: a long replay in the worker leaves the page thread free", { skip }, async () => {
+  const input = largeRevlog();
+  const engineBytes = read("engine.wasm");
+  const weightBytes = read("weights.bin");
+  const inline = await wasmEngine(engineBytes, weightBytes);
+  const started = performance.now();
+  const expected = inline.predict(input);
+  const blocked = performance.now() - started;
+
+  const engine = await workerEngine(nodeWorker)(engineBytes, weightBytes);
+  let ticks = 0;
+  let longest = 0;
+  let last = performance.now();
+  let done = false;
+  const tick = () => {
+    const now = performance.now();
+    longest = Math.max(longest, now - last);
+    last = now;
+    ticks++;
+    if (!done) setTimeout(tick, 0);
+  };
+  setTimeout(tick, 0);
+  const rows = await engine.predict(input);
+  done = true;
+  console.log(`page thread: ${blocked.toFixed(0)} ms blocked inline; ` +
+    `${ticks} timer ticks, longest gap ${longest.toFixed(1)} ms with the worker`);
+  assert.deepEqual(rows, expected);
+  assert.ok(ticks > 10, `timers ran ${ticks} times during the worker's replay`);
+  assert.ok(longest < blocked / 2, `longest gap ${longest} ms against ${blocked} ms inline`);
 });

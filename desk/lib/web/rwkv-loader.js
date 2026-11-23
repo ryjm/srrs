@@ -5,6 +5,8 @@
 
   var CONFIG_URL = "/~/scry/seer/rwkv.json";
   var POKE_URL = "/apps/seer/actions/rwkv-predictions";
+  // this script; as a Web Worker it runs the engine (serveEngine)
+  var LOADER_URL = "/apps/seer/rwkv-loader.js";
 
   async function sha256Hex(bytes) {
     var digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -81,6 +83,43 @@
     };
   }
 
+  // The engine in a Web Worker, so a long replay never blocks the page.
+  // makeWorker() returns a worker running serveEngine; it gets the bytes
+  // run() already checked against the manifest, and serves one prediction.
+  function workerEngine(makeWorker) {
+    return async function (engineBytes, weightBytes) {
+      return {
+        predict: function (input) {
+          return new Promise(function (resolve, reject) {
+            var worker = makeWorker();
+            worker.onmessage = function (e) {
+              worker.terminate();
+              if (e.data.error) reject(new Error(e.data.error));
+              else resolve(e.data.rows);
+            };
+            worker.onerror = function (e) {
+              worker.terminate();
+              reject(new Error("rwkv: engine worker: " + (e && e.message)));
+            };
+            worker.postMessage({ engine: engineBytes, weights: weightBytes, input: input });
+          });
+        },
+      };
+    };
+  }
+
+  // The worker side of workerEngine; scope is the worker's global.
+  function serveEngine(scope) {
+    scope.onmessage = async function (e) {
+      try {
+        var engine = await wasmEngine(e.data.engine, e.data.weights);
+        scope.postMessage({ rows: engine.predict(e.data.input) });
+      } catch (err) {
+        scope.postMessage({ error: String((err && err.message) || err) });
+      }
+    };
+  }
+
   // deps: {fetch, engine, now}. Returns the poke body sent, or null.
   async function run(deps) {
     try {
@@ -100,7 +139,7 @@
         deps.fetch, new URL(manifest.weights.url, base).href, manifest.weights.sha256,
       );
       var engine = await deps.engine(engineBytes, weightBytes);
-      var rows = engine.predict({ now_ms: deps.now(), events: config.revlog });
+      var rows = await engine.predict({ now_ms: deps.now(), events: config.revlog });
       var body = pokeBody(config, rows, "rwkv-" + config.head + "-" + deps.now());
       var res = await deps.fetch(POKE_URL, {
         method: "POST",
@@ -145,9 +184,14 @@
     };
   }
 
+  if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope) {
+    serveEngine(self);
+    return;
+  }
   if (typeof module === "object" && module.exports) {
     module.exports = {
-      sha256Hex: sha256Hex, pokeBody: pokeBody, run: run, scheduler: scheduler, wasmEngine: wasmEngine,
+      sha256Hex: sha256Hex, pokeBody: pokeBody, run: run, scheduler: scheduler,
+      wasmEngine: wasmEngine, workerEngine: workerEngine, serveEngine: serveEngine,
     };
     return;
   }
@@ -155,7 +199,7 @@
   if (!window.seerRwkvRequest) {
     window.seerRwkvRequest = scheduler({
       fetch: window.fetch.bind(window),
-      engine: wasmEngine,
+      engine: workerEngine(function () { return new Worker(LOADER_URL); }),
       now: Date.now,
       base: location.href,
       refresh: function () {

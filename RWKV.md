@@ -49,8 +49,8 @@ The ship keeps every answer in its revlog. The replay uses only the answers of l
 2. Stop if disabled, unconfigured, `head` is `null`, or `fresh` is true.
 3. Fetch the manifest and check its SHA-256 against `artifact_hash`.
 4. Fetch the engine and weights named in the manifest and check each against its listed SHA-256.
-5. Run the engine. If any output row lacks a string `owner` starting with `~`, a non-empty `stack` or `item`, or an `r` in `[0, 1]`, or repeats an earlier row's card, drop the whole output.
-6. POST the result to `/apps/seer/actions/rwkv-predictions`.
+5. Run the engine in a Web Worker: the loader starts `/apps/seer/rwkv-loader.js` itself as a worker, hands it the bytes checked in steps 3 and 4 and the revlog, and ends the worker when it answers. The replay never runs on the page thread. If any output row lacks a string `owner` starting with `~`, a non-empty `stack` or `item`, or an `r` in `[0, 1]`, or repeats an earlier row's card, drop the whole output.
+6. POST the result to `/apps/seer/actions/rwkv-predictions`, with the `head` and `artifact_hash` of step 1. The ship rejects the batch if either is no longer current.
 
 Any failure is logged with `console.warn` and nothing is sent.
 
