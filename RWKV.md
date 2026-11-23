@@ -71,9 +71,28 @@ URLs resolve relative to the manifest URL.
 | `predict` | `(ptr: i32, len: i32) -> i32` | run on UTF-8 JSON input; pointer to output, `0` on failure |
 | `output_len` | `() -> i32` | byte length of the last `predict` output |
 
+A buffer from `alloc` belongs to the call it is passed to; `load_weights` and `predict` free it.
+
 Input: `{"now_ms": <Unix ms>, "events": <revlog from the scry>}`.
 
-Output: UTF-8 JSON `[{"owner": "~zod", "stack": "s1", "item": "c1", "r": 0.83}, ...]`, with `r` the predicted probability of recall now, in `[0, 1]`.
+Output: UTF-8 JSON `[{"owner": "~zod", "stack": "s1", "item": "c1", "r": 0.83}, ...]`, with `r` the predicted probability of recall now, in `[0, 1]`, one row per card in the revlog.
+
+### Replay
+
+The engine in `rwkv-engine/` runs the fork's RWKV-Instant model SM98 (see [Artifact](#artifact)). It was trained on Anki revlog rows, so each predict replays the whole scry revlog as Anki rows, from a fresh state, in `answered_at` order (ties by `id`), then asks for each card's recall at `now_ms`:
+
+| model input | from the scry |
+| --- | --- |
+| card | one id per `owner`/`stack`/`item`; its note is itself |
+| deck | one id per `owner`/`stack`; one preset for all |
+| rating | `again` 1, `hard` 2, `good` 3, `easy` 4 |
+| answer time | `answered_at - shown_at`, capped at 60 s like Anki's default |
+| day | Unix time rolled over at 04:00 UTC; the scry has no time zone |
+| elapsed time | since the card's previous answer, in days and seconds; none on its first answer |
+| state | `learn` 0 (learning start); `relearn` 1 before the card's first `review` (Anki's later learning step), 3 after; `review` 2; `manual` 5 |
+| query | at `now_ms`: elapsed time since the card's last answer, as the fork does for the time a card is shown |
+
+State is kept in f32; the fork's desktop default quantizes it to save memory across sessions, which a run that replays and discards does not need.
 
 ### Predictions POST
 
@@ -86,3 +105,17 @@ The response is JSON, never a page:
 | `200` | operation receipt | stored, or identical to what was stored |
 | `400` | `{"code": "invalid-predictions"}` or `{"code": "invalid-operation"}` | the batch or the operation fields did not parse; nothing is applied |
 | `409` | operation receipt | the ship rejected the batch, e.g. a stale `head` or `artifact`; the stored predictions are unchanged |
+
+## Artifact
+
+`tools/build-rwkv-artifact [OUT]` writes `engine.wasm`, `weights.bin` and `manifest.json` to `OUT` (default `rwkv-engine/dist/`, not committed) and prints the manifest SHA-256, the value for `artifact-hash`. It builds the engine with the toolchain pinned in `rwkv-engine/rust-toolchain.toml` and `Cargo.lock`, and downloads the weights, `sm98/weights.int8.bin` from the fork at commit `17c63ab7f985b11c013dc02b35d8606b5bb0a586` (tag `26.09.4+fsrs7.build.115`), refusing any file whose SHA-256 is not the one pinned in the script. Two builds from the same commit give the same bytes. Needs `rustup`, `curl` and `sha256sum` or `shasum`.
+
+To host it, put the three files in one directory on any static host that answers with `Access-Control-Allow-Origin: *`, then poke `%set-rwkv-config` with `artifact-url` set to the URL of `manifest.json` and `artifact-hash` set to the printed hash. The loader checks every file against the hashes, so the host does not need to be trusted, only reachable.
+
+`rwkv-engine/parity/run.sh` checks the engine against the fork: it builds the fork's own runtime at the pinned commit, runs it and this engine on the synthetic revlog in `rwkv-engine/tests/fixtures/`, and fails if any card's R differs by more than `1e-4`. `node --test tools/rwkv-artifact.test.mjs` then runs the built artifact through the loader with a stubbed ship.
+
+### Licenses
+
+The engine is the fork's code and stays under AGPL-3.0-or-later; its source is `rwkv-engine/` (`LICENSE`, and `NOTICE` for the upstream files). Whoever serves `engine.wasm` to browsers distributes AGPL object code and must offer that source.
+
+The weights carry no stated license. This repository does not contain or redistribute them: the build fetches them from the fork. An operator who hosts `weights.bin` redistributes them.
