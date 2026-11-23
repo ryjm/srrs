@@ -18,7 +18,12 @@ WEIGHTS_NOTICE_SHA256=0df9a1edf83fd54acee89565a9923ba0d12da1159e8eb64b257a7e5625
 root=$(cd "$(dirname "$0")/.." && pwd)
 engine=$root/rwkv-engine
 out=${1:-$engine/dist}
+# Cargo resolves a relative CARGO_TARGET_DIR against its working directory;
+# resolve it here, before the build changes directory, so the copy below
+# reads the file Cargo writes.
 target=${CARGO_TARGET_DIR:-$engine/target}
+case $target in /*) ;; *) target=$PWD/$target ;; esac
+wasm=$target/wasm32-unknown-unknown/release/rwkv_engine.wasm
 cargo_home=${CARGO_HOME:-$HOME/.cargo}
 
 sha256() {
@@ -42,6 +47,8 @@ if [ "$got" != "$WEIGHTS_NOTICE_SHA256" ]; then
 fi
 cp -f "$engine/WEIGHTS-NOTICE.md" "$out/WEIGHTS-NOTICE.md"
 
+# Without an older wasm in place, a build that wrote elsewhere fails the copy.
+rm -f "$wasm"
 # Paths in panic locations would otherwise embed this machine's directories.
 (
   cd "$engine"
@@ -50,7 +57,7 @@ cp -f "$engine/WEIGHTS-NOTICE.md" "$out/WEIGHTS-NOTICE.md"
     CARGO_TARGET_DIR=$target \
     cargo build --quiet --locked --release --target wasm32-unknown-unknown
 )
-cp -f "$target/wasm32-unknown-unknown/release/rwkv_engine.wasm" "$out/engine.wasm"
+cp -f "$wasm" "$out/engine.wasm"
 
 # AGPL-3.0 sections 4 to 6: engine.wasm travels with its license, its
 # notices (NOTICE dates the changes from upstream), the licenses of the

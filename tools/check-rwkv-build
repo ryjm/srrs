@@ -38,3 +38,11 @@ tar -xf "$work/reference/rwkv-engine-source.tar" -C "$work/unpacked"
 cmp -s "$work/reference/engine.wasm" "$work/from-source/engine.wasm" ||
   fail "rwkv-engine-source.tar does not rebuild the same engine.wasm"
 pass "rwkv-engine-source.tar rebuilds engine.wasm byte for byte"
+
+mkdir -p "$work/cwd/target-rel/wasm32-unknown-unknown/release"
+printf 'an older build\n' >"$work/cwd/target-rel/wasm32-unknown-unknown/release/rwkv_engine.wasm"
+(cd "$work/cwd" && CARGO_TARGET_DIR=target-rel "$root/tools/build-rwkv-artifact" "$work/relative") \
+  >"$work/relative.log" 2>&1 || fail "relative CARGO_TARGET_DIR build: $(tail -5 "$work/relative.log")"
+cmp -s "$work/reference/engine.wasm" "$work/relative/engine.wasm" ||
+  fail "relative CARGO_TARGET_DIR packaged a wasm other than the one it compiled"
+pass "relative CARGO_TARGET_DIR packages the wasm it compiled, not an older one"
