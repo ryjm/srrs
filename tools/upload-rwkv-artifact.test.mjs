@@ -31,14 +31,18 @@ function artifactDir(names = Object.keys(types)) {
   return dir;
 }
 
-// handle(req, res, body) may answer a request itself and return true
+// The stand-in listens on loopback, the one place the uploader accepts plain
+// http://. fn gets its origin, the stored blobs, and every request seen;
+// handle(req, res, body) may answer a request itself and return true.
 async function withStore(fn, handle = () => false) {
+  const requests = [];
   const stored = new Map();
   const server = createServer((req, res) => {
     const chunks = [];
     req.on("data", (chunk) => chunks.push(chunk));
     req.on("end", () => {
       const body = Buffer.concat(chunks);
+      requests.push({ method: req.method, url: req.url, body: body.toString() });
       if (handle(req, res, body)) return;
       const sha = req.url.match(/^\/apps\/seer\/rwkv\/([0-9a-f]{64})$/)?.[1];
       if (req.headers.cookie !== cookie) return res.writeHead(403).end();
@@ -51,7 +55,7 @@ async function withStore(fn, handle = () => false) {
   });
   await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
   try {
-    return await fn(`http://127.0.0.1:${server.address().port}`, stored);
+    return await fn(`http://127.0.0.1:${server.address().port}`, stored, requests);
   } finally {
     server.close();
   }
@@ -106,6 +110,34 @@ test("refuses to start without a cookie or a complete artifact, and stops on a r
   } finally {
     rmSync(dir, { recursive: true });
     rmSync(partial, { recursive: true });
+  }
+});
+
+test("sends the cookie only over HTTPS, or plain HTTP to loopback", async () => {
+  const dir = artifactDir();
+  try {
+    await withStore(async (ship, stored, requests) => {
+      const port = new URL(ship).port;
+      for (const url of [
+        "http://ship.example", `http://ship.example:${port}`, `http://127.0.0.1.nip.io:${port}`,
+        `http://localhost:${port}@ship.example`, `https://ship.example/apps`, `${ship}/apps`, `ftp://127.0.0.1:${port}`,
+      ]) {
+        const refused = await upload([url, dir], { SEER_COOKIE: cookie });
+        assert.equal(refused.code, 2, url);
+        assert.match(refused.stderr, /SHIP-URL must be an https:\/\/ origin/, url);
+      }
+      assert.deepEqual(requests, [], "a refused SHIP-URL is never contacted");
+      // https:// to this plain-HTTP listener: a TLS handshake, never a request
+      const tls = await upload([`https://127.0.0.1:${port}`, dir], { SEER_COOKIE: cookie });
+      assert.notEqual(tls.code, 0);
+      assert.notEqual(tls.code, 2, tls.stderr);
+      assert.deepEqual(requests, [], "no plaintext request reached the listener");
+      const local = await upload([`http://localhost:${port}`, dir], { SEER_COOKIE: cookie });
+      assert.equal(local.code, 0, local.stderr);
+      assert.equal(stored.size, 8);
+    });
+  } finally {
+    rmSync(dir, { recursive: true });
   }
 });
 

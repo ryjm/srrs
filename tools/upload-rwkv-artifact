@@ -6,7 +6,10 @@
 #
 # usage: SEER_COOKIE=<cookie> tools/upload-rwkv-artifact SHIP-URL [DIR]
 #
-# SHIP-URL is the ship's web address. DIR defaults to rwkv-engine/dist.
+# SHIP-URL is the ship's origin, https://<host>[:<port>]; the cookie goes
+# over HTTPS only. Plain http:// is accepted only for a loopback address
+# (localhost, 127.x.x.x or [::1]), which never leaves the machine and is
+# never sent through a proxy. DIR defaults to rwkv-engine/dist.
 # SEER_COOKIE is the owner's session cookie, `urbauth-~<ship>=<value>`. curl
 # reads it from stdin, so it is never on a command line. Nothing may print
 # it: shell tracing is off before it is read, curl ignores any config file
@@ -27,6 +30,15 @@ fi
 root=$(cd "$(dirname "$0")/.." && pwd)
 ship=${1%/}
 dir=${2:-$root/rwkv-engine/dist}
+port='(:[0-9]{1,5})?'
+if [[ $ship =~ ^https://([A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*|\[[0-9A-Fa-f:.]+\])$port$ ]]; then
+  transport=(--proto =https)
+elif [[ $ship =~ ^http://(localhost|127(\.[0-9]{1,3}){3}|\[::1\])$port$ ]]; then
+  transport=(--proto =http --noproxy '*')
+else
+  echo "SHIP-URL must be an https:// origin, or http:// on localhost, 127.x.x.x or [::1]: $ship" >&2
+  exit 2
+fi
 
 # file and the content-type the ship stores it under (rwkv-blob-type in
 # desk/sur/seer.hoon)
@@ -56,7 +68,7 @@ for entry in "${files[@]}"; do
   sha=$(sha256 "$dir/$name")
   # --disable must come first to keep curl from reading a config file
   out=$(printf 'Cookie: %s\n' "$SEER_COOKIE" |
-    curl --disable --silent --show-error --write-out '\n%{http_code}' \
+    curl --disable "${transport[@]}" --silent --show-error --write-out '\n%{http_code}' \
       --request PUT --header @- --header "Content-Type: ${entry#*|}" \
       --data-binary "@$dir/$name" "$ship/apps/seer/rwkv/$sha")
   status=${out##*$'\n'}
