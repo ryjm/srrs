@@ -6,6 +6,7 @@
 # SHA-256, the value of `artifact-hash`. The weights are for local
 # evaluation only: see RWKV.md, "Weights: evaluation only".
 set -euo pipefail
+export LC_ALL=C
 
 UPSTREAM=https://raw.githubusercontent.com/JSchoreels/anki
 UPSTREAM_COMMIT=17c63ab7f985b11c013dc02b35d8606b5bb0a586 # tag 26.09.4+fsrs7.build.115
@@ -51,8 +52,39 @@ cp -f "$engine/WEIGHTS-NOTICE.md" "$out/WEIGHTS-NOTICE.md"
 )
 cp -f "$target/wasm32-unknown-unknown/release/rwkv_engine.wasm" "$out/engine.wasm"
 
+# AGPL-3.0 sections 4 to 6: engine.wasm travels with its license, its
+# notices (NOTICE dates the changes from upstream), the licenses of the
+# crates compiled into it, and its Corresponding Source, which includes this
+# script.
+cp -f "$engine/LICENSE" "$out/LICENSE"
+cp -f "$engine/NOTICE" "$out/NOTICE"
+(cd "$engine" && cargo tree --quiet --locked --offline --target wasm32-unknown-unknown \
+  -e normal,no-proc-macro --prefix none --no-dedupe -f '{p}|{l}') | sort -u |
+  while IFS='|' read -r package license; do
+    name=${package%% *}
+    [ "$name" = rwkv-engine ] && continue
+    version=${package#* v}
+    set -- "$cargo_home"/registry/src/*/"$name-$version"
+    [ -d "$1" ] || { echo "no source for $name $version under $cargo_home" >&2; exit 1; }
+    printf '%s %s (%s)\n\n' "$name" "$version" "$license"
+    for file in "$1"/LICENSE* "$1"/COPYING* "$1"/UNLICENSE* "$1"/NOTICE*; do
+      if [ -f "$file" ]; then printf -- '--- %s\n' "${file##*/}"; cat "$file"; echo; fi
+    done
+  done >"$out/THIRD-PARTY-LICENSES"
+tar --version 2>/dev/null | grep -q 'GNU tar' || { echo "needs GNU tar" >&2; exit 1; }
+(
+  cd "$root"
+  {
+    printf '%s\n' tools/build-rwkv-artifact rwkv-engine/Cargo.toml rwkv-engine/Cargo.lock \
+      rwkv-engine/rust-toolchain.toml rwkv-engine/LICENSE rwkv-engine/NOTICE \
+      rwkv-engine/WEIGHTS-NOTICE.md
+    find rwkv-engine/src -type f
+  } | sort | tar --create --file - --no-recursion --files-from - --sort=name --format=ustar \
+    --mtime=@0 --owner=0 --group=0 --numeric-owner --mode=u=rwX,go=rX
+) >"$out/rwkv-engine-source.tar"
+
 printf '{\n  "engine": { "url": "engine.wasm", "sha256": "%s" },\n  "weights": { "url": "weights.bin", "sha256": "%s" }\n}\n' \
   "$(sha256 "$out/engine.wasm")" "$(sha256 "$out/weights.bin")" >"$out/manifest.json"
 
-wc -c "$out/engine.wasm" "$out/weights.bin" "$out/WEIGHTS-NOTICE.md" "$out/manifest.json"
+wc -c "$out"/*
 echo "manifest sha256: $(sha256 "$out/manifest.json")"

@@ -14,11 +14,21 @@ later, with portions contributed by Anki users licensed under the BSD-3
 license (see CONTRIBUTORS)." This crate is distributed under the same terms,
 AGPL-3.0-or-later; LICENSE holds the license text.
 
-Changes from upstream: kept only the inference path of the SM98
-instant-only model with f32 state and scalar kernels; removed the Anki
-collection, protobuf, SQLite state cache, Rayon, SIMD kernels, state
-quantization, curves, intervals and forecasts; added the %seer revlog
-mapping (src/seer.rs) and the WebAssembly ABI (src/abi.rs).
+Modified from the upstream files above, 2026-11-22: kept only the
+inference path of the SM98 instant-only model with f32 state and scalar
+kernels; removed the Anki collection, protobuf, SQLite state cache, Rayon,
+SIMD kernels, state quantization, curves, intervals and forecasts; added
+the %seer revlog mapping (src/seer.rs) and the WebAssembly ABI
+(src/abi.rs).
+
+Corresponding Source. tools/build-rwkv-artifact builds engine.wasm and
+writes, beside it, this NOTICE, LICENSE, THIRD-PARTY-LICENSES (the licenses
+of the crates compiled into engine.wasm, from Cargo.lock) and
+rwkv-engine-source.tar, the Corresponding Source of that engine.wasm: this
+crate's manifest, lock file, toolchain pin, src/, LICENSE and notices, and
+the build script itself. Unpack the tar and run tools/build-rwkv-artifact
+to rebuild engine.wasm byte for byte with the pinned toolchain. Whoever
+conveys engine.wasm must offer that tar from the same place.
 
 The model weights are not part of this crate or its repository. The build
 fetches qt/aqt/rwkv_inference/sm98/weights.int8.bin from the commit above

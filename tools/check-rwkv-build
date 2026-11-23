@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Checks tools/build-rwkv-artifact end to end. Slow: each check is a full
+# build, and every build downloads the weights. Exits non-zero at the first
+# check that fails.
+set -euo pipefail
+export LC_ALL=C
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+work=$(mktemp -d "${TMPDIR:-/tmp}/rwkv-build-check.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+unset CARGO_TARGET_DIR
+
+fail() {
+  echo "FAIL: $*" >&2
+  exit 1
+}
+pass() { echo "ok: $*"; }
+
+"$root/tools/build-rwkv-artifact" "$work/reference" >"$work/reference.log" 2>&1 ||
+  fail "reference build: $(tail -5 "$work/reference.log")"
+pass "reference build, manifest $(sha256sum "$work/reference/manifest.json" | cut -d' ' -f1)"
+
+for file in LICENSE NOTICE THIRD-PARTY-LICENSES WEIGHTS-NOTICE.md rwkv-engine-source.tar; do
+  [ -s "$work/reference/$file" ] || fail "$file missing beside engine.wasm"
+done
+grep -q 'GNU AFFERO GENERAL PUBLIC LICENSE' "$work/reference/LICENSE" || fail "LICENSE is not the AGPL"
+grep -q '^Modified from the upstream files above, [0-9-]*:' "$work/reference/NOTICE" ||
+  fail "NOTICE has no dated modification notice"
+for crate in serde serde_core serde_json itoa memchr zmij; do
+  grep -q "^$crate [0-9]" "$work/reference/THIRD-PARTY-LICENSES" || fail "THIRD-PARTY-LICENSES lacks $crate"
+done
+pass "license, notices, dependency licenses and source sit beside engine.wasm"
+
+mkdir "$work/unpacked"
+tar -xf "$work/reference/rwkv-engine-source.tar" -C "$work/unpacked"
+"$work/unpacked/tools/build-rwkv-artifact" "$work/from-source" >"$work/from-source.log" 2>&1 ||
+  fail "build from rwkv-engine-source.tar: $(tail -5 "$work/from-source.log")"
+cmp -s "$work/reference/engine.wasm" "$work/from-source/engine.wasm" ||
+  fail "rwkv-engine-source.tar does not rebuild the same engine.wasm"
+pass "rwkv-engine-source.tar rebuilds engine.wasm byte for byte"

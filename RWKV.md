@@ -120,7 +120,20 @@ The response is JSON, never a page:
 
 ## Artifact
 
-`tools/build-rwkv-artifact [OUT]` writes `engine.wasm`, `weights.bin`, `WEIGHTS-NOTICE.md` and `manifest.json` to `OUT` (default `rwkv-engine/dist/`, not committed) and prints the manifest SHA-256, the value for `artifact-hash`. It builds the engine with the toolchain pinned in `rwkv-engine/rust-toolchain.toml` and `Cargo.lock`, and downloads the weights, `sm98/weights.int8.bin` from the fork at commit `17c63ab7f985b11c013dc02b35d8606b5bb0a586` (tag `26.09.4+fsrs7.build.115`), refusing any file whose SHA-256 is not the one pinned in the script. Two builds from the same commit give the same bytes. Needs `rustup`, `curl` and `sha256sum` or `shasum`.
+`tools/build-rwkv-artifact [OUT]` writes to `OUT` (default `rwkv-engine/dist/`, not committed):
+
+| file | what |
+| --- | --- |
+| `engine.wasm` | the engine |
+| `weights.bin` | the weights; see [Weights: evaluation only](#weights-evaluation-only) |
+| `manifest.json` | the two URLs and SHA-256s the loader checks |
+| `LICENSE` | GNU AGPL v3, the engine's license |
+| `NOTICE` | the engine's origin, upstream copyright and license statement, dated modification notice, and where its source is |
+| `THIRD-PARTY-LICENSES` | the license files of every crate compiled into `engine.wasm`, from `Cargo.lock` |
+| `rwkv-engine-source.tar` | the engine's Corresponding Source: `rwkv-engine/` (manifest, lock file, toolchain pin, `src/`, license and notices) and this build script |
+| `WEIGHTS-NOTICE.md` | the upstream notice for the weights |
+
+It prints the manifest SHA-256, the value for `artifact-hash`. It builds the engine with the toolchain pinned in `rwkv-engine/rust-toolchain.toml` and `Cargo.lock`, and downloads the weights, `sm98/weights.int8.bin` from the fork at commit `17c63ab7f985b11c013dc02b35d8606b5bb0a586` (tag `26.09.4+fsrs7.build.115`), refusing any file whose SHA-256 is not the one pinned in the script. Two builds from the same commit give the same bytes. Unpacking `rwkv-engine-source.tar` and running its `tools/build-rwkv-artifact` rebuilds the same `engine.wasm`. Needs `rustup`, `curl`, GNU `tar`, and `sha256sum` or `shasum`. `tools/check-rwkv-build` checks these claims with full builds.
 
 `rwkv-engine/parity/run.sh` checks the engine against the fork: it builds the fork's own runtime at the pinned commit, runs it and this engine on the synthetic revlog in `rwkv-engine/tests/fixtures/`, and fails if any card's final R, or the R predicted before any answer, differs by more than `1e-4`. `node --test tools/rwkv-artifact.test.mjs` then runs the built artifact through the loader with a stubbed ship.
 
@@ -138,6 +151,6 @@ This repository documents no way to publish the artifact. Do not publish `weight
 
 ### Licenses
 
-The engine is the fork's code and stays under AGPL-3.0-or-later; its source is `rwkv-engine/`. The fork's own `LICENSE` names the AGPL without its text, so `rwkv-engine/LICENSE` is the GNU AGPL v3 text and `NOTICE` quotes the fork's statement and names the upstream files. Whoever serves `engine.wasm` to browsers distributes AGPL object code and must offer that source.
+The engine is the fork's code and stays under AGPL-3.0-or-later. The fork's own `LICENSE` names the AGPL without its text, so `rwkv-engine/LICENSE` is the GNU AGPL v3 text and `NOTICE` quotes the fork's statement, names the upstream files, and dates the changes. Whoever serves `engine.wasm` to browsers conveys AGPL object code (sections 4 to 6). They must serve, from the same place, `LICENSE`, `NOTICE`, `THIRD-PARTY-LICENSES`, and `rwkv-engine-source.tar`, the Corresponding Source of that exact `engine.wasm`, and keep them there as long as they serve it. Hashes in the manifest do not replace any of these.
 
 The weights carry no license from the fork, and the release that ships the same bytes limits them as above. This repository does not contain them: the build fetches them from the fork.
