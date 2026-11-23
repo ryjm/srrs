@@ -155,7 +155,7 @@ The engine is reproducible in a clean environment: no `CARGO_PROFILE_*`, `CARGO_
 
 Local evaluation means building the artifact and running it on your own machine: `rwkv-engine/parity/run.sh`, the Node tests, and the native examples. Serving `weights.bin` to browsers from any host is redistribution. Uploading your own copy to your own ship is redistribution too: the ship serves the file over HTTP like any other host.
 
-This repository gives no hosting recipe. Do not publish `weights.bin` for others until permission is documented or weights under a license that allows it replace these. An upload to your own ship is redistribution under the same notice. A matching SHA-256 proves which file a browser received; it grants no right to send it. Any upload of `engine.wasm` carries the files listed in [Licenses](#licenses).
+Do not publish `weights.bin` for others until permission is documented or weights under a license that allows it replace these. An upload to your own ship is redistribution under the same notice, and the owner-only [ship store](#ship-hosting) does not change that. A matching SHA-256 proves which file a browser received; it grants no right to send it. Any upload of `engine.wasm` carries the files listed in [Licenses](#licenses).
 
 ### Licenses
 
