@@ -41,16 +41,20 @@ else
 fi
 
 # file and the content-type the ship stores it under (rwkv-blob-type in
-# desk/sur/seer.hoon)
+# desk/sur/seer.hoon), in upload order: the licenses, notices and source
+# first, then the binaries they cover, and the manifest that points at the
+# binaries last. A refusal part way (the store has no delete) therefore
+# never leaves the engine or a manifest stored without the files that must
+# be served beside it.
 files=(
-  "manifest.json|application/json"
-  "engine.wasm|application/wasm"
-  "weights.bin|application/octet-stream"
   "LICENSE|text/plain; charset=utf-8"
   "NOTICE|text/plain; charset=utf-8"
   "THIRD-PARTY-LICENSES|text/plain; charset=utf-8"
   "rwkv-engine-source.tar|application/x-tar"
   "WEIGHTS-NOTICE.md|text/markdown; charset=utf-8"
+  "engine.wasm|application/wasm"
+  "weights.bin|application/octet-stream"
+  "manifest.json|application/json"
 )
 
 sha256() {

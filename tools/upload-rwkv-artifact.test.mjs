@@ -104,12 +104,42 @@ test("refuses to start without a cookie or a complete artifact, and stops on a r
       assert.equal(stored.size, 0, "nothing uploaded before every file is present");
       const stranger = await upload([ship, dir], { SEER_COOKIE: "urbauth-~nec=0v2" });
       assert.equal(stranger.code, 1);
-      assert.match(stranger.stderr, /manifest.json refused: HTTP 403/);
+      assert.match(stranger.stderr, /LICENSE refused: HTTP 403/);
       assert.equal(stored.size, 0);
     });
   } finally {
     rmSync(dir, { recursive: true });
     rmSync(partial, { recursive: true });
+  }
+});
+
+// The store has no delete, so a refusal part way must leave nothing served
+// without its licenses: notices and source go first, the manifest last.
+test("uploads licenses, notices and source first and the manifest last", async () => {
+  const dir = artifactDir();
+  const order = [
+    "LICENSE", "NOTICE", "THIRD-PARTY-LICENSES", "rwkv-engine-source.tar", "WEIGHTS-NOTICE.md",
+    "engine.wasm", "weights.bin", "manifest.json",
+  ];
+  const nameOf = new Map(order.map((name) => [sha256(`${name} bytes\n`), name]));
+  try {
+    for (let refuse = 1; refuse <= order.length; refuse++) {
+      let puts = 0;
+      const full = (req, res) => {
+        if (++puts < refuse) return false;
+        res.writeHead(413).end('{"code":"store-full","value":"x"}');
+        return true;
+      };
+      await withStore(async (ship, stored, requests) => {
+        const out = await upload([ship, dir], { SEER_COOKIE: cookie });
+        assert.equal(out.code, 1);
+        assert.match(out.stderr, new RegExp(`${order[refuse - 1]} refused: HTTP 413 store-full$`, "m"));
+        assert.deepEqual(requests.map(({ url }) => nameOf.get(url.split("/").pop())), order.slice(0, refuse));
+        assert.deepEqual([...stored.keys()].map((sha) => nameOf.get(sha)), order.slice(0, refuse - 1));
+      }, full);
+    }
+  } finally {
+    rmSync(dir, { recursive: true });
   }
 });
 
