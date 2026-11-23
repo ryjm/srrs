@@ -474,27 +474,32 @@
     names  t.names
     core   (do core [%new-item ~zod ~zod %s1 i.names 'Card' *perm-config 'front' 'back'])
   ==
-::  +test-artifact: the artifact-hash +rwkv-on pins and +predict cites
+::  +pinned-artifact: the artifact-hash +rwkv-on pins and +predict cites
 ::
-++  test-artifact  0xabcd
+++  pinned-artifact  0xabcd
 ++  predict
   |=  [top=@ud rows=(list [@tas @rd])]
   ^-  action
-  :^  %rwkv-predictions  top  test-artifact
+  :^  %rwkv-predictions  top  pinned-artifact
   %-  malt
   (turn rows |=([item=@tas p=@rd] [`card-key`[~zod %s1 item] p]))
 ++  card-in
   |=  item=@tas
   ^-  review
   [~zod %s1 item]
-::  +rwkv-on: default config, enabled, pinned to +test-artifact, with a
+::  +rwkv-on: default config, enabled, pinned to +pinned-artifact, with a
 ::  queue cap
 ::
 ++  rwkv-on
   |=  max=@ud
   ^-  rwkv-config
   =/  cfg  rwkv-default
-  cfg(enabled %.y, max-daily max, artifact-url `'https://cdn.example/m.json', artifact-hash `test-artifact)
+  %=  cfg
+    enabled        %.y
+    max-daily      max
+    artifact-url   `'https://cdn.example/m.json'
+    artifact-hash  `pinned-artifact
+  ==
 ::
 ++  test-rwkv-disabled-keeps-sm2-queue
   ^-  tang
@@ -603,7 +608,7 @@
       "idempotency-epoch="  (trip (peek-epoch core))
       "&operation-id="  (trip op)
       "&head="  ((d-co:co 1) top)
-      "&artifact="  ((x-co:co 64) test-artifact)
+      "&artifact="  ((x-co:co 64) pinned-artifact)
       "&predictions="  (en-urlt:html (trip rows))
     ==
   =/  request=inbound-request:eyre
