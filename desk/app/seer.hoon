@@ -157,6 +157,26 @@
   =/  short  (sub (max min-daily.cfg (lent due)) (lent due))
   %+  scag  max-daily.cfg
   (weld due (turn (scag short (skip scored low)) head))
+::  +from-eyre: whether Eyre carries the request .eyre-id.
+::
+::    Gall keeps a deal's provenance only when the deal names this ship
+::    as its source. Eyre deals as the request's identity, so a guest's
+::    or an eauth visitor's poke and watch arrive with an empty sap, as a
+::    deal over Ames does. Such a request is Eyre's when Eyre is
+::    watching its response as that identity: Gall records the watch in
+::    .sup, under the duct Eyre opened, before it runs +on-watch, and
+::    Eyre watches before it pokes.
+::
+++  from-eyre
+  |=  [bol=bowl:gall eyre-id=@ta]
+  ^-  ?
+  ?:  =(our.bol src.bol)  =(/eyre sap.bol)
+  %+  lien  ~(tap by sup.bol)
+  |=  [=duct =ship =path]
+  ?&  =(src.bol ship)
+      =(/http-response/[eyre-id] path)
+      ?=([[%eyre *] *] duct)
+  ==
 +$  card  card:agent:gall
 ::
 --
@@ -212,8 +232,8 @@
         ::  authenticated requests as this ship; a guest identity only ever
         ::  receives the redirect, or a 403 from the rwkv store, whose
         ::  clients are fetch and curl.
-        ?>  =(/eyre sap.bol)
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
+        ?>  (from-eyre bol eyre-id)
         ?:  ?&(authenticated.inbound-request =(our.bol src.bol))
           %+  poke-handle-http-request:sc  eyre-id
           inbound-request
@@ -235,8 +255,8 @@
         [%seertile *]                (peer-seertile:sc t.path)
         [%seer-primary *]            [~ state]
         ::  Eyre watches for its response as the request's identity, a
-        ::  guest's included, so the watcher is checked by provenance only
-        [%http-response *]           ?>(=(/eyre sap.bol) [~ state])
+        ::  guest's included; no other watcher may read a response
+        [%http-response @ ~]         ?>((from-eyre bol i.t.path) [~ state])
         [%stack @ ~]                 (peer-stack:sc i.t.path)
         [%shared-context ~]          serve-shared-manifest:sc
         [%shared-context %file @ *]  (serve-shared-file:sc t.t.path)
