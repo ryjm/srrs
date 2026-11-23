@@ -19,7 +19,7 @@ const skipNative = skip || (!existsSync(`${dir}/native-r.json`) &&
 
 const read = (name) => new Uint8Array(readFileSync(`${dir}/${name}`));
 const { now_ms, events } = JSON.parse(readFileSync(new URL("revlog.json", fixtures)));
-const fork = JSON.parse(readFileSync(new URL("reference-r.json", fixtures)));
+const fork = JSON.parse(readFileSync(new URL("reference-r.json", fixtures))).cards;
 const key = (row) => JSON.stringify([row.owner, row.stack, row.item]);
 const cards = new Set(events.map(key));
 

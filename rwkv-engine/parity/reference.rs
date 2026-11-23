@@ -39,9 +39,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         StatePrecision::F32,
         ModelKind::Sm98,
     )?;
-    runtime.warm_up_reviews(rows("answers"), false)?;
+    // The recall the fork predicts just before each answer, from the answer's
+    // own elapsed time: checks every replay step, not only the final state.
+    let steps: Vec<f32> = runtime
+        .warm_up_reviews(rows("answers"), true)?
+        .into_iter()
+        .map(|(_, r)| r)
+        .collect();
     let rs = runtime.predict_retrievability_many_from_warm_up(rows("queries"))?;
-    let out: Vec<Value> = plan["cards"]
+    let cards: Vec<Value> = plan["cards"]
         .as_array()
         .unwrap()
         .iter()
@@ -52,6 +58,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             card
         })
         .collect();
+    let out = serde_json::json!({ "steps": steps, "cards": cards });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
 }
