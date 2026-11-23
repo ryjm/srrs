@@ -1,0 +1,145 @@
+[
+  {
+    "name": "learning card queried 20 s later, across the 04:00 UTC rollover",
+    "why": "learn/again at 03:59:50 leaves the card learning; the fork's learning query sets seconds and leaves days unset",
+    "input": {
+      "now_ms": 1782878410000,
+      "events": [
+        { "id": 0, "owner": "~zod", "stack": "s1", "item": "a", "grade": "again", "kind": "learn", "shown_at": 1782878385000, "answered_at": 1782878390000 }
+      ]
+    },
+    "answers": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 1, "duration_millis": 5000, "card_type": 0, "day_offset": 20634, "current_elapsed_days": -1, "current_elapsed_seconds": -1 }
+    ],
+    "queries": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": null, "current_elapsed_seconds": 20 }
+    ]
+  },
+  {
+    "name": "box-one card queried 20 s later, across the 04:00 UTC rollover",
+    "why": "learn/good moves the card to box 1, a 15-minute step: still learning, so the query sets seconds and leaves days unset",
+    "input": {
+      "now_ms": 1782878410000,
+      "events": [
+        { "id": 0, "owner": "~zod", "stack": "s1", "item": "a", "grade": "good", "kind": "learn", "shown_at": 1782878385000, "answered_at": 1782878390000 }
+      ]
+    },
+    "answers": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 3, "duration_millis": 5000, "card_type": 0, "day_offset": 20634, "current_elapsed_days": -1, "current_elapsed_seconds": -1 }
+    ],
+    "queries": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": null, "current_elapsed_seconds": 20 }
+    ]
+  },
+  {
+    "name": "graduated card queried 20 s later, across the 04:00 UTC rollover",
+    "why": "learn/easy moves the card to box 2, a one-day interval: a review card, whose query counts scheduler days",
+    "input": {
+      "now_ms": 1782878410000,
+      "events": [
+        { "id": 0, "owner": "~zod", "stack": "s1", "item": "a", "grade": "easy", "kind": "learn", "shown_at": 1782878385000, "answered_at": 1782878390000 }
+      ]
+    },
+    "answers": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 4, "duration_millis": 5000, "card_type": 0, "day_offset": 20634, "current_elapsed_days": -1, "current_elapsed_seconds": -1 }
+    ],
+    "queries": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": 1, "current_elapsed_seconds": 20 }
+    ]
+  },
+  {
+    "name": "box-one step 15 minutes after the first answer",
+    "why": "the desk's box-one interval is 15 min; %seer logs that answer as review, state 2, with 900 s and no day elapsed",
+    "input": {
+      "now_ms": 1782900000000,
+      "events": [
+        { "id": 0, "owner": "~zod", "stack": "s1", "item": "a", "grade": "good", "kind": "learn", "shown_at": 1782896395000, "answered_at": 1782896400000 },
+        { "id": 1, "owner": "~zod", "stack": "s1", "item": "a", "grade": "good", "kind": "review", "shown_at": 1782897296000, "answered_at": 1782897300000 }
+      ]
+    },
+    "answers": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 3, "duration_millis": 5000, "card_type": 0, "day_offset": 20635, "current_elapsed_days": -1, "current_elapsed_seconds": -1 },
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 3, "duration_millis": 4000, "card_type": 2, "day_offset": 20635, "current_elapsed_days": 0, "current_elapsed_seconds": 900 }
+    ],
+    "queries": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": 0, "current_elapsed_seconds": 2700 }
+    ]
+  },
+  {
+    "name": "two answers at the same millisecond replay in id order",
+    "why": "ties in answered_at break by revlog id, which also orders card ids",
+    "input": {
+      "now_ms": 1782896460000,
+      "events": [
+        { "id": 9, "owner": "~zod", "stack": "s1", "item": "x", "grade": "good", "kind": "learn", "shown_at": 1782896395000, "answered_at": 1782896400000 },
+        { "id": 4, "owner": "~zod", "stack": "s1", "item": "y", "grade": "hard", "kind": "learn", "shown_at": 1782896397000, "answered_at": 1782896400000 }
+      ]
+    },
+    "answers": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 2, "duration_millis": 3000, "card_type": 0, "day_offset": 20635, "current_elapsed_days": -1, "current_elapsed_seconds": -1 },
+      { "card_id": 2, "note_id": 2, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 3, "duration_millis": 5000, "card_type": 0, "day_offset": 20635, "current_elapsed_days": -1, "current_elapsed_seconds": -1 }
+    ],
+    "queries": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": null, "current_elapsed_seconds": 60 },
+      { "card_id": 2, "note_id": 2, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": null, "current_elapsed_seconds": 60 }
+    ]
+  },
+  {
+    "name": "relearn before the first review is learning, after it relearning",
+    "why": "learn 0; relearn before any review answer is a later learning step, 1; review 2; relearn after a review, 3. The card never left the sub-day steps, so its query is a learning query",
+    "input": {
+      "now_ms": 1782900000000,
+      "events": [
+        { "id": 0, "owner": "~zod", "stack": "s1", "item": "a", "grade": "again", "kind": "learn", "shown_at": 1782896395000, "answered_at": 1782896400000 },
+        { "id": 1, "owner": "~zod", "stack": "s1", "item": "a", "grade": "good", "kind": "relearn", "shown_at": 1782896408000, "answered_at": 1782896410000 },
+        { "id": 2, "owner": "~zod", "stack": "s1", "item": "a", "grade": "again", "kind": "review", "shown_at": 1782897305000, "answered_at": 1782897310000 },
+        { "id": 3, "owner": "~zod", "stack": "s1", "item": "a", "grade": "good", "kind": "relearn", "shown_at": 1782897317000, "answered_at": 1782897320000 }
+      ]
+    },
+    "answers": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 1, "duration_millis": 5000, "card_type": 0, "day_offset": 20635, "current_elapsed_days": -1, "current_elapsed_seconds": -1 },
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 3, "duration_millis": 2000, "card_type": 1, "day_offset": 20635, "current_elapsed_days": 0, "current_elapsed_seconds": 10 },
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 1, "duration_millis": 5000, "card_type": 2, "day_offset": 20635, "current_elapsed_days": 0, "current_elapsed_seconds": 900 },
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 3, "duration_millis": 3000, "card_type": 3, "day_offset": 20635, "current_elapsed_days": 0, "current_elapsed_seconds": 10 }
+    ],
+    "queries": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": null, "current_elapsed_seconds": 2680 }
+    ]
+  },
+  {
+    "name": "relearning card is queried by days and seconds",
+    "why": "learn/easy graduates the card to box 2; again on its review sends it back to box 0, relearning, which the fork queries with scheduler days",
+    "input": {
+      "now_ms": 1782900000000,
+      "events": [
+        { "id": 0, "owner": "~zod", "stack": "s1", "item": "a", "grade": "easy", "kind": "learn", "shown_at": 1782896395000, "answered_at": 1782896400000 },
+        { "id": 1, "owner": "~zod", "stack": "s1", "item": "a", "grade": "again", "kind": "review", "shown_at": 1782897295000, "answered_at": 1782897300000 }
+      ]
+    },
+    "answers": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 4, "duration_millis": 5000, "card_type": 0, "day_offset": 20635, "current_elapsed_days": -1, "current_elapsed_seconds": -1 },
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 1, "duration_millis": 5000, "card_type": 2, "day_offset": 20635, "current_elapsed_days": 0, "current_elapsed_seconds": 900 }
+    ],
+    "queries": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": 0, "current_elapsed_seconds": 2700 }
+    ]
+  },
+  {
+    "name": "an answered review across the 04:00 UTC rollover keeps its scheduler day",
+    "why": "committed history counts scheduler days: 03:59:50 to 04:00:10 is day 1 and 20 s",
+    "input": {
+      "now_ms": 1782879010000,
+      "events": [
+        { "id": 0, "owner": "~zod", "stack": "s1", "item": "a", "grade": "good", "kind": "learn", "shown_at": 1782878385000, "answered_at": 1782878390000 },
+        { "id": 1, "owner": "~zod", "stack": "s1", "item": "a", "grade": "good", "kind": "review", "shown_at": 1782878405000, "answered_at": 1782878410000 }
+      ]
+    },
+    "answers": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 3, "duration_millis": 5000, "card_type": 0, "day_offset": 20634, "current_elapsed_days": -1, "current_elapsed_seconds": -1 },
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": false, "ease": 3, "duration_millis": 5000, "card_type": 2, "day_offset": 20635, "current_elapsed_days": 1, "current_elapsed_seconds": 20 }
+    ],
+    "queries": [
+      { "card_id": 1, "note_id": 1, "deck_id": 1, "preset_id": 1, "is_query": true, "ease": null, "duration_millis": null, "card_type": null, "day_offset": 20635, "current_elapsed_days": 0, "current_elapsed_seconds": 600 }
+    ]
+  }
+]

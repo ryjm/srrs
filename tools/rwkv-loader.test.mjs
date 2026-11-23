@@ -19,7 +19,7 @@ function config(artifactHash) {
   return {
     enabled: true, target_ppm: 900000, max_daily: 200, min_daily: 0,
     artifact_url: "https://cdn.example/rwkv/manifest.json", artifact_hash: artifactHash,
-    head: 3, fresh: false, idempotency_epoch: "~2026.9.2",
+    head: 3, fresh: false, idempotency_epoch: "~2026.9.2", now_ms: 1000,
     revlog: [{ id: 3, owner: "~zod", stack: "s1", item: "c1", grade: "good" }],
   };
 }
@@ -70,6 +70,7 @@ const stubEngine = async (engine, weights) => {
   return {
     predict: (input) => {
       assert.equal(input.events.length, 1);
+      assert.equal(input.now_ms, 1000, "the engine queries at the ship's time");
       return [
         { owner: "~zod", stack: "s1", item: "c1", r: 0.25 },
         { owner: "~zod", stack: "s1", item: "0v5-q3les-klmn1", r: 0.9123456 },
@@ -85,7 +86,7 @@ test("manifest hash mismatch never pokes", async () => {
   const warn = console.warn;
   console.warn = () => {};
   try {
-    const body = await run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" });
+    const body = await run({ fetch, engine: stubEngine, base: "http://ship/" });
     assert.equal(body, null);
   } finally {
     console.warn = warn;
@@ -93,10 +94,28 @@ test("manifest hash mismatch never pokes", async () => {
   assert.deepEqual(posts, []);
 });
 
+for (const name of ["engine.wasm", "weights.bin"]) {
+  test(`${name} bytes the manifest does not pin never reach the engine`, async () => {
+    const served = await files(await sha256Hex(await manifestBytes()));
+    served[`https://cdn.example/rwkv/${name}`] = bytes("tampered");
+    const { fetch, posts } = stubFetch(served);
+    let engineCalls = 0;
+    const engine = async () => {
+      engineCalls++;
+      return { predict: () => [] };
+    };
+    const [body, warnings] = await quiet(() => run({ fetch, engine, base: "http://ship/" }));
+    assert.equal(body, null);
+    assert.equal(engineCalls, 0);
+    assert.deepEqual(posts, []);
+    assert.match(warnings[0], new RegExp(`hash mismatch for .*${name}`));
+  });
+}
+
 test("verified artifact with stub engine pokes predictions", async () => {
   const hash = await sha256Hex(await manifestBytes());
   const { fetch, posts } = stubFetch(await files(hash));
-  await run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" });
+  await run({ fetch, engine: stubEngine, base: "http://ship/" });
   assert.equal(posts.length, 1);
   assert.equal(posts[0].url, "/apps/seer/actions/rwkv-predictions");
   const fields = Object.fromEntries(new URLSearchParams(posts[0].body));
@@ -121,7 +140,7 @@ test("one invalid engine row rejects the whole batch", async () => {
   for (const bad of bads) {
     const { fetch, posts } = stubFetch(await files(await sha256Hex(await manifestBytes())));
     const [body, warnings] = await quiet(() =>
-      run({ fetch, engine: engineOf([good, bad]), now: () => 1000, base: "http://ship/" }));
+      run({ fetch, engine: engineOf([good, bad]), base: "http://ship/" }));
     assert.equal(body, null, JSON.stringify(bad));
     assert.deepEqual(posts, [], JSON.stringify(bad));
     assert.match(warnings[0], /bad engine row 1/);
@@ -135,7 +154,7 @@ test("a failed config fetch stops before any artifact fetch", async () => {
     ? { ok: false, status: 503, json: async () => config(hash) }
     : stub.fetch(url, init);
   const [body, warnings] = await quiet(() =>
-    run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" }));
+    run({ fetch, engine: stubEngine, base: "http://ship/" }));
   assert.equal(body, null);
   assert.deepEqual(stub.requests, []);
   assert.match(warnings[0], /config 503/);
@@ -143,7 +162,7 @@ test("a failed config fetch stops before any artifact fetch", async () => {
 
 test("artifact fetches omit credentials; ship requests stay same-origin", async () => {
   const { fetch, requests } = stubFetch(await files(await sha256Hex(await manifestBytes())));
-  await run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" });
+  await run({ fetch, engine: stubEngine, base: "http://ship/" });
   assert.deepEqual(requests.map(({ url, init }) => [url, init?.credentials]), [
     ["/~/scry/seer/rwkv.json", "same-origin"],
     ["https://cdn.example/rwkv/manifest.json", "omit"],
@@ -174,7 +193,7 @@ async function heldRun() {
   };
   const refreshes = [];
   const request = scheduler({
-    fetch, engine: stubEngine, now: () => 1000, base: "http://ship/",
+    fetch, engine: stubEngine, base: "http://ship/",
     refresh: () => refreshes.push(true),
   });
   const setHead = (head) => { served["/~/scry/seer/rwkv.json"] = { ...config(hash), head }; };

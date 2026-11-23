@@ -2786,7 +2786,7 @@
       %rwkv-predictions
     ?.  (levy ~(val by r.act) in-unit-interval)
       (fail-action %invalid %invalid-predictions)
-    ?.  =(`head.act newest-review-id)
+    ?.  =(`head.act (live-head live-revlog))
       (fail-action %conflict %stale-predictions)
     ?.  =(`artifact.act artifact-hash.rwkv.state)
       (fail-action %conflict %stale-artifact)
@@ -5371,26 +5371,64 @@
   (rwkv-queue rwkv.state u.r all-cards sm2-reviews)
 ::
 ::  +live-predictions: the stored scores while rwkv is on and they are
-::  fresh: made at the newest revlog head, by the configured artifact,
-::  less than +rwkv-max-age ago. the queue and the /x/rwkv scry both
-::  read freshness here.
+::  fresh: made by the configured artifact less than +rwkv-max-age ago,
+::  from the replay input +live-head names now. the queue and the
+::  /x/rwkv scry both read freshness here.
 ::
 ++  live-predictions
   ^-  (unit (map card-key @rd))
   =/  pred  predictions.state
   ?~  pred  ~
   ?.  ?&  enabled.rwkv.state
-          =(`head.u.pred newest-review-id)
           =(`artifact.u.pred artifact-hash.rwkv.state)
           (lth now.bol (add computed-at.u.pred rwkv-max-age))
+          =(`head.u.pred (live-head live-revlog))
       ==
     ~
   `r.u.pred
 ::
-++  newest-review-id
+::  +live-revlog: the answers the rwkv replay uses, in id order: those of
+::  the live incarnation of each card in our stacks, as the fork's
+::  history query keeps only answers of cards that still exist. an
+::  incarnation starts at its card's last %learn answer, the first
+::  answer of a new or reset item, and is live while the item's
+::  last-review is that incarnation's newest answer. a deleted card has
+::  no live answers, and a card recreated under its name has none until
+::  its own first answer. the full history stays in .review-log.
+::
+++  live-revlog
+  ^-  (list [id=@ud ev=review-event])
+  =/  log  (tap:revlog-on review-log.state)
+  =/  runs=(map card-key [at=@da ids=(set @ud)])
+    %+  roll  log
+    |=  [[id=@ud ev=review-event] runs=(map card-key [at=@da ids=(set @ud)])]
+    =/  run=[at=@da ids=(set @ud)]  (~(gut by runs) key.ev [*@da ~])
+    =?  ids.run  ?=(%learn kind.ev)  ~
+    (~(put by runs) key.ev [answered-at.ev (~(put in ids.run) id)])
+  =/  heads=(list [key=card-key at=(unit @da)])
+    %-  zing
+    %+  turn  ~(tap by stacks)
+    |=  [stak=@tas =stack]
+    %+  turn  ~(tap by items.stack)
+    |=([name=@tas =item] [[our.bol stak name] last-review.item])
+  =/  live=(set @ud)
+    %+  roll  heads
+    |=  [[key=card-key at=(unit @da)] live=(set @ud)]
+    =/  run  (~(get by runs) key)
+    ?~  run  live
+    ?.  =(at `at.u.run)  live
+    (~(uni in live) ids.u.run)
+  (skim log |=([id=@ud *] (~(has in live) id)))
+::
+::  +live-head: names a replay input, so a batch made from one input is
+::  never stored against another: 52 bits of a hash of its ids, which
+::  a JavaScript number holds exactly. ~ when there is nothing to replay.
+::
+++  live-head
+  |=  log=(list [id=@ud ev=review-event])
   ^-  (unit @ud)
-  =/  newest  (ram:revlog-on review-log.state)
-  ?~(newest ~ `key.u.newest)
+  ?~  log  ~
+  `(end [0 52] (sham (turn log head)))
 ::
 ++  all-cards
   ^-  (list review)
@@ -5407,7 +5445,8 @@
   ^-  json
   =,  enjs:format
   =/  cfg  rwkv.state
-  =/  newest  newest-review-id
+  =/  live  live-revlog
+  =/  top  (live-head live)
   %-  pairs
   :~  ['enabled' [%b enabled.cfg]]
       ['target_ppm' (numb (abs:si (need (toi:rd (mul:rd target.cfg (sun:rd 1.000.000))))))]
@@ -5415,12 +5454,13 @@
       ['min_daily' (numb min-daily.cfg)]
       ['artifact_url' ?~(artifact-url.cfg ~ [%s u.artifact-url.cfg])]
       ['artifact_hash' ?~(artifact-hash.cfg ~ [%s (crip ((x-co:co 64) u.artifact-hash.cfg))])]
-      ['head' ?~(newest ~ (numb u.newest))]
+      ['head' ?~(top ~ (numb u.top))]
       ['fresh' [%b ?=(^ live-predictions)]]
       ['idempotency_epoch' [%s (scot %da epoch.operating.state)]]
+      ['now_ms' (time now.bol)]
       :-  'revlog'
       :-  %a
-      %+  turn  (tap:revlog-on review-log.state)
+      %+  turn  live
       |=  [id=@ud ev=review-event]
       %-  pairs
       :~  ['id' (numb id)]

@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# Builds the RWKV artifact of RWKV.md into OUT (default rwkv-engine/dist):
+# engine.wasm from rwkv-engine/, checked against the digest pinned in
+# rwkv-engine/engine.wasm.sha256; weights.bin fetched from the pinned
+# upstream commit and checked against its pinned SHA-256, with the upstream
+# WEIGHTS-NOTICE.md beside it; the engine's license, notices and source; and
+# manifest.json. Prints the manifest SHA-256, the value of `artifact-hash`.
+# The weights are for local evaluation only: see RWKV.md, "Weights:
+# evaluation only".
+set -euo pipefail
+export LC_ALL=C
+
+UPSTREAM=https://raw.githubusercontent.com/JSchoreels/anki
+UPSTREAM_COMMIT=17c63ab7f985b11c013dc02b35d8606b5bb0a586 # tag 26.09.4+fsrs7.build.115
+WEIGHTS_PATH=qt/aqt/rwkv_inference/sm98/weights.int8.bin
+WEIGHTS_SHA256=b2f335bd712b9d602150201de41ab5a0f0a4c291644705e2aa1ed2a1bf1592c3
+# WEIGHTS-NOTICE.md of the anki-rwkv release that ships the same weights
+WEIGHTS_NOTICE_SHA256=0df9a1edf83fd54acee89565a9923ba0d12da1159e8eb64b257a7e56255ab080
+
+root=$(cd "$(dirname "$0")/.." && pwd)
+engine=$root/rwkv-engine
+out=${1:-$engine/dist}
+# Cargo resolves a relative CARGO_TARGET_DIR against its working directory;
+# resolve it here, before the build changes directory, so the copy below
+# reads the file Cargo writes.
+target=${CARGO_TARGET_DIR:-$engine/target}
+case $target in /*) ;; *) target=$PWD/$target ;; esac
+wasm=$target/wasm32-unknown-unknown/release/rwkv_engine.wasm
+cargo_home=${CARGO_HOME:-$HOME/.cargo}
+
+# Settings that change what rustc emits are refused rather than baked into
+# the pinned bytes. Rustflags are not on the list: the build sets
+# CARGO_ENCODED_RUSTFLAGS, which overrides RUSTFLAGS and Cargo config.
+for name in $(compgen -e); do
+  case $name in
+    CARGO_BUILD_JOBS | CARGO_ENCODED_RUSTFLAGS) ;;
+    CARGO_PROFILE_* | CARGO_BUILD_* | CARGO_TARGET_*_* | CARGO_UNSTABLE_* | CARGO_INCREMENTAL | \
+      RUSTC | RUSTC_* | RUSTUP_TOOLCHAIN)
+      echo "refusing to build with $name set: it changes the engine's bytes" >&2
+      exit 1
+      ;;
+  esac
+done
+
+sha256() {
+  if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
+}
+
+mkdir -p "$out"
+rm -f "$out/manifest.json"
+
+curl -fsSL "$UPSTREAM/$UPSTREAM_COMMIT/$WEIGHTS_PATH" -o "$out/weights.bin.part"
+got=$(sha256 "$out/weights.bin.part")
+if [ "$got" != "$WEIGHTS_SHA256" ]; then
+  echo "weights hash mismatch: got $got, want $WEIGHTS_SHA256" >&2
+  rm -f "$out/weights.bin.part"
+  exit 1
+fi
+mv -f "$out/weights.bin.part" "$out/weights.bin"
+got=$(sha256 "$engine/WEIGHTS-NOTICE.md")
+if [ "$got" != "$WEIGHTS_NOTICE_SHA256" ]; then
+  echo "rwkv-engine/WEIGHTS-NOTICE.md differs from the upstream notice: got $got" >&2
+  exit 1
+fi
+cp -f "$engine/WEIGHTS-NOTICE.md" "$out/WEIGHTS-NOTICE.md"
+
+# Without an older wasm in place, a build that wrote elsewhere fails the copy.
+rm -f "$wasm"
+# Paths in panic locations would otherwise embed this machine's directories.
+# One remap per encoded argument, so a path with spaces stays one argument.
+flags=(--remap-path-prefix="$cargo_home=/cargo" --remap-path-prefix="$engine=/rwkv-engine")
+(
+  cd "$engine"
+  rustc --version
+  CARGO_ENCODED_RUSTFLAGS=$(IFS=$'\x1f' && printf '%s' "${flags[*]}") \
+    CARGO_TARGET_DIR=$target \
+    cargo build --quiet --locked --release --target wasm32-unknown-unknown
+)
+cp -f "$wasm" "$out/engine.wasm"
+got=$(sha256 "$out/engine.wasm")
+want=$(cat "$engine/engine.wasm.sha256")
+if [ "$got" != "$want" ]; then
+  echo "engine.wasm SHA-256 $got is not $want, pinned in rwkv-engine/engine.wasm.sha256." >&2
+  echo "If the engine source changed, rebuild in a clean environment and pin the new digest." >&2
+  exit 1
+fi
+
+# AGPL-3.0 sections 4 to 6: engine.wasm travels with its license, its
+# notices (NOTICE dates the changes from upstream), the licenses of the
+# crates compiled into it, and its Corresponding Source, which includes this
+# script.
+cp -f "$engine/LICENSE" "$out/LICENSE"
+cp -f "$engine/NOTICE" "$out/NOTICE"
+(cd "$engine" && cargo tree --quiet --locked --offline --target wasm32-unknown-unknown \
+  -e normal,no-proc-macro --prefix none --no-dedupe -f '{p}|{l}') | sort -u |
+  while IFS='|' read -r package license; do
+    name=${package%% *}
+    [ "$name" = rwkv-engine ] && continue
+    version=${package#* v}
+    set -- "$cargo_home"/registry/src/*/"$name-$version"
+    [ -d "$1" ] || { echo "no source for $name $version under $cargo_home" >&2; exit 1; }
+    printf '%s %s (%s)\n\n' "$name" "$version" "$license"
+    for file in "$1"/LICENSE* "$1"/COPYING* "$1"/UNLICENSE* "$1"/NOTICE*; do
+      if [ -f "$file" ]; then printf -- '--- %s\n' "${file##*/}"; cat "$file"; echo; fi
+    done
+  done >"$out/THIRD-PARTY-LICENSES"
+tar --version 2>/dev/null | grep -q 'GNU tar' || { echo "needs GNU tar" >&2; exit 1; }
+(
+  cd "$root"
+  {
+    printf '%s\n' tools/build-rwkv-artifact rwkv-engine/Cargo.toml rwkv-engine/Cargo.lock \
+      rwkv-engine/rust-toolchain.toml rwkv-engine/LICENSE rwkv-engine/NOTICE \
+      rwkv-engine/WEIGHTS-NOTICE.md rwkv-engine/engine.wasm.sha256
+    find rwkv-engine/src -type f
+  } | sort | tar --create --file - --no-recursion --files-from - --sort=name --format=ustar \
+    --mtime=@0 --owner=0 --group=0 --numeric-owner --mode=u=rwX,go=rX
+) >"$out/rwkv-engine-source.tar"
+
+printf '{\n  "engine": { "url": "engine.wasm", "sha256": "%s" },\n  "weights": { "url": "weights.bin", "sha256": "%s" }\n}\n' \
+  "$(sha256 "$out/engine.wasm")" "$(sha256 "$out/weights.bin")" >"$out/manifest.json"
+
+wc -c "$out"/*
+echo "manifest sha256: $(sha256 "$out/manifest.json")"
