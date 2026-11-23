@@ -474,28 +474,34 @@
     names  t.names
     core   (do core [%new-item ~zod ~zod %s1 i.names 'Card' *perm-config 'front' 'back'])
   ==
+::  +test-artifact: the artifact-hash +rwkv-on pins and +predict cites
+::
+++  test-artifact  0xabcd
 ++  predict
   |=  [top=@ud rows=(list [@tas @rd])]
   ^-  action
-  :+  %rwkv-predictions  top
+  :^  %rwkv-predictions  top  test-artifact
   %-  malt
   (turn rows |=([item=@tas p=@rd] [`card-key`[~zod %s1 item] p]))
 ++  card-in
   |=  item=@tas
   ^-  review
   [~zod %s1 item]
-::  +rwkv-on: default config, enabled, with a queue cap
+::  +rwkv-on: default config, enabled, pinned to +test-artifact, with a
+::  queue cap
 ::
 ++  rwkv-on
   |=  max=@ud
   ^-  rwkv-config
   =/  cfg  rwkv-default
-  cfg(enabled %.y, max-daily max)
+  cfg(enabled %.y, max-daily max, artifact-url `'https://cdn.example/m.json', artifact-hash `test-artifact)
 ::
 ++  test-rwkv-disabled-keeps-sm2-queue
   ^-  tang
   =/  core  rwkv-deck
   =/  sm2  (peek-queue core)
+  =/  cfg  (rwkv-on 200)
+  =.  core  (do core [%set-rwkv-config cfg(enabled %.n)])
   =.  core  (do core (predict 0 ~[[%c2 .~0.1] [%c3 .~0.2]]))
   ;:  weld
     (expect-eq !>(4) !>((lent sm2)))
@@ -597,6 +603,7 @@
       "idempotency-epoch="  (trip (peek-epoch core))
       "&operation-id="  (trip op)
       "&head="  ((d-co:co 1) top)
+      "&artifact="  ((x-co:co 64) test-artifact)
       "&predictions="  (en-urlt:html (trip rows))
     ==
   =/  request=inbound-request:eyre
@@ -684,6 +691,34 @@
     (expect-eq !>(n+'900000') !>((json-field (peek-rwkv after-nan) 'target_ppm')))
     (expect-eq !>(queue) !>((peek-queue after-nan)))
     (expect-eq !>(queue) !>((peek-queue after-big)))
+  ==
+::
+::  scores belong to the pinned artifact: a new url or hash drops them,
+::  a target-only change keeps them, and a batch citing another hash is
+::  refused
+::
+++  test-rwkv-artifact-change-invalidates
+  ^-  tang
+  =/  core  rwkv-deck
+  =/  cfg  (rwkv-on 200)
+  =.  core  (do core [%set-rwkv-config cfg])
+  =/  sm2  (peek-queue core)
+  =.  core
+    (do core (predict 0 ~[[%c2 .~0.99] [%c3 .~0.99] [%c4 .~0.99] [%c5 .~0.99]]))
+  =/  retargeted  (do core [%set-rwkv-config cfg(target .~0.5)])
+  =/  moved  (do core [%set-rwkv-config cfg(artifact-url `'https://cdn.example/n.json')])
+  =/  repinned  (do core [%set-rwkv-config cfg(artifact-hash `0xbeef)])
+  =/  old-pin  (command-for repinned (predict 0 ~[[%c2 .~0.99]]))
+  =/  refused  (do-command repinned old-pin)
+  ;:  weld
+    (expect-eq !>(`(list review)`~) !>((peek-queue core)))
+    (expect-eq !>(`(list review)`~) !>((peek-queue retargeted)))
+    (expect-eq !>(b+%.y) !>((json-field (peek-rwkv retargeted) 'fresh')))
+    (expect-eq !>(sm2) !>((peek-queue moved)))
+    (expect-eq !>(b+%.n) !>((json-field (peek-rwkv moved) 'fresh')))
+    (expect-eq !>(sm2) !>((peek-queue repinned)))
+    (expect-eq !>('conflict') !>((json-text (peek-receipt refused old-pin) 'status')))
+    (expect-eq !>(sm2) !>((peek-queue refused)))
   ==
 ::
 ::  sm-2: box walks the fixed intervals on %good and resets on %again.

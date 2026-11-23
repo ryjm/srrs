@@ -15,13 +15,15 @@
 | `artifact-url` | `~` | manifest URL |
 | `artifact-hash` | `~` | SHA-256 of the manifest bytes |
 
-The ship rejects a config whose `target` is not a finite number in `[0, 1]`, whose `min-daily` exceeds `max-daily`, or whose `artifact-hash` is wider than 256 bits (receipt status `invalid`, reason `invalid-rwkv-config`), and keeps the previous config. It rejects a predictions batch with any probability outside `[0, 1]` (`invalid-predictions`) or a stale `head` (`conflict`, `stale-predictions`), and keeps the stored predictions.
+The ship rejects a config whose `target` is not a finite number in `[0, 1]`, whose `min-daily` exceeds `max-daily`, or whose `artifact-hash` is wider than 256 bits (receipt status `invalid`, reason `invalid-rwkv-config`), and keeps the previous config. It rejects a predictions batch with any probability outside `[0, 1]` (`invalid-predictions`), a stale `head` (`conflict`, `stale-predictions`), or an `artifact` other than the configured `artifact-hash` (`conflict`, `stale-artifact`), and keeps the stored predictions.
+
+Stored predictions belong to the artifact that made them. A config that changes `artifact-url` or `artifact-hash` drops them; a change to `target`, `max-daily`, or `min-daily` keeps them.
 
 The review page loads `/apps/seer/rwkv-loader.js` only when `enabled` is set and both artifact fields are present.
 
 ## Queue
 
-Predictions are fresh while RWKV is enabled, their `head` equals the newest revlog id, and the ship received them less than 15 minutes ago (`rwkv-max-age`). The queue and the `fresh` field of the scry use the same rule. With fresh predictions the queue is:
+Predictions are fresh while RWKV is enabled, their `head` equals the newest revlog id, their `artifact` equals the configured `artifact-hash`, and the ship received them less than 15 minutes ago (`rwkv-max-age`). The queue and the `fresh` field of the scry use the same rule. With fresh predictions the queue is:
 
 1. cards with a prediction below `target`, ascending R;
 2. then SM-2 due cards that have no prediction, in SM-2 order;
@@ -71,7 +73,7 @@ Output: UTF-8 JSON `[{"owner": "~zod", "stack": "s1", "item": "c1", "r": 0.83}, 
 
 ### Predictions POST
 
-Form-encoded fields: `idempotency-epoch`, `operation-id`, `head`, and `predictions`, a JSON array of `{"owner": "~zod", "stack": "s1", "item": "c1", "ppm": 830000}`, where `ppm` is R in integer parts per million. `stack` and `item` are the strings from the scry, so any card key round-trips, including imported IDs that start with a digit.
+Form-encoded fields: `idempotency-epoch`, `operation-id`, `head`, `artifact` (the `artifact_hash` the loader verified the manifest against), and `predictions`, a JSON array of `{"owner": "~zod", "stack": "s1", "item": "c1", "ppm": 830000}`, where `ppm` is R in integer parts per million. `stack` and `item` are the strings from the scry, so any card key round-trips, including imported IDs that start with a digit.
 
 The response is JSON, never a page:
 
@@ -79,4 +81,4 @@ The response is JSON, never a page:
 | --- | --- | --- |
 | `200` | operation receipt | stored, or identical to what was stored |
 | `400` | `{"code": "invalid-predictions"}` or `{"code": "invalid-operation"}` | the batch or the operation fields did not parse; nothing is applied |
-| `409` | operation receipt | the ship rejected the batch, e.g. a stale `head`; the stored predictions are unchanged |
+| `409` | operation receipt | the ship rejected the batch, e.g. a stale `head` or `artifact`; the stored predictions are unchanged |

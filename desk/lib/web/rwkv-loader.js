@@ -44,6 +44,7 @@
       "idempotency-epoch": config.idempotency_epoch,
       "operation-id": operationId,
       head: String(config.head),
+      artifact: config.artifact_hash,
       predictions: JSON.stringify(predictions),
     }).toString();
   }

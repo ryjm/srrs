@@ -1547,14 +1547,16 @@
   |=  fields=(map @t @t)
   ^-  (unit action)
   =/  top  (rush (form-got fields 'head') dem)
+  =/  artifact  (rush (form-got fields 'artifact') hex)
   =/  rows
     %+  biff  (de:json:html (form-got fields 'predictions'))
     =,  dejs-soft:format
     (ar (ot ~[owner+(su ;~(pfix sig fed:ag)) stack+so item+so ppm+ni]))
   ?~  top  ~
+  ?~  artifact  ~
   ?~  rows  ~
   :-  ~
-  :+  %rwkv-predictions  u.top
+  :^  %rwkv-predictions  u.top  u.artifact
   %-  malt
   %+  turn  u.rows
   |=  [who=@p stak=@t name=@t ppm=@ud]
@@ -2769,6 +2771,13 @@
             ?~(artifact-hash.cfg & (lte (met 3 u.artifact-hash.cfg) 32))
         ==
       (fail-action %invalid %invalid-rwkv-config)
+    ::  scores belong to one artifact; a new url or hash drops them
+    ::
+    =?  predictions.state
+        ?|  !=(artifact-url.cfg artifact-url.rwkv.state)
+            !=(artifact-hash.cfg artifact-hash.rwkv.state)
+        ==
+      ~
     =.  rwkv.state  cfg
     =<  abet  update-review:stack-emit
       %rwkv-predictions
@@ -2776,7 +2785,9 @@
       (fail-action %invalid %invalid-predictions)
     ?.  =(`head.act newest-review-id)
       (fail-action %conflict %stale-predictions)
-    =.  predictions.state  `[head.act now.bol r.act]
+    ?.  =(`artifact.act artifact-hash.rwkv.state)
+      (fail-action %conflict %stale-artifact)
+    =.  predictions.state  `[head.act artifact.act now.bol r.act]
     =<  abet  update-review:stack-emit
       %import
     =/  =wire  /import/(scot %p who.act)/[stack.act]
@@ -5351,8 +5362,9 @@
   (rwkv-queue rwkv.state u.r all-cards sm2-reviews)
 ::
 ::  +live-predictions: the stored scores while rwkv is on and they are
-::  fresh: made at the newest revlog head, less than +rwkv-max-age ago.
-::  the queue and the /x/rwkv scry both read freshness here.
+::  fresh: made at the newest revlog head, by the configured artifact,
+::  less than +rwkv-max-age ago. the queue and the /x/rwkv scry both
+::  read freshness here.
 ::
 ++  live-predictions
   ^-  (unit (map card-key @rd))
@@ -5360,6 +5372,7 @@
   ?~  pred  ~
   ?.  ?&  enabled.rwkv.state
           =(`head.u.pred newest-review-id)
+          =(`artifact.u.pred artifact-hash.rwkv.state)
           (lth now.bol (add computed-at.u.pred rwkv-max-age))
       ==
     ~

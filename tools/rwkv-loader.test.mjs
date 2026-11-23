@@ -94,7 +94,8 @@ test("manifest hash mismatch never pokes", async () => {
 });
 
 test("verified artifact with stub engine pokes predictions", async () => {
-  const { fetch, posts } = stubFetch(await files(await sha256Hex(await manifestBytes())));
+  const hash = await sha256Hex(await manifestBytes());
+  const { fetch, posts } = stubFetch(await files(hash));
   await run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" });
   assert.equal(posts.length, 1);
   assert.equal(posts[0].url, "/apps/seer/actions/rwkv-predictions");
@@ -103,6 +104,7 @@ test("verified artifact with stub engine pokes predictions", async () => {
     "idempotency-epoch": "~2026.9.2",
     "operation-id": "rwkv-3-1000",
     head: "3",
+    artifact: hash,
     predictions: [
       { owner: "~zod", stack: "s1", item: "c1", ppm: 250000 },
       { owner: "~zod", stack: "s1", item: "0v5-q3les-klmn1", ppm: 912346 },
