@@ -65,16 +65,32 @@ for entry in "${files[@]}"; do
   [ -f "$dir/${entry%%|*}" ] || { echo "missing $dir/${entry%%|*}: run tools/build-rwkv-artifact" >&2; exit 1; }
 done
 
+# One completed build, fixed before anything is sent: every file is copied
+# into a private snapshot and hashed and uploaded from there, so a rebuild
+# of DIR during the upload changes nothing sent or printed. The manifest
+# must name the snapshot's engine and weights, or they are not one build.
+snap=$(mktemp -d "${TMPDIR:-/tmp}/rwkv-upload.XXXXXX")
+trap 'rm -rf "$snap"' EXIT
+for entry in "${files[@]}"; do
+  cp "$dir/${entry%%|*}" "$snap/${entry%%|*}"
+done
+for name in engine.wasm weights.bin; do
+  grep -qF "\"$(sha256 "$snap/$name")\"" "$snap/manifest.json" || {
+    echo "$dir/manifest.json does not name this $name: upload one completed build" >&2
+    exit 1
+  }
+done
+
 # the error codes the ship's store answers a refused PUT with
 known='"code": *"(invalid-sha256|hash-mismatch|unsupported-type|store-full)"'
 for entry in "${files[@]}"; do
   name=${entry%%|*}
-  sha=$(sha256 "$dir/$name")
+  sha=$(sha256 "$snap/$name")
   # --disable must come first to keep curl from reading a config file
   out=$(printf 'Cookie: %s\n' "$SEER_COOKIE" |
     curl --disable "${transport[@]}" --silent --show-error --write-out '\n%{http_code}' \
       --request PUT --header @- --header "Content-Type: ${entry#*|}" \
-      --data-binary "@$dir/$name" "$ship/apps/seer/rwkv/$sha")
+      --data-binary "@$snap/$name" "$ship/apps/seer/rwkv/$sha")
   status=${out##*$'\n'}
   case $status in
     201) echo "stored   $name /apps/seer/rwkv/$sha" ;;
@@ -86,8 +102,9 @@ for entry in "${files[@]}"; do
       exit 1
       ;;
   esac
+  # the pin printed below is the manifest the ship accepted
+  if [ "$name" = manifest.json ]; then manifest=$sha; fi
 done
 
-manifest=$(sha256 "$dir/manifest.json")
 echo "artifact-url   /apps/seer/rwkv/$manifest"
 echo "artifact-hash  $manifest"

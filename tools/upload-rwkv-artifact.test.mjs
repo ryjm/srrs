@@ -24,10 +24,17 @@ const types = {
   "WEIGHTS-NOTICE.md": "text/markdown; charset=utf-8",
 };
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+// one build: the manifest names the engine and weights beside it
+const content = (name) => name === "manifest.json"
+  ? JSON.stringify({
+    engine: { url: "engine.wasm", sha256: sha256(content("engine.wasm")) },
+    weights: { url: "weights.bin", sha256: sha256(content("weights.bin")) },
+  })
+  : `${name} bytes\n`;
 
 function artifactDir(names = Object.keys(types)) {
   const dir = mkdtempSync(join(tmpdir(), "rwkv artifact "));
-  for (const name of names) writeFileSync(join(dir, name), `${name} bytes\n`);
+  for (const name of names) writeFileSync(join(dir, name), content(name));
   return dir;
 }
 
@@ -61,11 +68,13 @@ async function withStore(fn, handle = () => false) {
   }
 }
 
-// run with `bash -x` when trace is set
+// run with `bash -x` when trace is set; the script's snapshot goes under
+// the test's TMPDIR
 function upload(args, env, { trace = false } = {}) {
   const [file, argv] = trace ? ["bash", ["-x", script, ...args]] : [script, args];
+  const tmp = process.env.TMPDIR ? { TMPDIR: process.env.TMPDIR } : {};
   return new Promise((resolve) => {
-    execFile(file, argv, { env: { PATH: process.env.PATH, ...env } }, (error, stdout, stderr) =>
+    execFile(file, argv, { env: { PATH: process.env.PATH, ...tmp, ...env } }, (error, stdout, stderr) =>
       resolve({ code: error ? error.code : 0, stdout, stderr }));
   });
 }
@@ -79,8 +88,8 @@ test("uploads every artifact file under its sha-256 with its type and the cookie
       const again = await upload([`${ship}/`, dir], { SEER_COOKIE: cookie });
       assert.equal(again.code, 0, again.stderr);
       assert.deepEqual(new Map([...stored].sort()), new Map(Object.entries(types).map(([name, type]) =>
-        [sha256(`${name} bytes\n`), { type, body: `${name} bytes\n` }]).sort()));
-      const manifest = sha256("manifest.json bytes\n");
+        [sha256(content(name)), { type, body: content(name) }]).sort()));
+      const manifest = sha256(content("manifest.json"));
       assert.match(first.stdout, new RegExp(`^artifact-url   /apps/seer/rwkv/${manifest}$`, "m"));
       assert.match(first.stdout, new RegExp(`^artifact-hash  ${manifest}$`, "m"));
       assert.equal((again.stdout.match(/^present /gm) ?? []).length, 8, "a second upload stores nothing new");
@@ -113,6 +122,48 @@ test("refuses to start without a cookie or a complete artifact, and stops on a r
   }
 });
 
+// A rebuild of DIR while the upload runs: the first PUT replaces the engine
+// and the manifest with a new, consistent build.
+test("uploads one build and prints the manifest the ship accepted", async () => {
+  const dir = artifactDir();
+  const rebuilt = JSON.stringify({
+    engine: { url: "engine.wasm", sha256: sha256("rebuilt engine\n") },
+    weights: { url: "weights.bin", sha256: sha256(content("weights.bin")) },
+  });
+  let rebuiltOnce = false;
+  const rebuild = () => {
+    if (!rebuiltOnce) {
+      rebuiltOnce = true;
+      writeFileSync(join(dir, "engine.wasm"), "rebuilt engine\n");
+      writeFileSync(join(dir, "manifest.json"), rebuilt);
+    }
+    return false;
+  };
+  const mixed = artifactDir();
+  writeFileSync(join(mixed, "engine.wasm"), "rebuilt engine\n");
+  try {
+    await withStore(async (ship, stored, requests) => {
+      const out = await upload([ship, dir], { SEER_COOKIE: cookie });
+      assert.equal(out.code, 0, out.stderr);
+      assert.ok(rebuiltOnce);
+      const accepted = requests.at(-1);
+      assert.equal(accepted.body, content("manifest.json"), "the manifest from before the rebuild");
+      assert.match(out.stdout, new RegExp(`^artifact-hash  ${sha256(accepted.body)}$`, "m"));
+      assert.deepEqual([...stored.values()].map(({ body }) => body).sort(),
+        Object.keys(types).map(content).sort(), "every file from the one build");
+    }, rebuild);
+    await withStore(async (ship, stored, requests) => {
+      const out = await upload([ship, mixed], { SEER_COOKIE: cookie });
+      assert.equal(out.code, 1);
+      assert.match(out.stderr, /manifest.json does not name this engine.wasm/);
+      assert.deepEqual(requests, [], "nothing sent from a mixed directory");
+    });
+  } finally {
+    rmSync(dir, { recursive: true });
+    rmSync(mixed, { recursive: true });
+  }
+});
+
 // The store has no delete, so a refusal part way must leave nothing served
 // without its licenses: notices and source go first, the manifest last.
 test("uploads licenses, notices and source first and the manifest last", async () => {
@@ -121,7 +172,7 @@ test("uploads licenses, notices and source first and the manifest last", async (
     "LICENSE", "NOTICE", "THIRD-PARTY-LICENSES", "rwkv-engine-source.tar", "WEIGHTS-NOTICE.md",
     "engine.wasm", "weights.bin", "manifest.json",
   ];
-  const nameOf = new Map(order.map((name) => [sha256(`${name} bytes\n`), name]));
+  const nameOf = new Map(order.map((name) => [sha256(content(name)), name]));
   try {
     for (let refuse = 1; refuse <= order.length; refuse++) {
       let puts = 0;
