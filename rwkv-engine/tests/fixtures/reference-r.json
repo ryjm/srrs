@@ -217,6 +217,20 @@
       "stack": "physics"
     }
   ],
+  "cases": [
+    {
+      "name": "learning card queried 20 s later, across the 04:00 UTC rollover",
+      "r": [
+        0.5633839964866638
+      ]
+    },
+    {
+      "name": "review card queried 20 s later, across the 04:00 UTC rollover",
+      "r": [
+        0.892066478729248
+      ]
+    }
+  ],
   "steps": [
     0.7757595777511597,
     0.8686681389808655,

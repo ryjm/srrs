@@ -27,26 +27,36 @@ fn input(row: &Value) -> ReviewInput {
     }
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut args = std::env::args().skip(1);
-    let weights = args.next().ok_or("usage: reference <weights> <plan.json>")?;
-    let plan: Value = serde_json::from_slice(&std::fs::read(args.next().ok_or("plan.json")?)?)?;
-    let rows = |key: &str| plan[key].as_array().unwrap().iter().map(input).collect::<Vec<_>>();
-    let mut runtime = RwkvRuntime::load_with_precision(
+fn rows(value: &Value) -> Vec<ReviewInput> {
+    value.as_array().expect("rows").iter().map(input).collect()
+}
+
+fn runtime(weights: &str) -> std::io::Result<RwkvRuntime> {
+    RwkvRuntime::load_with_precision(
         weights.into(),
         0.9,
         36_500,
         StatePrecision::F32,
         ModelKind::Sm98,
-    )?;
-    // The recall the fork predicts just before each answer, from the answer's
-    // own elapsed time: checks every replay step, not only the final state.
-    let steps: Vec<f32> = runtime
-        .warm_up_reviews(rows("answers"), true)?
+    )
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let mut args = std::env::args().skip(1);
+    let usage = "usage: reference <weights> <plan.json> <cases.json>";
+    let weights = args.next().ok_or(usage)?;
+    let plan: Value = serde_json::from_slice(&std::fs::read(args.next().ok_or(usage)?)?)?;
+    let cases: Value = serde_json::from_slice(&std::fs::read(args.next().ok_or(usage)?)?)?;
+
+    let mut fixture = runtime(&weights)?;
+    // Kernel parity on the candidate's own rows: the recall the fork predicts
+    // just before each answer, from the answer's own elapsed time.
+    let steps: Vec<f32> = fixture
+        .warm_up_reviews(rows(&plan["answers"]), true)?
         .into_iter()
         .map(|(_, r)| r)
         .collect();
-    let rs = runtime.predict_retrievability_many_from_warm_up(rows("queries"))?;
+    let rs = fixture.predict_retrievability_many_from_warm_up(rows(&plan["queries"]))?;
     let cards: Vec<Value> = plan["cards"]
         .as_array()
         .unwrap()
@@ -58,7 +68,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             card
         })
         .collect();
-    let out = serde_json::json!({ "steps": steps, "cards": cards });
+
+    // Translation: the fork on rows written by hand from its own rules, one
+    // fresh runtime per case.
+    let mut case_rs = Vec::new();
+    for case in cases.as_array().expect("cases") {
+        let mut fork = runtime(&weights)?;
+        fork.warm_up_reviews(rows(&case["answers"]), false)?;
+        let r = fork.predict_retrievability_many_from_warm_up(rows(&case["queries"]))?;
+        case_rs.push(serde_json::json!({ "name": case["name"], "r": r }));
+    }
+
+    let out = serde_json::json!({ "steps": steps, "cards": cards, "cases": case_rs });
     println!("{}", serde_json::to_string_pretty(&out)?);
     Ok(())
 }

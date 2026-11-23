@@ -100,7 +100,7 @@ The engine in `rwkv-engine/` runs RWKV-Instant model SM98 from the Anki fork [JS
 | day | Unix time rolled over at 04:00 UTC; the scry has no time zone |
 | elapsed time | since the card's previous answer, in days and seconds; none on its first answer |
 | state | `learn` 0 (learning start); `relearn` 1 before the card's first `review` (Anki's later learning step), 3 after; `review` 2; `manual` 5 |
-| query | at `now_ms`: elapsed time since the card's last answer, as the fork does for the time a card is shown |
+| query | at `now_ms`, as the fork queries a card when it is shown: seconds since the card's last answer, and scheduler days since it, except for a card in the learning state, whose days the fork leaves unset so the model counts whole days of seconds. A card is learning after an `again` before its first `review`: `again` resets %seer's box to 0, so its next answer is a learning `relearn` (state 1). |
 
 Each card's answers must be one incarnation, as the live revlog sends them: a `learn` answer only as the card's first. `predict` fails on an input with a later `learn` for a card. Replayed as the same card, a second learning start would put the card's cumulative elapsed time outside the model's input domain, and the shared deck, preset and global state would carry it to every card, which can collapse all scores to one plausible value.
 

@@ -13,13 +13,56 @@ struct Row {
 }
 
 #[derive(Deserialize)]
+struct CaseR {
+    name: String,
+    r: Vec<f64>,
+}
+
+#[derive(Deserialize)]
 struct Reference {
     steps: Vec<f64>,
     cards: Vec<Row>,
+    cases: Vec<CaseR>,
 }
 
 fn reference() -> Reference {
     serde_json::from_str(include_str!("fixtures/reference-r.json")).expect("reference json")
+}
+
+/// Translation: each %seer input of tests/fixtures/cases.json through this
+/// crate, against the fork's runtime on that case's rows, which are written
+/// by hand from the fork's rules rather than by `seer::plan`.
+#[test]
+fn hand_written_cases_match_the_fork() {
+    #[derive(Deserialize)]
+    struct Case {
+        name: String,
+        input: serde_json::Value,
+    }
+    let cases: Vec<Case> =
+        serde_json::from_str(include_str!("fixtures/cases.json")).expect("cases json");
+    let fork = reference().cases;
+    assert_eq!(cases.len(), fork.len());
+    let mut engine = engine();
+    for (case, fork) in cases.iter().zip(&fork) {
+        assert_eq!(case.name, fork.name);
+        let input = serde_json::to_vec(&case.input).expect("input json");
+        let out = seer::predict(&mut engine, &input).expect("predict");
+        let native: Vec<f64> = serde_json::from_slice::<Vec<Row>>(&out)
+            .expect("output json")
+            .into_iter()
+            .map(|row| row.r)
+            .collect();
+        println!("{}: native {native:?}, fork {:?}", case.name, fork.r);
+        assert_eq!(native.len(), fork.r.len(), "{}", case.name);
+        for (native, fork) in native.iter().zip(&fork.r) {
+            assert!(
+                native.is_finite() && (native - fork).abs() <= 1e-4,
+                "{}: native {native}, fork {fork}",
+                case.name
+            );
+        }
+    }
 }
 
 fn engine() -> Engine {

@@ -17,7 +17,9 @@ use network::SrsState;
 use network::SrsStateRef;
 use weights::WeightMap;
 
-#[derive(Debug, Clone)]
+/// One model input row, with the fork's field names; serialized as the rows
+/// the parity reference reads.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct ReviewInput {
     pub card_id: i64,
     pub note_id: Option<i64>,

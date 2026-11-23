@@ -33,7 +33,7 @@ cp -f "$engine/parity/reference.rs" "$fork/rslib/src/bin/seer_rwkv_reference.rs"
   if [ -n "${FORK_TOOLCHAIN:-}" ]; then export RUSTUP_TOOLCHAIN=$FORK_TOOLCHAIN; fi
   PROTOC=${PROTOC:-$(command -v protoc)} CARGO_TARGET_DIR=$work/target \
     cargo run --quiet --locked --release -p anki --bin seer_rwkv_reference -- \
-    "$weights" "$work/plan.json"
+    "$weights" "$work/plan.json" "$engine/tests/fixtures/cases.json"
 ) >"$engine/tests/fixtures/reference-r.json"
 
 cd "$engine"

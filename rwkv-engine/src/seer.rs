@@ -74,6 +74,33 @@ struct CardHistory {
     deck: i64,
     last_answered_at: i64,
     reviewed: bool,
+    /// In Anki's learning state after its last answer: an `again` before the
+    /// card's first `review`. %seer's `again` resets the box to 0, so the
+    /// next answer is a `relearn`, state 1 (see `dataset_state`).
+    learning: bool,
+}
+
+impl CardHistory {
+    /// The fork's live query for the card at `now_ms` (scheduler/rwkv.rs,
+    /// `rwkv_review_input_state`): elapsed seconds since the last answer,
+    /// and scheduler days except in the learning state, which leaves days
+    /// unset so the model counts whole days of seconds.
+    fn query(&self, now_ms: i64) -> ReviewInput {
+        ReviewInput {
+            card_id: self.id,
+            note_id: Some(self.id),
+            deck_id: Some(self.deck),
+            preset_id: Some(PRESET_ID),
+            is_query: true,
+            ease: None,
+            duration_millis: None,
+            card_type: None,
+            day_offset: Some(day(now_ms)),
+            current_elapsed_days: (!self.learning)
+                .then(|| (day(now_ms) - day(self.last_answered_at)).max(0)),
+            current_elapsed_seconds: Some(((now_ms - self.last_answered_at) / 1_000).max(0)),
+        }
+    }
 }
 
 fn day(ms: i64) -> i64 {
@@ -133,6 +160,7 @@ pub fn plan(input: &Input) -> Result<Plan<'_>, String> {
                 deck,
                 last_answered_at: event.answered_at,
                 reviewed: false,
+                learning: false,
             }
         });
         let (elapsed_days, elapsed_seconds) = match previous {
@@ -159,31 +187,18 @@ pub fn plan(input: &Input) -> Result<Plan<'_>, String> {
         });
         card.last_answered_at = event.answered_at;
         card.reviewed |= matches!(event.kind, Kind::Review);
+        card.learning = matches!(event.grade, Grade::Again) && !card.reviewed;
     }
 
     let queries = card_events
         .iter()
         .map(|event| {
-            let card = &cards[&(
+            cards[&(
                 event.owner.as_str(),
                 event.stack.as_str(),
                 event.item.as_str(),
-            )];
-            ReviewInput {
-                card_id: card.id,
-                note_id: Some(card.id),
-                deck_id: Some(card.deck),
-                preset_id: Some(PRESET_ID),
-                is_query: true,
-                ease: None,
-                duration_millis: None,
-                card_type: None,
-                day_offset: Some(day(input.now_ms)),
-                current_elapsed_days: Some((day(input.now_ms) - day(card.last_answered_at)).max(0)),
-                current_elapsed_seconds: Some(
-                    ((input.now_ms - card.last_answered_at) / 1_000).max(0),
-                ),
-            }
+            )]
+                .query(input.now_ms)
         })
         .collect();
 
