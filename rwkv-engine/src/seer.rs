@@ -94,7 +94,12 @@ fn dataset_state(kind: Kind, reviewed: bool) -> i64 {
     }
 }
 
-pub fn plan(input: &Input) -> Plan<'_> {
+/// The replay of `input`. Each card's answers must be one incarnation:
+/// a `learn` answer, the fork's learning start, only as the card's first
+/// answer, as the scry sends them (RWKV.md, "Replay"). A second learning
+/// start would add a second creation sentinel to the card's cumulative
+/// elapsed time, outside the model's input domain.
+pub fn plan(input: &Input) -> Result<Plan<'_>, String> {
     let mut order: Vec<&Event> = input.events.iter().collect();
     order.sort_by_key(|event| (event.answered_at, event.id));
 
@@ -115,6 +120,12 @@ pub fn plan(input: &Input) -> Plan<'_> {
             event.item.as_str(),
         );
         let previous = cards.get(&key).map(|card| card.last_answered_at);
+        if previous.is_some() && matches!(event.kind, Kind::Learn) {
+            return Err(format!(
+                "revlog id {}: `learn` after the card's first answer",
+                event.id
+            ));
+        }
         let card = cards.entry(key).or_insert_with(|| {
             card_events.push(event);
             CardHistory {
@@ -176,17 +187,17 @@ pub fn plan(input: &Input) -> Plan<'_> {
         })
         .collect();
 
-    Plan {
+    Ok(Plan {
         answers,
         queries,
         cards: card_events,
-    }
+    })
 }
 
 /// RWKV.md engine input JSON to output JSON, replaying from a fresh state.
 pub fn predict(engine: &mut Engine, input: &[u8]) -> Result<Vec<u8>, String> {
     let input: Input = serde_json::from_slice(input).map_err(|err| err.to_string())?;
-    let plan = plan(&input);
+    let plan = plan(&input)?;
     engine.reset();
     for answer in &plan.answers {
         engine.answer(answer);
@@ -204,4 +215,36 @@ pub fn predict(engine: &mut Engine, input: &[u8]) -> Result<Vec<u8>, String> {
         })
         .collect();
     serde_json::to_vec(&rows).map_err(|err| err.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn input(now_ms: i64, events: serde_json::Value) -> Input {
+        serde_json::from_value(serde_json::json!({ "now_ms": now_ms, "events": events }))
+            .expect("input")
+    }
+
+    fn event(id: u64, item: &str, grade: &str, kind: &str, answered_at: i64) -> serde_json::Value {
+        serde_json::json!({
+            "id": id, "owner": "~zod", "stack": "s1", "item": item, "grade": grade,
+            "kind": kind, "shown_at": answered_at - 5_000, "answered_at": answered_at,
+        })
+    }
+
+    #[test]
+    fn a_second_learning_start_for_one_card_is_rejected() {
+        let t = 1_782_896_400_000;
+        let retired = input(
+            t + 600_000,
+            serde_json::json!([
+                event(0, "a", "good", "learn", t),
+                event(1, "b", "easy", "learn", t + 60_000),
+                event(2, "a", "again", "learn", t + 180_000),
+            ]),
+        );
+        let err = plan(&retired).err().expect("rejected");
+        assert!(err.contains("revlog id 2"), "{err}");
+    }
 }

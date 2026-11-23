@@ -23,7 +23,7 @@ The review page loads `/apps/seer/rwkv-loader.js` only when `enabled` is set and
 
 ## Queue
 
-Predictions are fresh while RWKV is enabled, their `head` equals the newest revlog id, their `artifact` equals the configured `artifact-hash`, and the ship received them less than 15 minutes ago (`rwkv-max-age`). The queue and the `fresh` field of the scry use the same rule. With fresh predictions the queue is:
+Predictions are fresh while RWKV is enabled, their `head` equals the current `head` (see [Live revlog](#live-revlog)), their `artifact` equals the configured `artifact-hash`, and the ship received them less than 15 minutes ago (`rwkv-max-age`). The queue and the `fresh` field of the scry use the same rule. With fresh predictions the queue is:
 
 1. cards with a prediction below `target`, ascending R;
 2. then SM-2 due cards that have no prediction, in SM-2 order;
@@ -31,11 +31,21 @@ Predictions are fresh while RWKV is enabled, their `head` equals the newest revl
 
 The result is cut to its first `max-daily` cards. Neither field counts cards answered earlier in the day; both bound the queue as it stands.
 
-Any new answer appends to the revlog, so the stored predictions go stale until the browser sends new ones. They also go stale with age, because the engine predicts recall at the time it ran; without that bound, a card held back by a high score would stay out of the queue until the next answer. A `%rwkv-predictions` poke whose `head` is not the newest revlog id is rejected and stores nothing.
+Any new answer, and any change to which answers are live, changes `head`, so the stored predictions go stale until the browser sends new ones. They also go stale with age, because the engine predicts recall at the time it ran; without that bound, a card held back by a high score would stay out of the queue until the next answer. A `%rwkv-predictions` poke whose `head` is not the current one is rejected and stores nothing, so a batch computed before a card was deleted or recreated cannot be stored after it.
+
+### Live revlog
+
+The ship keeps every answer in its revlog. The replay uses only the answers of live card incarnations, as the fork's history query uses only answers of cards that still exist and drops a card's answers from before a reset:
+
+- A card is live while it is an item in one of the ship's own stacks, the cards the queue schedules.
+- An incarnation starts with its card's last `learn` answer, the first answer of a new or reset item.
+- The incarnation's answers are live while the item's last review is that incarnation's newest answer. A deleted card has no live answers. A card recreated under a used name is a new card: none of the old card's answers are live, and it has none of its own until its first answer.
+
+`head` is the low 52 bits of a hash of the live answers' ids, or `null` when there are none. Deleting a card that has answers, or answering any card, changes it. Adding a card, or deleting one never answered, leaves it alone: neither changes the replay.
 
 ## Loader
 
-1. `GET /~/scry/seer/rwkv.json`. Fields: `enabled`, `target_ppm`, `max_daily`, `min_daily`, `artifact_url`, `artifact_hash` (64 hex chars), `head` (newest revlog id or `null`), `fresh`, `idempotency_epoch`, and `revlog`, a list of `{id, owner, stack, item, grade, kind, shown_at, answered_at}` with times in Unix milliseconds. A non-2xx response stops the run.
+1. `GET /~/scry/seer/rwkv.json`. Fields: `enabled`, `target_ppm`, `max_daily`, `min_daily`, `artifact_url`, `artifact_hash` (64 hex chars), `head` (names the live revlog, or `null` when it is empty), `fresh`, `idempotency_epoch`, and `revlog`, the [live revlog](#live-revlog): a list of `{id, owner, stack, item, grade, kind, shown_at, answered_at}` in id order, with times in Unix milliseconds. A non-2xx response stops the run.
 2. Stop if disabled, unconfigured, `head` is `null`, or `fresh` is true.
 3. Fetch the manifest and check its SHA-256 against `artifact_hash`.
 4. Fetch the engine and weights named in the manifest and check each against its listed SHA-256.
@@ -91,6 +101,8 @@ The engine in `rwkv-engine/` runs RWKV-Instant model SM98 from the Anki fork [JS
 | elapsed time | since the card's previous answer, in days and seconds; none on its first answer |
 | state | `learn` 0 (learning start); `relearn` 1 before the card's first `review` (Anki's later learning step), 3 after; `review` 2; `manual` 5 |
 | query | at `now_ms`: elapsed time since the card's last answer, as the fork does for the time a card is shown |
+
+Each card's answers must be one incarnation, as the live revlog sends them: a `learn` answer only as the card's first. `predict` fails on an input with a later `learn` for a card. Replayed as the same card, a second learning start would put the card's cumulative elapsed time outside the model's input domain, and the shared deck, preset and global state would carry it to every card, which can collapse all scores to one plausible value.
 
 State is kept in f32; the fork's desktop default quantizes it to save memory across sessions, which a run that replays and discards does not need.
 

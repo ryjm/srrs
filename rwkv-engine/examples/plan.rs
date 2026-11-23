@@ -28,7 +28,7 @@ fn main() {
         .expect("usage: plan <engine-input.json>");
     let input: seer::Input =
         serde_json::from_slice(&std::fs::read(path).expect("read input")).expect("parse input");
-    let plan = seer::plan(&input);
+    let plan = seer::plan(&input).expect("plan");
     let out = json!({
         "answers": plan.answers.iter().map(row).collect::<Vec<_>>(),
         "queries": plan.queries.iter().map(row).collect::<Vec<_>>(),

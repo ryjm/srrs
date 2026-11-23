@@ -58,7 +58,7 @@ fn fixture_recall_matches_the_fork_runtime() {
 #[test]
 fn recall_before_every_answer_matches_the_fork_runtime() {
     let input: seer::Input = serde_json::from_slice(REVLOG).expect("revlog json");
-    let plan = seer::plan(&input);
+    let plan = seer::plan(&input).expect("plan");
     let mut engine = engine();
     let steps: Vec<f64> = plan
         .answers
