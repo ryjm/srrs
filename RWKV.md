@@ -15,6 +15,8 @@
 | `artifact-url` | `~` | manifest URL |
 | `artifact-hash` | `~` | SHA-256 of the manifest bytes |
 
+The ship rejects a config whose `target` is not a finite number in `[0, 1]`, whose `min-daily` exceeds `max-daily`, or whose `artifact-hash` is wider than 256 bits (receipt status `invalid`, reason `invalid-rwkv-config`), and keeps the previous config. It rejects a predictions batch with any probability outside `[0, 1]` (`invalid-predictions`) or a stale `head` (`conflict`, `stale-predictions`), and keeps the stored predictions.
+
 The review page loads `/apps/seer/rwkv-loader.js` only when `enabled` is set and both artifact fields are present.
 
 ## Queue
@@ -31,11 +33,12 @@ Any new answer appends to the revlog, so the stored predictions go stale until t
 
 ## Loader
 
-1. `GET /~/scry/seer/rwkv.json`. Fields: `enabled`, `target_ppm`, `max_daily`, `min_daily`, `artifact_url`, `artifact_hash` (64 hex chars), `head` (newest revlog id or `null`), `fresh`, `idempotency_epoch`, and `revlog`, a list of `{id, owner, stack, item, grade, kind, shown_at, answered_at}` with times in Unix milliseconds.
+1. `GET /~/scry/seer/rwkv.json`. Fields: `enabled`, `target_ppm`, `max_daily`, `min_daily`, `artifact_url`, `artifact_hash` (64 hex chars), `head` (newest revlog id or `null`), `fresh`, `idempotency_epoch`, and `revlog`, a list of `{id, owner, stack, item, grade, kind, shown_at, answered_at}` with times in Unix milliseconds. A non-2xx response stops the run.
 2. Stop if disabled, unconfigured, `head` is `null`, or `fresh` is true.
 3. Fetch the manifest and check its SHA-256 against `artifact_hash`.
 4. Fetch the engine and weights named in the manifest and check each against its listed SHA-256.
-5. Run the engine and POST the result to `/apps/seer/actions/rwkv-predictions`.
+5. Run the engine. If any output row lacks a string `owner` starting with `~`, a non-empty `stack` or `item`, or an `r` in `[0, 1]`, drop the whole output.
+6. POST the result to `/apps/seer/actions/rwkv-predictions`.
 
 Any failure is logged with `console.warn` and nothing is sent.
 

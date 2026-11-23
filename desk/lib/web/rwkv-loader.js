@@ -24,15 +24,21 @@
     return bytes;
   }
 
-  // rows: [{owner, stack, item, r}] with 0 <= r <= 1
+  // rows: the engine output, [{owner, stack, item, r}]. One row without a
+  // card key or with r outside [0, 1] rejects the batch.
   function pokeBody(config, rows, operationId) {
-    var predictions = [];
-    rows.forEach(function (row) {
-      if (!Number.isFinite(row.r)) return;
-      predictions.push({
+    if (!Array.isArray(rows)) throw new Error("rwkv: engine output is not a list");
+    var predictions = rows.map(function (row, i) {
+      var ok = row !== null && typeof row === "object" &&
+        typeof row.owner === "string" && row.owner.charAt(0) === "~" &&
+        typeof row.stack === "string" && row.stack !== "" &&
+        typeof row.item === "string" && row.item !== "" &&
+        typeof row.r === "number" && row.r >= 0 && row.r <= 1;
+      if (!ok) throw new Error("rwkv: bad engine row " + i + ": " + JSON.stringify(row));
+      return {
         owner: row.owner, stack: row.stack, item: row.item,
-        ppm: Math.round(Math.min(1, Math.max(0, row.r)) * 1e6),
-      });
+        ppm: Math.round(row.r * 1e6),
+      };
     });
     return new URLSearchParams({
       "idempotency-epoch": config.idempotency_epoch,
@@ -70,7 +76,9 @@
   // deps: {fetch, engine, now}. Returns the poke body sent, or null.
   async function run(deps) {
     try {
-      var config = await (await deps.fetch(CONFIG_URL)).json();
+      var configRes = await deps.fetch(CONFIG_URL);
+      if (!configRes.ok) throw new Error("rwkv: config " + configRes.status);
+      var config = await configRes.json();
       if (!config.enabled || !config.artifact_url || !config.artifact_hash) return null;
       if (config.head === null || config.fresh) return null;
       var base = new URL(config.artifact_url, deps.base);

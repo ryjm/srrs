@@ -26,7 +26,9 @@ function config(artifactHash) {
 
 function stubFetch(files) {
   const posts = [];
+  const requests = [];
   const fetch = async (url, init) => {
+    requests.push({ url, init });
     if (init?.method === "POST") {
       posts.push({ url, body: init.body });
       return { ok: true };
@@ -39,7 +41,18 @@ function stubFetch(files) {
       arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength),
     };
   };
-  return { fetch, posts };
+  return { fetch, posts, requests };
+}
+
+async function quiet(fn) {
+  const warn = console.warn;
+  const warnings = [];
+  console.warn = (err) => warnings.push(String(err));
+  try {
+    return [await fn(), warnings];
+  } finally {
+    console.warn = warn;
+  }
 }
 
 async function files(artifactHash) {
@@ -64,6 +77,8 @@ const stubEngine = async (engine, weights) => {
     },
   };
 };
+
+const engineOf = (rows) => async () => ({ predict: () => rows });
 
 test("manifest hash mismatch never pokes", async () => {
   const { fetch, posts } = stubFetch(await files("00".repeat(32)));
@@ -93,4 +108,33 @@ test("verified artifact with stub engine pokes predictions", async () => {
       { owner: "~zod", stack: "s1", item: "0v5-q3les-klmn1", ppm: 912346 },
     ],
   });
+});
+
+test("one invalid engine row rejects the whole batch", async () => {
+  const good = { owner: "~zod", stack: "s1", item: "c1", r: 0.5 };
+  const bads = [
+    { ...good, r: null }, { ...good, r: 1.25 }, { ...good, r: -0.1 }, { ...good, r: NaN },
+    { ...good, item: "" }, { ...good, owner: "zod" }, null,
+  ];
+  for (const bad of bads) {
+    const { fetch, posts } = stubFetch(await files(await sha256Hex(await manifestBytes())));
+    const [body, warnings] = await quiet(() =>
+      run({ fetch, engine: engineOf([good, bad]), now: () => 1000, base: "http://ship/" }));
+    assert.equal(body, null, JSON.stringify(bad));
+    assert.deepEqual(posts, [], JSON.stringify(bad));
+    assert.match(warnings[0], /bad engine row 1/);
+  }
+});
+
+test("a failed config fetch stops before any artifact fetch", async () => {
+  const hash = await sha256Hex(await manifestBytes());
+  const stub = stubFetch(await files(hash));
+  const fetch = async (url, init) => url === "/~/scry/seer/rwkv.json"
+    ? { ok: false, status: 503, json: async () => config(hash) }
+    : stub.fetch(url, init);
+  const [body, warnings] = await quiet(() =>
+    run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" }));
+  assert.equal(body, null);
+  assert.deepEqual(stub.requests, []);
+  assert.match(warnings[0], /config 503/);
 });

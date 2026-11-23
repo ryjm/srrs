@@ -655,6 +655,37 @@
     (expect-eq !>(ranked) !>((peek-queue core)))
   ==
 ::
+::  the poke boundary rejects bad config and scores before replacing
+::  what is stored; the scry still renders afterwards
+::
+++  test-rwkv-rejects-invalid-input
+  ^-  tang
+  =/  core  rwkv-deck
+  =/  cfg  (rwkv-on 200)
+  =.  core  (do core [%set-rwkv-config cfg])
+  =.  core  (do core (predict 0 ~[[%c2 .~0.1]]))
+  =/  queue  (peek-queue core)
+  =/  status
+    |=  act=action
+    ^-  @t
+    =/  cmd  (command-for core act)
+    (json-text (peek-receipt (do-command core cmd) cmd) 'status')
+  =/  after-nan  (do core [%set-rwkv-config cfg(target .~nan)])
+  =/  after-big  (do core (predict 0 ~[[%c3 .~1.25]]))
+  ;:  weld
+    (expect-eq !>('invalid') !>((status [%set-rwkv-config cfg(target .~nan)])))
+    (expect-eq !>('invalid') !>((status [%set-rwkv-config cfg(target .~1.5)])))
+    (expect-eq !>('invalid') !>((status [%set-rwkv-config cfg(min-daily 3, max-daily 2)])))
+    (expect-eq !>('invalid') !>((status [%set-rwkv-config cfg(artifact-hash `(bex 256))])))
+    (expect-eq !>('invalid') !>((status (predict 0 ~[[%c3 .~1.25]]))))
+    (expect-eq !>('invalid') !>((status (predict 0 ~[[%c3 .~nan]]))))
+    (expect-eq !>('conflict') !>((status (predict 5 ~[[%c3 .~0.1]]))))
+    (expect-eq !>('ok') !>((status [%set-rwkv-config cfg(target .~1, min-daily 200)])))
+    (expect-eq !>(n+'900000') !>((json-field (peek-rwkv after-nan) 'target_ppm')))
+    (expect-eq !>(queue) !>((peek-queue after-nan)))
+    (expect-eq !>(queue) !>((peek-queue after-big)))
+  ==
+::
 ::  sm-2: box walks the fixed intervals on %good and resets on %again.
 ::
 ++  test-sm2-scheduling

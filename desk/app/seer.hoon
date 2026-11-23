@@ -80,6 +80,13 @@
       predictions=~
       operating.old
   ==
+::  +in-unit-interval: a probability. nan fails both comparisons.
+::
+++  in-unit-interval
+  |=  p=@rd
+  ^-  ?
+  &((gte:rd p .~0) (lte:rd p .~1))
+::
 ::  +rwkv-queue: due cards from fresh predictions, capped at max-daily:
 ::  cards with r below target, ascending r; then sm-2 due cards with no
 ::  prediction, in sm-2 order; then, while short of min-daily, the
@@ -2756,12 +2763,19 @@
       %update-review
     =<  abet  update-review:stack-emit
       %set-rwkv-config
-    =.  rwkv.state  config.act
+    =*  cfg  config.act
+    ?.  ?&  (in-unit-interval target.cfg)
+            (lte min-daily.cfg max-daily.cfg)
+            ?~(artifact-hash.cfg & (lte (met 3 u.artifact-hash.cfg) 32))
+        ==
+      (fail-action %invalid %invalid-rwkv-config)
+    =.  rwkv.state  cfg
     =<  abet  update-review:stack-emit
       %rwkv-predictions
-    =/  newest  (ram:revlog-on review-log.state)
-    ~|  'seer-rwkv: stale predictions; head must be the newest revlog id'
-    ?>  ?&(?=(^ newest) =(key.u.newest head.act))
+    ?.  (levy ~(val by r.act) in-unit-interval)
+      (fail-action %invalid %invalid-predictions)
+    ?.  =(`head.act newest-review-id)
+      (fail-action %conflict %stale-predictions)
     =.  predictions.state  `[head.act now.bol r.act]
     =<  abet  update-review:stack-emit
       %import
