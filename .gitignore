@@ -20,3 +20,6 @@ full
 .claude/settings.local.json
 .cursor/
 .grok/
+
+# rwkv-engine build output
+rwkv-engine/target/
