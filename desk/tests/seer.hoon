@@ -507,9 +507,11 @@
 ++  eyre-bowl
   |=  [who=ship eyre-id=@ta]
   ^-  bowl:gall
-  %*  .  bol
+  =/  base=bowl:gall  bol
+  =/  from=path  ?:(=(our.base who) /eyre ~)
+  %*  .  base
     src  who
-    sap  ?:(=(our.bol who) /eyre ~)
+    sap  from
     sup  (~(put by *bitt:gall) ~[/eyre/watch-response/[eyre-id]] who /http-response/[eyre-id])
   ==
 ::  +guest-id: the identity eyre gives a request with no session: the
