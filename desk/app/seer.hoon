@@ -7,15 +7,18 @@
 ::
 /*  htmx-src  %js  /lib/web/htmx-min/js
 ::
+/*  rwkv-loader-src  %js  /lib/web/rwkv-loader/js
+::
 =,  seer-types
 |%
 +$  versioned-state
   $%  [%0 seer-state-0]
-      [%1 seer-state]
+      [%1 seer-state-1]
+      [%2 seer-state]
   ==
 ++  migrate-0-to-1
   |=  old=seer-state-0
-  ^-  seer-state
+  ^-  seer-state-1
   :*  stacks.old
       paths.old
       stack-subs.old
@@ -44,6 +47,69 @@
       pending-show=~
       operating.old
   ==
+++  migrate-1-to-2
+  |=  old=seer-state-1
+  ^-  seer-state
+  :*  stacks.old
+      paths.old
+      stack-subs.old
+      captures.old
+      provenance.old
+      questions.old
+      models.old
+      changes.old
+      logins.old
+      accounts.old
+      catalog-pending.old
+      catalog-active.old
+      catalog-serial.old
+      contexts.old
+      context-count.old
+      evidence.old
+      learning.old
+      shared-context.old
+      shared-manifest-rev.old
+      outstanding-keens.old
+      remote-manifests.old
+      recent-clay.old
+      context-revs.old
+      review-log.old
+      next-review-id.old
+      pending-show.old
+      rwkv=rwkv-default
+      predictions=~
+      operating.old
+  ==
+::  +in-unit-interval: a probability. nan fails both comparisons.
+::
+++  in-unit-interval
+  |=  p=@rd
+  ^-  ?
+  &((gte:rd p .~0) (lte:rd p .~1))
+::
+::  +rwkv-queue: due cards from fresh predictions, capped at max-daily:
+::  cards with r below target, ascending r; then sm-2 due cards with no
+::  prediction, in sm-2 order; then, while short of min-daily, the
+::  lowest-r cards left.
+::
+++  rwkv-queue
+  |=  [cfg=rwkv-config r=(map card-key @rd) cards=(list review) sm2=(list review)]
+  ^-  (list review)
+  =/  scored=(list [rev=review p=@rd])
+    %+  sort
+      %+  murn  cards
+      |=  rev=review
+      =/  p  (~(get by r) `card-key`[who.rev stack.rev item.rev])
+      ?~  p  ~
+      `[rev u.p]
+    |=([a=[rev=review p=@rd] b=[rev=review p=@rd]] (lth:rd p.a p.b))
+  =/  low  |=([rev=review p=@rd] (lth:rd p target.cfg))
+  =/  due=(list review)
+    %+  weld  (turn (skim scored low) head)
+    (skip sm2 |=(rev=review (~(has by r) `card-key`[who.rev stack.rev item.rev])))
+  =/  short  (sub (max min-daily.cfg (lent due)) (lent due))
+  %+  scag  max-daily.cfg
+  (weld due (turn (scag short (skip scored low)) head))
 +$  card  card:agent:gall
 ::
 --
@@ -62,7 +128,7 @@
   ::
   ++  on-init
     ^-  (quip card _this)
-    :_  this(epoch.operating.state now.bol)
+    :_  this(epoch.operating.state now.bol, rwkv.state rwkv-default)
     :~
       [%pass /bind/seer %arvo %e %connect [~ /seer] dap.bol]
       [%pass /bind/seer %arvo %e %connect [~ /apps/seer] dap.bol]
@@ -294,7 +360,7 @@
     =^  more  state  flush:sc
     [(weld cards more) this]
   ::
-  ++  on-save  !>([%1 state])
+  ++  on-save  !>([%2 state])
   ++  on-load
     |=  old=vase
     ^-  (quip card _this)
@@ -302,14 +368,16 @@
     ::  ~ collides with %0, so bare molds are tried before tagged %0
     ::
     =/  new=(unit seer-state)
-      =/  v1  ((soft ,[%1 seer-state]) q.old)
-      ?^  v1  `+.u.v1
-      =/  bare  ((soft seer-state) q.old)
-      ?^  bare  bare
+      =/  v2  ((soft ,[%2 seer-state]) q.old)
+      ?^  v2  `+.u.v2
+      =/  v1  ((soft ,[%1 seer-state-1]) q.old)
+      ?^  v1  `(migrate-1-to-2 +.u.v1)
+      =/  bare  ((soft seer-state-1) q.old)
+      ?^  bare  `(migrate-1-to-2 u.bare)
       =/  bare-0  ((soft seer-state-0) q.old)
-      ?^  bare-0  `(migrate-0-to-1 u.bare-0)
+      ?^  bare-0  `(migrate-1-to-2 (migrate-0-to-1 u.bare-0))
       =/  v0  ((soft ,[%0 seer-state-0]) q.old)
-      ?^  v0  `(migrate-0-to-1 +.u.v0)
+      ?^  v0  `(migrate-1-to-2 (migrate-0-to-1 +.u.v0))
       ~
     ?~  new
       ~|  'seer-state: unrecognized saved state; nuke %seer only as last resort'
@@ -408,9 +476,11 @@
         [%x %mcp %prompts ~]
       ``noun+!>(prompts)
         [%x %review ~]
-      ``noun+!>(all-reviews)
+      ``noun+!>(all-reviews:sc)
         [%x %revlog ~]
       ``noun+!>((tap:revlog-on review-log.state))
+        [%x %rwkv ~]
+      ``json+!>(rwkv-json:sc)
         [%x %all ~]
       ``noun+!>(stacks.state)
         [%x %ai-state ~]
@@ -806,6 +876,9 @@
       [[[~ %js] [%apps %seer %htmx-min ~]] ~]
     %+  respond-payload  eyre-id
     (js-response:gen (as-octs:mimes:html htmx-src))
+      [[[~ %js] [%apps %seer %rwkv-loader ~]] ~]
+    %+  respond-payload  eyre-id
+    (js-response:gen (as-octs:mimes:html rwkv-loader-src))
   ::  the aero ios shell opens its native seer screen when this hint parses.
   ::
       [[[~ %json] [%apps %seer %aero ~]] ~]
@@ -1003,6 +1076,24 @@
       [%review ~]
       ~
     ==
+  ::
+      [[~ [%apps %seer %actions %rwkv-predictions ~]] ~]
+    ::  a background request: answer with the receipt, not a page
+    ::
+    =/  act  (rwkv-predictions-form fields)
+    ?~  act
+      %+  respond-payload  eyre-id
+      (json-status 400 (error-json 'invalid-predictions' 'predictions'))
+    =^  ran  state  (web-command u.act)
+    ?~  ran
+      %+  respond-payload  eyre-id
+      (json-status 400 (error-json 'invalid-operation' 'operation'))
+    :_  state
+    %+  weld  cards.u.ran
+    %+  give-simple-payload:app  eyre-id
+    %+  json-status
+      ?:(=(%ok status.receipt.u.ran) 200 409)
+    (receipt-json:effects receipt.u.ran 32.768)
   ::
       [[~ [%apps %seer %actions %request-change ~]] ~]
     =/  prompt  (form-got fields 'prompt')
@@ -1420,23 +1511,66 @@
 ++  apply-web-action
   |=  [eyre-id=@ta act=action page=page:index notice=(unit @t)]
   ^-  (quip card _state)
-  =/  epoch  (slaw %da (form-got form-fields 'idempotency-epoch'))
-  =/  operation  (form-got form-fields 'operation-id')
-  ?~  epoch  (respond-page eyre-id page `'This page is out of date. Reload it before trying again.')
-  ?.  ?&(!=('' operation) (bounded-text:ev operation 128))
+  =^  ran  state  (web-command act)
+  ?~  ran
     (respond-page eyre-id page `'This page is out of date. Reload it before trying again.')
-  =/  cmd  (make-command u.epoch operation act)
-  =^  action-cards  state  (apply-command(operator-authorized %.y) cmd)
-  =/  receipt  (operation-receipt-at:effects operating.state u.epoch operation `digest.cmd)
+  =/  receipt  receipt.u.ran
   =.  notice
     ?:  =(%ok status.receipt)
       ?:  =(%no-change reason.receipt)  `'No change was needed.'
       notice
     `(operation-outcome receipt)
   :_  (stamp-shown page)
-  %+  weld  action-cards
+  %+  weld  cards.u.ran
   %+  give-simple-payload:app  eyre-id
   (render-action-page page notice)
+::
+::  +web-command: apply one browser action under the form's operation
+::  envelope; ~ when the envelope is malformed
+::
+++  web-command
+  |=  act=action
+  ^-  [(unit [cards=(list card) receipt=operation-receipt]) _state]
+  =/  epoch  (slaw %da (form-got form-fields 'idempotency-epoch'))
+  =/  operation  (form-got form-fields 'operation-id')
+  ?~  epoch  [~ state]
+  ?.  ?&(!=('' operation) (bounded-text:ev operation 128))  [~ state]
+  =/  cmd  (make-command u.epoch operation act)
+  =^  cards  state  (apply-command(operator-authorized %.y) cmd)
+  :_  state
+  `[cards (operation-receipt-at:effects operating.state u.epoch operation `digest.cmd)]
+::
+::  +rwkv-predictions-form: the loader's batch. .predictions is a JSON
+::  array, so any card key round-trips; one bad row rejects the batch.
+::
+++  rwkv-predictions-form
+  |=  fields=(map @t @t)
+  ^-  (unit action)
+  =/  top  (rush (form-got fields 'head') dem)
+  =/  artifact  (rush (form-got fields 'artifact') hex)
+  =/  rows
+    %+  biff  (de:json:html (form-got fields 'predictions'))
+    =,  dejs-soft:format
+    (ar (ot ~[owner+(su ;~(pfix sig fed:ag)) stack+so item+so ppm+ni]))
+  ?~  top  ~
+  ?~  artifact  ~
+  ?~  rows  ~
+  =/  r=(map card-key @rd)
+    %-  malt
+    %+  turn  u.rows
+    |=  [who=@p stak=@t name=@t ppm=@ud]
+    :-  `card-key`[who (@tas stak) (@tas name)]
+    (div:rd (sun:rd ppm) (sun:rd 1.000.000))
+  ::  a repeated card would silently lose a row in the map
+  ::
+  ?.  =(~(wyt by r) (lent u.rows))  ~
+  `[%rwkv-predictions u.top u.artifact r]
+::
+++  json-status
+  |=  [status=@ud body=json]
+  ^-  simple-payload:http
+  =/  payload  (json-response:gen body)
+  payload(status-code.response-header status)
 ::
 ++  render-action-page
   |=  [page=page:index notice=(unit @t)]
@@ -1535,6 +1669,10 @@
     operating.state
     learning.state
     account-views
+    ?&  enabled.rwkv.state
+        ?=(^ artifact-url.rwkv.state)
+        ?=(^ artifact-hash.rwkv.state)
+    ==
   ==
 ::
 ++  get-arg
@@ -2628,6 +2766,31 @@
     %.  [item answer.act]
     %~  update-learn  stack-emit  stk
       %update-review
+    =<  abet  update-review:stack-emit
+      %set-rwkv-config
+    =*  cfg  config.act
+    ?.  ?&  (in-unit-interval target.cfg)
+            (lte min-daily.cfg max-daily.cfg)
+            ?~(artifact-hash.cfg & (lte (met 3 u.artifact-hash.cfg) 32))
+        ==
+      (fail-action %invalid %invalid-rwkv-config)
+    ::  scores belong to one artifact; a new url or hash drops them
+    ::
+    =?  predictions.state
+        ?|  !=(artifact-url.cfg artifact-url.rwkv.state)
+            !=(artifact-hash.cfg artifact-hash.rwkv.state)
+        ==
+      ~
+    =.  rwkv.state  cfg
+    =<  abet  update-review:stack-emit
+      %rwkv-predictions
+    ?.  (levy ~(val by r.act) in-unit-interval)
+      (fail-action %invalid %invalid-predictions)
+    ?.  =(`head.act newest-review-id)
+      (fail-action %conflict %stale-predictions)
+    ?.  =(`artifact.act artifact-hash.rwkv.state)
+      (fail-action %conflict %stale-artifact)
+    =.  predictions.state  `[head.act artifact.act now.bol r.act]
     =<  abet  update-review:stack-emit
       %import
     =/  =wire  /import/(scot %p who.act)/[stack.act]
@@ -5096,6 +5259,12 @@
     ?~  item
       ~&  peer+"missing {(spud t.t.wire)} item scheduled for review!"
       [~ state]
+    ::  an answer since this timer was set scheduled a different review;
+    ::  only the timer for the newest answer admits the card
+    ::
+    =/  due  (bind last-review.u.item |=(at=@da (add at interval.learn.u.item)))
+    ?.  &(?=(^ due) =(due (slaw %da i.t.t.t.wire)))
+      [~ state]
     =<  abet
     %.  (need item)
     %~  add-review-item  stack-emit  (~(got by stacks) i.t.wire)
@@ -5192,7 +5361,80 @@
   ^-  stack
   (create-stack:effects info items)
 ::
+::  +all-reviews: the review queue. rwkv order while +live-predictions
+::  has scores, else sm-2.
+::
 ++  all-reviews
+  ^-  (list review)
+  =/  r  live-predictions
+  ?~  r  sm2-reviews
+  (rwkv-queue rwkv.state u.r all-cards sm2-reviews)
+::
+::  +live-predictions: the stored scores while rwkv is on and they are
+::  fresh: made at the newest revlog head, by the configured artifact,
+::  less than +rwkv-max-age ago. the queue and the /x/rwkv scry both
+::  read freshness here.
+::
+++  live-predictions
+  ^-  (unit (map card-key @rd))
+  =/  pred  predictions.state
+  ?~  pred  ~
+  ?.  ?&  enabled.rwkv.state
+          =(`head.u.pred newest-review-id)
+          =(`artifact.u.pred artifact-hash.rwkv.state)
+          (lth now.bol (add computed-at.u.pred rwkv-max-age))
+      ==
+    ~
+  `r.u.pred
+::
+++  newest-review-id
+  ^-  (unit @ud)
+  =/  newest  (ram:revlog-on review-log.state)
+  ?~(newest ~ `key.u.newest)
+::
+++  all-cards
+  ^-  (list review)
+  %-  zing
+  %+  turn  ~(val by stacks)
+  |=  =stack
+  %+  turn  ~(val by items.stack)
+  |=  =item  [author.content.item name.stack name.item]
+::
+::  +rwkv-json: what the browser loader needs to run the engine.
+::  probabilities cross the boundary as integer parts per million.
+::
+++  rwkv-json
+  ^-  json
+  =,  enjs:format
+  =/  cfg  rwkv.state
+  =/  newest  newest-review-id
+  %-  pairs
+  :~  ['enabled' [%b enabled.cfg]]
+      ['target_ppm' (numb (abs:si (need (toi:rd (mul:rd target.cfg (sun:rd 1.000.000))))))]
+      ['max_daily' (numb max-daily.cfg)]
+      ['min_daily' (numb min-daily.cfg)]
+      ['artifact_url' ?~(artifact-url.cfg ~ [%s u.artifact-url.cfg])]
+      ['artifact_hash' ?~(artifact-hash.cfg ~ [%s (crip ((x-co:co 64) u.artifact-hash.cfg))])]
+      ['head' ?~(newest ~ (numb u.newest))]
+      ['fresh' [%b ?=(^ live-predictions)]]
+      ['idempotency_epoch' [%s (scot %da epoch.operating.state)]]
+      :-  'revlog'
+      :-  %a
+      %+  turn  (tap:revlog-on review-log.state)
+      |=  [id=@ud ev=review-event]
+      %-  pairs
+      :~  ['id' (numb id)]
+          ['owner' [%s (scot %p owner.key.ev)]]
+          ['stack' [%s stack.key.ev]]
+          ['item' [%s item.key.ev]]
+          ['grade' [%s grade.ev]]
+          ['kind' [%s kind.ev]]
+          ['shown_at' (time shown-at.ev)]
+          ['answered_at' (time answered-at.ev)]
+      ==
+  ==
+::
+++  sm2-reviews
   ^-  (list review)
   %-  zing
   %+  turn  ~(val by stacks)

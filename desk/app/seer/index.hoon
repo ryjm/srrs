@@ -123,6 +123,7 @@
           control=agent-state
           learning=learning-state
           accounts=(map ai-provider account-view)
+          loader=?
       ==
   ^-  manx
   =/  stack-count=@ud  (lent ~(tap by stacks))
@@ -4670,6 +4671,7 @@
     ;section.review-session
       =data-review     ""
       =data-remaining  "{<total>}"
+      ;*  rwkv-loader
       ;header.session-bar
         ;h1.session-title: Review
         ;p.session-tally
@@ -4687,6 +4689,14 @@
       ==
     ==
   ::
+  ::  +rwkv-loader: the browser rwkv engine, only when an artifact is set
+  ::
+  ++  rwkv-loader
+    ^-  marl
+    ?.  loader  ~
+    :~  ;script(src "/apps/seer/rwkv-loader.js");
+    ==
+  ::
   ++  review-empty
     ^-  manx
     =/  fresh-copy=tape
@@ -4702,6 +4712,7 @@
       =hx-target       "#seer-app"
       =hx-select       "#seer-app"
       =hx-swap         "outerHTML"
+      ;*  rwkv-loader
       ;header.session-bar
         ;h1.session-title: Review
       ==

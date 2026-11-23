@@ -418,6 +418,322 @@
     (expect-eq !>(`(list (pair @ud review-event))`~) !>(log))
   ==
 ::
+::  on-load: a [%1 ...] save keeps its stacks and starts with rwkv off.
+::
+++  test-on-load-upgrades-v1-state
+  ^-  tang
+  =/  core  ag
+  =.  core  (do core [%new-stack %s1 'Stack one' ~])
+  =.  core
+    %+  do  core
+    :*  %new-item  ~zod  ~zod  %s1  %c1
+        'Card'  *perm-config  'front'  'back'
+    ==
+  =/  before=stack  (need (peek-stack core %s1))
+  =/  old=seer-state-1
+    %*  .  *seer-state-1
+      stacks  (my [%s1 before]~)
+    ==
+  =.  core  +:(on-load:core !>([%1 old]))
+  =/  after=stack  (need (peek-stack core %s1))
+  =/  cfg  (peek-rwkv core)
+  =/  saved=*  q:on-save:core
+  ;:  weld
+    (expect-eq !>(items.before) !>(items.after))
+    (expect-eq !>(review-items.before) !>(review-items.after))
+    (expect-eq !>(b+%.n) !>((json-field cfg 'enabled')))
+    (expect-eq !>(n+'900000') !>((json-field cfg 'target_ppm')))
+    (expect-eq !>(n+'200') !>((json-field cfg 'max_daily')))
+    (expect-eq !>(%.y) !>(?=([%2 *] saved)))
+  ==
+::
+::  rwkv: fixtures and queue scheduling
+::
+++  peek-queue
+  |=  core=agent:gall
+  ^-  (list review)
+  =/  res  (on-peek:core /x/review)
+  ?>  ?=([~ ~ *] res)
+  (need ((soft (list review)) q.q.u.u.res))
+++  peek-rwkv
+  |=  core=agent:gall
+  ^-  json
+  =/  res  (on-peek:core /x/rwkv)
+  ?>  ?=([~ ~ *] res)
+  (need ((soft json) q.q.u.u.res))
+::  +rwkv-deck: c1..c5 due under sm-2, then c1 answered, so revlog id 0
+::  is the newest and the sm-2 queue is c2..c5
+::
+++  rwkv-deck
+  ^-  agent:gall
+  =/  core  (do ag [%new-stack %s1 'Stack one' ~])
+  =/  names=(list @tas)  ~[%c1 %c2 %c3 %c4 %c5]
+  |-
+  ?~  names  (do core [%answered-item ~zod %s1 %c1 %good])
+  %=  $
+    names  t.names
+    core   (do core [%new-item ~zod ~zod %s1 i.names 'Card' *perm-config 'front' 'back'])
+  ==
+::  +pinned-artifact: the artifact-hash +rwkv-on pins and +predict cites
+::
+++  pinned-artifact  0xabcd
+++  predict
+  |=  [top=@ud rows=(list [@tas @rd])]
+  ^-  action
+  :^  %rwkv-predictions  top  pinned-artifact
+  %-  malt
+  (turn rows |=([item=@tas p=@rd] [`card-key`[~zod %s1 item] p]))
+++  card-in
+  |=  item=@tas
+  ^-  review
+  [~zod %s1 item]
+::  +rwkv-on: default config, enabled, pinned to +pinned-artifact, with a
+::  queue cap
+::
+++  rwkv-on
+  |=  max=@ud
+  ^-  rwkv-config
+  =/  cfg  rwkv-default
+  %=  cfg
+    enabled        %.y
+    max-daily      max
+    artifact-url   `'https://cdn.example/m.json'
+    artifact-hash  `pinned-artifact
+  ==
+::
+++  test-rwkv-disabled-keeps-sm2-queue
+  ^-  tang
+  =/  core  rwkv-deck
+  =/  sm2  (peek-queue core)
+  =/  cfg  (rwkv-on 200)
+  =.  core  (do core [%set-rwkv-config cfg(enabled %.n)])
+  =.  core  (do core (predict 0 ~[[%c2 .~0.1] [%c3 .~0.2]]))
+  ;:  weld
+    (expect-eq !>(4) !>((lent sm2)))
+    (expect-eq !>(sm2) !>((peek-queue core)))
+  ==
+::
+++  test-rwkv-fresh-orders-by-retrievability
+  ^-  tang
+  =/  core  rwkv-deck
+  =.  core  (do core [%set-rwkv-config (rwkv-on 2)])
+  =.  core
+    (do core (predict 0 ~[[%c1 .~0.5] [%c2 .~0.95] [%c3 .~0.2] [%c4 .~0.7]]))
+  =/  two  (peek-queue core)
+  =.  core  (do core [%set-rwkv-config (rwkv-on 3)])
+  =/  three  (peek-queue core)
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  uncapped  (peek-queue core)
+  ;:  weld
+    (expect-eq !>(b+%.y) !>((json-field (peek-rwkv core) 'fresh')))
+    ::  c3, c1, c4 below target, ascending; then unpredicted c5 from sm-2.
+    ::  max-daily caps the whole queue, fallback included.
+    (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1)]) !>(two))
+    (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1) (card-in %c4)]) !>(three))
+    (expect-eq !>(`(list review)`~[(card-in %c3) (card-in %c1) (card-in %c4) (card-in %c5)]) !>(uncapped))
+  ==
+::
+::  min-daily counts unpredicted sm-2 cards before padding with the
+::  lowest-r cards above target.
+::
+++  test-rwkv-floor-counts-fallback-first
+  ^-  tang
+  =/  core  rwkv-deck
+  =/  sm2  (peek-queue core)
+  =/  cfg  (rwkv-on 200)
+  =.  core  (do core [%set-rwkv-config cfg(min-daily 3)])
+  =.  core  (do core (predict 0 ~[[%c1 .~0.95] [%c2 .~0.99] [%c3 .~0.97]]))
+  =/  floor-three  (peek-queue core)
+  =.  core  (do core [%set-rwkv-config cfg(min-daily 4)])
+  =/  floor-four  (peek-queue core)
+  =/  unpredicted  (skip sm2 |=(rev=review ?=(?(%c2 %c3) item.rev)))
+  ;:  weld
+    (expect-eq !>(2) !>((lent unpredicted)))
+    (expect-eq !>((weld unpredicted ~[(card-in %c1)])) !>(floor-three))
+    (expect-eq !>((weld unpredicted ~[(card-in %c1) (card-in %c3)])) !>(floor-four))
+  ==
+::
+++  test-rwkv-stale-predictions-fall-back
+  ^-  tang
+  =/  core  rwkv-deck
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  sm2  (peek-queue core)
+  =.  core  (do core (predict 5 ~[[%c1 .~0.2]]))
+  =/  rejected  (peek-queue core)
+  =/  fresh-rejected  (json-field (peek-rwkv core) 'fresh')
+  =.  core  (do core (predict 0 ~[[%c1 .~0.2]]))
+  =/  accepted  (peek-queue core)
+  ::  a new answer makes the stored predictions stale
+  =.  core  (do core [%answered-item ~zod %s1 %c2 %good])
+  =/  later  (peek-queue core)
+  ;:  weld
+    (expect-eq !>(sm2) !>(rejected))
+    (expect-eq !>(b+%.n) !>(fresh-rejected))
+    (expect-eq !>(`(list review)`[(card-in %c1) sm2]) !>(accepted))
+    (expect-eq !>(b+%.n) !>((json-field (peek-rwkv core) 'fresh')))
+    (expect-eq !>((skip sm2 |=(rev=review =(%c2 item.rev)))) !>(later))
+  ==
+::
+::  predictions expire by ship time: with no new answer, sm-2 due cards
+::  held back by high scores come back once the scores are too old.
+::
+++  test-rwkv-predictions-expire-by-time
+  ^-  tang
+  =/  core  rwkv-deck
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  sm2  (peek-queue core)
+  =.  core
+    (do core (predict 0 ~[[%c2 .~0.99] [%c3 .~0.99] [%c4 .~0.99] [%c5 .~0.99]]))
+  =/  held  (peek-queue core)
+  =.  core  (at-time core (add fixed-now (sub rwkv-max-age ~s1)))
+  =/  still  (peek-queue core)
+  =.  core  (at-time core (add fixed-now rwkv-max-age))
+  ;:  weld
+    (expect-eq !>(4) !>((lent sm2)))
+    (expect-eq !>(`(list review)`~) !>(held))
+    (expect-eq !>(`(list review)`~) !>(still))
+    (expect-eq !>(sm2) !>((peek-queue core)))
+    (expect-eq !>(b+%.n) !>((json-field (peek-rwkv core) 'fresh')))
+  ==
+::
+::  +post-predictions: the loader's POST through the real HTTP decoder;
+::  the response status and the next core
+::
+++  post-predictions
+  |=  [core=agent:gall op=@t top=@ud rows=@t]
+  ^-  [@ud agent:gall]
+  =/  body=@t
+    %-  crip
+    ;:  weld
+      "idempotency-epoch="  (trip (peek-epoch core))
+      "&operation-id="  (trip op)
+      "&head="  ((d-co:co 1) top)
+      "&artifact="  ((x-co:co 64) pinned-artifact)
+      "&predictions="  (en-urlt:html (trip rows))
+    ==
+  =/  request=inbound-request:eyre
+    %*  .  *inbound-request:eyre
+      authenticated  %.y
+      request  [%'POST' '/apps/seer/actions/rwkv-predictions' ~ `[(met 3 body) body]]
+    ==
+  =/  shell  ~(. seer-agent %*(. bol sap /eyre))
+  =/  browser  +:(on-load:shell on-save:core)
+  =/  res  (on-poke:browser %handle-http-request !>(['rwkv' request]))
+  =/  codes=(list @ud)
+    %+  murn  -.res
+    |=  =card:agent:gall
+    ?.  ?=([%give %fact * %http-response-header *] card)  ~
+    =/  header  !<(response-header:http q.cage.p.card)
+    `status-code.header
+  ?>  ?=([@ ~] codes)
+  [i.codes +.res]
+::
+::  the predictions POST decodes any card key, including ids the
+::  importer makes, and rejects a malformed batch whole (400) or a stale
+::  head (409) without touching the stored predictions
+::
+++  test-rwkv-predictions-post
+  ^-  tang
+  =/  imported  (@tas '0v5-q3les-klmn1-ljt4k')
+  =/  core  rwkv-deck
+  =.  core
+    (do core [%new-item ~zod ~zod %s1 imported 'Card' *perm-config 'front' 'back'])
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  sm2  (peek-queue core)
+  =/  good=@t
+    %-  crip
+    ;:  weld
+      "[\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"0v5-q3les-klmn1-ljt4k\",\"ppm\":100000},"
+      "\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c2\",\"ppm\":200000}]"
+    ==
+  =/  bad=@t
+    %-  crip
+    ;:  weld
+      "[\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c3\",\"ppm\":1},"
+      "\{\"owner\":\"zod\",\"stack\":\"s1\",\"item\":\"c4\",\"ppm\":2}]"
+    ==
+  =/  twice=@t
+    %-  crip
+    ;:  weld
+      "[\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c3\",\"ppm\":1},"
+      "\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c3\",\"ppm\":2}]"
+    ==
+  =^  good-status  core  (post-predictions core 'good' 0 good)
+  =/  ranked  (peek-queue core)
+  =^  bad-status  core  (post-predictions core 'bad' 0 bad)
+  =/  after-bad  (peek-queue core)
+  =^  twice-status  core  (post-predictions core 'twice' 0 twice)
+  =^  stale-status  core  (post-predictions core 'stale' 5 good)
+  =/  rest  (skip sm2 |=(rev=review |(=(%c2 item.rev) =(imported item.rev))))
+  ;:  weld
+    (expect-eq !>(200) !>(good-status))
+    (expect-eq !>(`(list review)`[(card-in imported) (card-in %c2) rest]) !>(ranked))
+    (expect-eq !>(400) !>(bad-status))
+    (expect-eq !>(ranked) !>(after-bad))
+    (expect-eq !>(400) !>(twice-status))
+    (expect-eq !>(409) !>(stale-status))
+    (expect-eq !>(ranked) !>((peek-queue core)))
+  ==
+::
+::  the poke boundary rejects bad config and scores before replacing
+::  what is stored; the scry still renders afterwards
+::
+++  test-rwkv-rejects-invalid-input
+  ^-  tang
+  =/  core  rwkv-deck
+  =/  cfg  (rwkv-on 200)
+  =.  core  (do core [%set-rwkv-config cfg])
+  =.  core  (do core (predict 0 ~[[%c2 .~0.1]]))
+  =/  queue  (peek-queue core)
+  =/  status
+    |=  act=action
+    ^-  @t
+    =/  cmd  (command-for core act)
+    (json-text (peek-receipt (do-command core cmd) cmd) 'status')
+  =/  after-nan  (do core [%set-rwkv-config cfg(target .~nan)])
+  =/  after-big  (do core (predict 0 ~[[%c3 .~1.25]]))
+  ;:  weld
+    (expect-eq !>('invalid') !>((status [%set-rwkv-config cfg(target .~nan)])))
+    (expect-eq !>('invalid') !>((status [%set-rwkv-config cfg(target .~1.5)])))
+    (expect-eq !>('invalid') !>((status [%set-rwkv-config cfg(min-daily 3, max-daily 2)])))
+    (expect-eq !>('invalid') !>((status [%set-rwkv-config cfg(artifact-hash `(bex 256))])))
+    (expect-eq !>('invalid') !>((status (predict 0 ~[[%c3 .~1.25]]))))
+    (expect-eq !>('invalid') !>((status (predict 0 ~[[%c3 .~nan]]))))
+    (expect-eq !>('conflict') !>((status (predict 5 ~[[%c3 .~0.1]]))))
+    (expect-eq !>('ok') !>((status [%set-rwkv-config cfg(target .~1, min-daily 200)])))
+    (expect-eq !>(n+'900000') !>((json-field (peek-rwkv after-nan) 'target_ppm')))
+    (expect-eq !>(queue) !>((peek-queue after-nan)))
+    (expect-eq !>(queue) !>((peek-queue after-big)))
+  ==
+::
+::  scores belong to the pinned artifact: a new url or hash drops them,
+::  a target-only change keeps them, and a batch citing another hash is
+::  refused
+::
+++  test-rwkv-artifact-change-invalidates
+  ^-  tang
+  =/  core  rwkv-deck
+  =/  cfg  (rwkv-on 200)
+  =.  core  (do core [%set-rwkv-config cfg])
+  =/  sm2  (peek-queue core)
+  =.  core
+    (do core (predict 0 ~[[%c2 .~0.99] [%c3 .~0.99] [%c4 .~0.99] [%c5 .~0.99]]))
+  =/  retargeted  (do core [%set-rwkv-config cfg(target .~0.5)])
+  =/  moved  (do core [%set-rwkv-config cfg(artifact-url `'https://cdn.example/n.json')])
+  =/  repinned  (do core [%set-rwkv-config cfg(artifact-hash `0xbeef)])
+  =/  old-pin  (command-for repinned (predict 0 ~[[%c2 .~0.99]]))
+  =/  refused  (do-command repinned old-pin)
+  ;:  weld
+    (expect-eq !>(`(list review)`~) !>((peek-queue core)))
+    (expect-eq !>(`(list review)`~) !>((peek-queue retargeted)))
+    (expect-eq !>(b+%.y) !>((json-field (peek-rwkv retargeted) 'fresh')))
+    (expect-eq !>(sm2) !>((peek-queue moved)))
+    (expect-eq !>(b+%.n) !>((json-field (peek-rwkv moved) 'fresh')))
+    (expect-eq !>(sm2) !>((peek-queue repinned)))
+    (expect-eq !>('conflict') !>((json-text (peek-receipt refused old-pin) 'status')))
+    (expect-eq !>(sm2) !>((peek-queue refused)))
+  ==
+::
 ::  sm-2: box walks the fixed intervals on %good and resets on %again.
 ::
 ++  test-sm2-scheduling
@@ -448,6 +764,30 @@
     (expect-eq !>(~d1) !>(`@dr`interval.l2))
     (expect-eq !>(0) !>(`@`box.l3))
     (expect-eq !>(~s5) !>(`@dr`interval.l3))
+  ==
+::
+::  an early second answer supersedes the first answer's timer: the
+::  older wake leaves the card out of the sm-2 queue; the newer one
+::  admits it
+::
+++  test-sm2-superseded-wake-ignored
+  ^-  tang
+  =/  core  ag
+  =.  core  (do core [%new-stack %s1 'Stack one' ~])
+  =.  core
+    (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =.  core  (do core [%answered-item ~zod %s1 %c1 %good])
+  =/  first=wire  /review-schedule/s1/c1/(scot %da (add fixed-now ~m15))
+  =/  later  (add fixed-now ~m1)
+  =.  core  (at-time core later)
+  =.  core  (do core [%answered-item ~zod %s1 %c1 %good])
+  =/  second=wire  /review-schedule/s1/c1/(scot %da (add later ~d1))
+  =/  stale  +:(arvo core first wake)
+  =/  due  +:(arvo core second wake)
+  ;:  weld
+    (expect-eq !>(`(list review)`~) !>((peek-queue core)))
+    (expect-eq !>(`(list review)`~) !>((peek-queue stale)))
+    (expect-eq !>(`(list review)`~[(card-in %c1)]) !>((peek-queue due)))
   ==
 ::
 ::  Each answer appends one ordered review event; SM-2 state is unchanged.
@@ -1762,11 +2102,11 @@
   =.  core  (do core [%add-context-source %remote [%stack ~nec %orphan ~] %note 'Remote' '' 'Remote evidence'])
   =/  before  (peek-ai core)
   =/  source  (~(got by contexts.before) %orphan)
-  ::  Preserve the current saved vase/mold ([%1 seer-state]); remove the
+  ::  Preserve the current saved vase/mold ([%2 seer-state]); remove the
   ::  first state field's parent
   ::  without invoking deletion. This is not an old-state migration fixture.
   =/  saved  on-save:core
-  =.  saved  saved(q [%1 (~(del by stacks.before) %orphan) +>.q.saved])
+  =.  saved  saved(q [%2 (~(del by stacks.before) %orphan) +>.q.saved])
   =.  core  +:(on-load:ag saved)
   =.  core  (do core [%archive-orphan-contexts ~])
   =/  swept  (peek-ai core)

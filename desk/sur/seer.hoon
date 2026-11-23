@@ -85,6 +85,8 @@
       [%purge-evidence snapshots=(set @ux)]
       [%collect-retained ~]
       [%retire-operation-epoch ~]
+      [%set-rwkv-config config=rwkv-config]
+      [%rwkv-predictions head=@ud artifact=@ux r=(map card-key @rd)]
       $:  %add-context-source
           id=@tas
           scope=context-scope
@@ -866,9 +868,63 @@
       deck=@tas
       preset=@tas
   ==
-::  agent state: seer-state-0 is the pre-revlog mold, kept for on-load migration
+::  rwkv scheduling: the browser computes retrievability from the revlog
+::  and pokes it back. predictions are fresh only while .head is the
+::  newest revlog id, .artifact is the configured artifact-hash, and
+::  .computed-at, the ship's time at receipt, is less than +rwkv-max-age
+::  ago; otherwise the sm-2 queue applies.
+::
++$  rwkv-config
+  $:  enabled=?
+      target=@rd
+      max-daily=@ud
+      min-daily=@ud
+      artifact-url=(unit @t)
+      artifact-hash=(unit @ux)
+  ==
+++  rwkv-default  `rwkv-config`[%.n .~0.9 200 0 ~ ~]
+++  rwkv-max-age  ~m15
++$  rwkv-predictions
+  $:  head=@ud
+      artifact=@ux
+      computed-at=@da
+      r=(map card-key @rd)
+  ==
+::  agent state: seer-state-0 is the pre-revlog mold and seer-state-1 the
+::  pre-rwkv mold, kept for on-load migration
 ::
 +$  seer-state
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+      accounts=(map ai-provider provider-account)
+      catalog-pending=(set ai-provider)
+      catalog-active=(map ai-provider [serial=@ud deadline=@da])
+      catalog-serial=@ud
+      contexts=(map @tas context-source)
+      context-count=@ud
+      evidence=evidence-state
+      learning=learning-state
+      shared-context=(map path shared-entry)
+      shared-manifest-rev=@ud
+      outstanding-keens=(map @tas keen-track)
+      remote-manifests=(map @p remote-manifest)
+      recent-clay=(list @t)
+      context-revs=(map @tas @ud)
+      review-log=revlog
+      next-review-id=@ud
+      pending-show=(map card-key @da)
+      rwkv=rwkv-config
+      predictions=(unit rwkv-predictions)
+      operating=agent-state
+  ==
++$  seer-state-1
   $:  stacks=(map @tas stack)
       paths=(list path)
       stack-subs=(map [ship @tas] stack)
