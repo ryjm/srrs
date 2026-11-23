@@ -497,6 +497,28 @@
 ::
 ::  rwkv artifact store over eyre
 ::
+::  +eyre-bowl: the bowl gall gives a deal eyre makes for request
+::  .eyre-id as identity .who. eyre deals as this ship only for an
+::  authenticated session; gall keeps the provenance /eyre only for a
+::  deal from this ship and leaves it empty for any other source. eyre
+::  watches for the response before it pokes, and gall records that
+::  watch in .sup under the duct eyre opened
+::
+++  eyre-bowl
+  |=  [who=ship eyre-id=@ta]
+  ^-  bowl:gall
+  %*  .  bol
+    src  who
+    sap  ?:(=(our.bol who) /eyre ~)
+    sup  (~(put by *bitt:gall) ~[/eyre/watch-response/[eyre-id]] who /http-response/[eyre-id])
+  ==
+::  +guest-id: the identity eyre gives a request with no session: the
+::  low bytes of our scrambled name under 128 random bits, never ours
+::
+++  guest-id
+  ^-  ship
+  (end 3^16 (cat 3 (end 3^8 (fein:ob ~zod)) (~(raw og 0v1) 128)))
+::
 ::  +send: one request as eyre pokes it, from .who, authenticated or
 ::  not; the response eyre would send and the next core
 ::
@@ -506,7 +528,7 @@
           [method=method:http url=@t headers=header-list:http body=(unit octs)]
       ==
   ^-  [simple-payload:http agent:gall]
-  =/  shell  ~(. seer-agent %*(. bol sap /eyre, src src.who))
+  =/  shell  ~(. seer-agent (eyre-bowl src.who 'blob'))
   =/  agent  +:(on-load:shell on-save:core)
   =/  request=inbound-request:eyre
     %*(. *inbound-request:eyre authenticated authed.who, request [method url headers body])
@@ -520,8 +542,9 @@
   :_  +.res
   [!<(response-header:http q.i.facts) !<((unit octs) q.i.t.facts)]
 ++  owner     [~zod %.y]
-++  guest     [~zod %.n]
-++  stranger  [~nec %.y]
+++  guest     [guest-id %.n]
+::  another ship signed in through eauth: eyre deals as that ship
+++  stranger  [~nec %.n]
 ++  sha-hex
   |=  data=octs
   ^-  @t
@@ -650,18 +673,48 @@
     (expect-eq !>(307) !>((status page)))
   ==
 ::
-::  +agent-via: .core reloaded under a bowl whose request comes from .who
-::  by way of .via, the provenance gall reports
+::  +agent-via: .core reloaded under .bowl
 ::
 ++  agent-via
-  |=  [core=agent:gall who=ship via=path]
+  |=  [core=agent:gall =bowl:gall]
   ^-  agent:gall
-  +:(on-load:~(. seer-agent %*(. bol src who, sap via)) on-save:core)
+  +:(on-load:~(. seer-agent bowl) on-save:core)
 ::
-::  only eyre carries http: a local agent poking an authenticated request
-::  as this ship, or watching a response path, is refused. eyre's own
-::  watch is accepted whichever identity it carries, so a guest still
-::  gets its 403
+::  a request with no session, as eyre deals it: as a guest identity
+::  that is not ours, so gall delivers it with empty provenance. the
+::  pages answer with the login redirect, and the rwkv store with 403
+::  and no body whether the blob is stored or not; another ship signed
+::  in through eauth is answered the same
+::
+++  test-guest-requests-from-eyre
+  ^-  tang
+  =/  url  (blob-url engine-octs)
+  =/  core  ag
+  =^  stored   core  (put-blob core owner url 'application/wasm' engine-octs)
+  =^  root     core  (get-blob core guest '/apps/seer')
+  =^  slash    core  (get-blob core guest '/apps/seer/')
+  =^  blob     core  (get-blob core guest url)
+  =^  short    core  (get-blob core guest '/apps/seer/rwkv/00')
+  =^  visitor  core  (get-blob core stranger '/apps/seer')
+  =^  fetch    core  (get-blob core stranger url)
+  =^  served   core  (get-blob core owner url)
+  ;:  weld
+    (expect-eq !>(201) !>((status stored)))
+    (expect-eq !>(307) !>((status root)))
+    (expect-eq !>(307) !>((status slash)))
+    (expect-eq !>([[403 ~] ~]) !>(blob))
+    (expect-eq !>([[403 ~] ~]) !>(short))
+    (expect-eq !>(307) !>((status visitor)))
+    (expect-eq !>([[403 ~] ~]) !>(fetch))
+    (expect-eq !>(`(unit octs)``engine-octs) !>(data.served))
+  ==
+::
+::  only eyre carries http, for a guest as for the owner. a local agent
+::  poking a request or watching a response is refused, also on the id of
+::  a live request eyre is watching. so is another ship over ames, whose
+::  deal gall delivers with the same empty provenance as a guest's but
+::  on its own duct, and a guest's deal for a request eyre is not
+::  watching as that guest
 ::
 ++  test-http-only-from-eyre
   ^-  tang
@@ -671,20 +724,37 @@
   =/  request=inbound-request:eyre
     %*(. *inbound-request:eyre authenticated %.y, request [%'GET' url ~ ~])
   =/  poke
-    |=  via=path
-    |.((on-poke:(agent-via core ~zod via) %handle-http-request !>(['blob' request])))
+    |=  =bowl:gall
+    |.((on-poke:(agent-via core bowl) %handle-http-request !>(['blob' request])))
   =/  watch
-    |=  [who=ship via=path]
-    |.((on-watch:(agent-via core who via) /http-response/blob))
+    |=  =bowl:gall
+    |.((on-watch:(agent-via core bowl) /http-response/blob))
+  =/  remote=bowl:gall
+    %*  .  (eyre-bowl ~nec 'blob')
+      sup  (~(put by *bitt:gall) ~[/gall/sys/req/[(scot %p ~nec)]/seer] ~nec /http-response/blob)
+    ==
+  =/  hood=bowl:gall      %*(. bol sap /gall/hood)
+  =/  cli=bowl:gall       %*(. (eyre-bowl ~zod 'blob') sap /gall/seer-cli)
+  =/  unwatched=bowl:gall  %*(. bol src guest-id, sap ~)
+  =/  elsewhere=bowl:gall  (eyre-bowl guest-id 'other')
   ;:  weld
     (expect-eq !>(201) !>((status stored)))
-    (expect-fail (poke /gall/hood))
-    (expect-fail (poke /gall/seer-cli))
-    (expect-success (poke /eyre))
-    (expect-fail (watch ~zod /gall/hood))
-    (expect-fail (watch ~nec /gall/seer))
-    (expect-success (watch ~zod /eyre))
-    (expect-success (watch ~nec /eyre))
+    (expect-success (poke (eyre-bowl ~zod 'blob')))
+    (expect-success (poke (eyre-bowl guest-id 'blob')))
+    (expect-success (poke (eyre-bowl ~nec 'blob')))
+    (expect-success (watch (eyre-bowl ~zod 'blob')))
+    (expect-success (watch (eyre-bowl guest-id 'blob')))
+    (expect-success (watch (eyre-bowl ~nec 'blob')))
+    (expect-fail (poke hood))
+    (expect-fail (poke cli))
+    (expect-fail (poke remote))
+    (expect-fail (poke unwatched))
+    (expect-fail (poke elsewhere))
+    (expect-fail (watch hood))
+    (expect-fail (watch cli))
+    (expect-fail (watch remote))
+    (expect-fail (watch unwatched))
+    (expect-fail (watch elsewhere))
   ==
 ::
 ::  all blobs together stay within +rwkv-store-cap: an upload past it is
