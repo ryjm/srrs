@@ -176,12 +176,14 @@ The ship can serve the artifact itself. %seer keeps an owner-only store of files
 | --- | --- | --- | --- |
 | `PUT` | `201` | | stored |
 | `PUT` | `204` | | already stored |
-| `PUT` | `400` | `{"code": "invalid-sha256"}` or `{"code": "hash-mismatch"}` | the path is not 64 hex digits, or the body does not hash to it; nothing stored |
-| `PUT` | `413` | `{"code": "store-full"}` | the store would pass its cap; nothing stored |
-| `PUT` | `415` | `{"code": "unsupported-type"}` | `Content-Type` not in the list; nothing stored |
+| `PUT` | `400` | `{"code": "invalid-sha256", "value": "<segment>"}` or `{"code": "hash-mismatch", "value": "<segment>"}` | the path is not 64 hex digits, or the body does not hash to it; nothing stored |
+| `PUT` | `413` | `{"code": "store-full", "value": "<segment>"}` | the store would pass its cap; nothing stored |
+| `PUT` | `415` | `{"code": "unsupported-type", "value": "<segment>"}` | `Content-Type` not in the list; nothing stored |
 | `GET` | `200` | the file | |
 | `GET` | `404` | | no file at that hash |
 | any | `403` | | not the owner |
+
+`<segment>` is the last path segment as requested, the `<sha256>` of the PUT.
 
 With `artifact-url` set to `/apps/seer/rwkv/<manifest sha256>`, the loader fetches the manifest, engine, and weights from the store as described in [Manifest](#manifest), each with the session cookie and each checked against its SHA-256.
 
