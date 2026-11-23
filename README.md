@@ -99,8 +99,27 @@ Commit the revision:
 
 Gall reloads an installed `%seer` agent. For the first installation, run `|install our %seer` after the commit.
 
-Seer is pre-release. Keep one current state definition; do not add state
-migrations yet. When that shape changes, reset the development agent:
+The reload keeps the saved state; upgrading over a save `%seer` recognizes
+never needs a nuke. `on-save` tags the state with its version, currently
+`%3`. `on-load` reads saves tagged `%3`, `%2`, `%1`, and `%0`, and the untagged
+saves from before tags, and migrates each older one forward to `%3`. Every
+field the older save has carries over, among them stacks, items,
+subscriptions, and provider accounts. Fields added after that save start at
+their defaults: a `%0` save starts with an empty review log, a `%1` save with
+RWKV off and no predictions, and a `%2` save with an empty RWKV artifact
+store. To upgrade from any of these, copy the desk and `|commit %seer` as
+above.
+
+The saved-state tag is not the MCP protocol version. `schema_version: 3` in
+tool calls and replies (see [Schema-3 cutover](#schema-3-cutover)) changes
+only with the tool contract; the state tag changes whenever `seer-state`
+does. A change to `seer-state` adds a new tag, keeps the previous mold, and
+adds a migration from it in `on-load` with a test that loads the old save.
+
+Only a save `on-load` does not recognize, such as one from an untagged
+development shape, stops the reload with `seer-state: unrecognized saved
+state`. Recover from that alone, and back up first: stop the ship and copy
+its pier directory. Then reset the agent:
 
 ```hoon
 |nuke %seer, =hard &
@@ -109,15 +128,15 @@ migrations yet. When that shape changes, reset the development agent:
 ```
 
 **This permanently deletes Seer's state, subscriptions, and provider
-accounts.** Nuke before committing the new shape and sign in again afterward.
-Same-shape code reloads retain state. Add a migration strategy before the
-official release.
+accounts.** Sign in again afterward.
 
-If `%seer-cli` is running, also run `|nuke %seer-cli, =hard &` before
-committing a change to its state shape. `|revive %seer` revives the desk's agents.
+`%seer-cli` keeps an untagged state without migrations. If it is running
+and its state shape changes, its reload fails with
+`seer-cli-state-shape-changed`; after the same backup, run
+`|nuke %seer-cli, =hard &` and then `|revive %seer`.
 
 Run the desk tests from the Dojo. They drive real Hoon state transitions for
-same-shape reloads, SM-2 scheduling, bounded reads, atomic plans and receipts,
+same-shape reloads, saved-state migrations, SM-2 scheduling, bounded reads, atomic plans and receipts,
 evidence/citations, learning reuse, the outbound destination policy, and
 provider response parsing:
 

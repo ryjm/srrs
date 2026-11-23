@@ -68,26 +68,33 @@ async function quiet(fn) {
   }
 }
 
-// The ship's scry serving `revlog` and the real artifact on a CDN.
+// The ship's scry serving `revlog`, and the real artifact in the ship's
+// store, which answers a request without the owner's cookie with 403.
 async function stubShip(revlog, head, shipNow) {
   const manifestBytes = read("manifest.json");
   const artifactHash = await sha256Hex(manifestBytes);
+  const store = {};
+  for (const name of ["manifest.json", "engine.wasm", "weights.bin"]) {
+    const blob = read(name);
+    store[`https://ship.example/apps/seer/rwkv/${await sha256Hex(blob)}`] = blob;
+  }
   const files = {
     "/~/scry/seer/rwkv.json": {
       enabled: true, target_ppm: 900000, max_daily: 200, min_daily: 0,
-      artifact_url: "https://cdn.example/rwkv/manifest.json", artifact_hash: artifactHash,
+      artifact_url: `/apps/seer/rwkv/${artifactHash}`, artifact_hash: artifactHash,
       head, fresh: false, idempotency_epoch: "~2026.9.2", now_ms: shipNow, revlog,
     },
-    "https://cdn.example/rwkv/manifest.json": manifestBytes,
-    "https://cdn.example/rwkv/engine.wasm": read("engine.wasm"),
-    "https://cdn.example/rwkv/weights.bin": read("weights.bin"),
+    ...store,
   };
   const posts = [];
+  const gets = [];
   const fetch = async (url, init) => {
     if (init?.method === "POST") {
       posts.push({ url, init });
       return { ok: true };
     }
+    gets.push([url, init?.credentials]);
+    if (url in store && (init?.credentials ?? "same-origin") === "omit") return { ok: false, status: 403 };
     const body = files[url];
     if (body === undefined) return { ok: false, status: 404 };
     return {
@@ -96,14 +103,18 @@ async function stubShip(revlog, head, shipNow) {
       arrayBuffer: async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength),
     };
   };
-  return { fetch, posts, artifactHash };
+  return { fetch, posts, gets, store, artifactHash };
 }
 
 test("real artifact: verified, predicted, and poked as RWKV.md says", { skip }, async () => {
   const head = events.at(-1).id;
-  const { fetch, posts, artifactHash } = await stubShip(events, head, now_ms);
-  const body = await run({ fetch, engine: wasmEngine, base: "https://ship.example/" });
+  const { fetch, posts, gets, store, artifactHash } = await stubShip(events, head, now_ms);
+  const body = await run({ fetch, engine: wasmEngine, base: "https://ship.example/apps/seer/review" });
   assert.notEqual(body, null, "the run verified every hash and posted");
+  assert.deepEqual(gets, [
+    ["/~/scry/seer/rwkv.json", "same-origin"],
+    ...Object.keys(store).map((url) => [url, "same-origin"]),
+  ], "manifest, engine and weights from the ship's store, with the cookie");
   assert.equal(posts.length, 1);
   assert.equal(posts[0].url, "/apps/seer/actions/rwkv-predictions");
   assert.equal(posts[0].init.credentials, "same-origin");

@@ -1,0 +1,110 @@
+#!/usr/bin/env bash
+# Uploads a built RWKV artifact (tools/build-rwkv-artifact) to a ship's %seer
+# artifact store: one PUT per file to /apps/seer/rwkv/<sha-256>, the engine's
+# license, notices and source with it. The ship stores a file only when its
+# bytes hash to the path; see RWKV.md, "Ship hosting".
+#
+# usage: SEER_COOKIE=<cookie> tools/upload-rwkv-artifact SHIP-URL [DIR]
+#
+# SHIP-URL is the ship's origin, https://<host>[:<port>]; the cookie goes
+# over HTTPS only. Plain http:// is accepted only for a loopback address
+# (localhost, 127.x.x.x or [::1]), which never leaves the machine and is
+# never sent through a proxy. DIR defaults to rwkv-engine/dist.
+# SEER_COOKIE is the owner's session cookie, `urbauth-~<ship>=<value>`. curl
+# reads it from stdin, so it is never on a command line. Nothing may print
+# it: shell tracing is off before it is read, curl ignores any config file
+# (verbose or trace options there would log the request headers), and a
+# refusal reports only its status and a known error code, never the body.
+{ set +xv; } 2>/dev/null
+set -euo pipefail
+export LC_ALL=C
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "usage: SEER_COOKIE=<cookie> $0 SHIP-URL [DIR]" >&2
+  exit 2
+fi
+if [ -z "${SEER_COOKIE:-}" ]; then
+  echo "SEER_COOKIE is not set: give the ship owner's session cookie" >&2
+  exit 2
+fi
+root=$(cd "$(dirname "$0")/.." && pwd)
+ship=${1%/}
+dir=${2:-$root/rwkv-engine/dist}
+port='(:[0-9]{1,5})?'
+if [[ $ship =~ ^https://([A-Za-z0-9-]+(\.[A-Za-z0-9-]+)*|\[[0-9A-Fa-f:.]+\])$port$ ]]; then
+  transport=(--proto =https)
+elif [[ $ship =~ ^http://(localhost|127(\.[0-9]{1,3}){3}|\[::1\])$port$ ]]; then
+  transport=(--proto =http --noproxy '*')
+else
+  echo "SHIP-URL must be an https:// origin, or http:// on localhost, 127.x.x.x or [::1]: $ship" >&2
+  exit 2
+fi
+
+# file and the content-type the ship stores it under (rwkv-blob-type in
+# desk/sur/seer.hoon), in upload order: the licenses, notices and source
+# first, then the binaries they cover, and the manifest that points at the
+# binaries last. A refusal part way (the store has no delete) therefore
+# never leaves the engine or a manifest stored without the files that must
+# be served beside it.
+files=(
+  "LICENSE|text/plain; charset=utf-8"
+  "NOTICE|text/plain; charset=utf-8"
+  "THIRD-PARTY-LICENSES|text/plain; charset=utf-8"
+  "rwkv-engine-source.tar|application/x-tar"
+  "WEIGHTS-NOTICE.md|text/markdown; charset=utf-8"
+  "engine.wasm|application/wasm"
+  "weights.bin|application/octet-stream"
+  "manifest.json|application/json"
+)
+
+sha256() {
+  if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
+}
+
+for entry in "${files[@]}"; do
+  [ -f "$dir/${entry%%|*}" ] || { echo "missing $dir/${entry%%|*}: run tools/build-rwkv-artifact" >&2; exit 1; }
+done
+
+# One completed build, fixed before anything is sent: every file is copied
+# into a private snapshot and hashed and uploaded from there, so a rebuild
+# of DIR during the upload changes nothing sent or printed. The manifest
+# must name the snapshot's engine and weights, or they are not one build.
+snap=$(mktemp -d "${TMPDIR:-/tmp}/rwkv-upload.XXXXXX")
+trap 'rm -rf "$snap"' EXIT
+for entry in "${files[@]}"; do
+  cp "$dir/${entry%%|*}" "$snap/${entry%%|*}"
+done
+for name in engine.wasm weights.bin; do
+  grep -qF "\"$(sha256 "$snap/$name")\"" "$snap/manifest.json" || {
+    echo "$dir/manifest.json does not name this $name: upload one completed build" >&2
+    exit 1
+  }
+done
+
+# the error codes the ship's store answers a refused PUT with
+known='"code": *"(invalid-sha256|hash-mismatch|unsupported-type|store-full)"'
+for entry in "${files[@]}"; do
+  name=${entry%%|*}
+  sha=$(sha256 "$snap/$name")
+  # --disable must come first to keep curl from reading a config file
+  out=$(printf 'Cookie: %s\n' "$SEER_COOKIE" |
+    curl --disable "${transport[@]}" --silent --show-error --write-out '\n%{http_code}' \
+      --request PUT --header @- --header "Content-Type: ${entry#*|}" \
+      --data-binary "@$snap/$name" "$ship/apps/seer/rwkv/$sha")
+  status=${out##*$'\n'}
+  case $status in
+    201) echo "stored   $name /apps/seer/rwkv/$sha" ;;
+    204) echo "present  $name /apps/seer/rwkv/$sha" ;;
+    *)
+      code=
+      if [[ ${out%$'\n'*} =~ $known ]]; then code=" ${BASH_REMATCH[1]}"; fi
+      echo "upload of $name refused: HTTP $status$code" >&2
+      exit 1
+      ;;
+  esac
+  # the pin printed below is the manifest the ship accepted
+  if [ "$name" = manifest.json ]; then manifest=$sha; fi
+done
+
+echo "artifact-url   /apps/seer/rwkv/$manifest"
+echo "artifact-hash  $manifest"

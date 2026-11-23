@@ -890,10 +890,60 @@
       computed-at=@da
       r=(map card-key @rd)
   ==
-::  agent state: seer-state-0 is the pre-revlog mold and seer-state-1 the
-::  pre-rwkv mold, kept for on-load migration
+::  rwkv artifact store: files the owner uploads to
+::  /apps/seer/rwkv/<sha-256 hex>, keyed by the sha-256 of their bytes
+::  (as the hex reads) and served back to the owner only. .type is the
+::  upload's content-type, served with it. all blobs together hold at
+::  most +rwkv-store-cap bytes.
+::
++$  rwkv-blob-type
+  $?  %'application/json'
+      %'application/wasm'
+      %'application/octet-stream'
+      %'application/x-tar'
+      %'text/plain; charset=utf-8'
+      %'text/markdown; charset=utf-8'
+  ==
++$  rwkv-blob  [type=rwkv-blob-type data=octs]
++$  rwkv-store  (map @ux rwkv-blob)
+++  rwkv-store-cap  16.777.216
+::  agent state: seer-state-0 is the pre-revlog mold, seer-state-1 the
+::  pre-rwkv mold, and seer-state-2 the pre-store mold, kept for on-load
+::  migration
 ::
 +$  seer-state
+  $:  stacks=(map @tas stack)
+      paths=(list path)
+      stack-subs=(map [ship @tas] stack)
+      captures=(map @tas capture)
+      provenance=(map [@tas @tas] provenance)
+      questions=(map @tas card-question)
+      models=(map @tas assistant-model)
+      changes=(map @tas change-request)
+      logins=(map @tas login-request)
+      accounts=(map ai-provider provider-account)
+      catalog-pending=(set ai-provider)
+      catalog-active=(map ai-provider [serial=@ud deadline=@da])
+      catalog-serial=@ud
+      contexts=(map @tas context-source)
+      context-count=@ud
+      evidence=evidence-state
+      learning=learning-state
+      shared-context=(map path shared-entry)
+      shared-manifest-rev=@ud
+      outstanding-keens=(map @tas keen-track)
+      remote-manifests=(map @p remote-manifest)
+      recent-clay=(list @t)
+      context-revs=(map @tas @ud)
+      review-log=revlog
+      next-review-id=@ud
+      pending-show=(map card-key @da)
+      rwkv=rwkv-config
+      predictions=(unit rwkv-predictions)
+      rwkv-blobs=rwkv-store
+      operating=agent-state
+  ==
++$  seer-state-2
   $:  stacks=(map @tas stack)
       paths=(list path)
       stack-subs=(map [ship @tas] stack)

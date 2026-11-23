@@ -14,7 +14,8 @@
 +$  versioned-state
   $%  [%0 seer-state-0]
       [%1 seer-state-1]
-      [%2 seer-state]
+      [%2 seer-state-2]
+      [%3 seer-state]
   ==
 ++  migrate-0-to-1
   |=  old=seer-state-0
@@ -49,7 +50,7 @@
   ==
 ++  migrate-1-to-2
   |=  old=seer-state-1
-  ^-  seer-state
+  ^-  seer-state-2
   :*  stacks.old
       paths.old
       stack-subs.old
@@ -80,6 +81,52 @@
       predictions=~
       operating.old
   ==
+++  migrate-2-to-3
+  |=  old=seer-state-2
+  ^-  seer-state
+  :*  stacks.old
+      paths.old
+      stack-subs.old
+      captures.old
+      provenance.old
+      questions.old
+      models.old
+      changes.old
+      logins.old
+      accounts.old
+      catalog-pending.old
+      catalog-active.old
+      catalog-serial.old
+      contexts.old
+      context-count.old
+      evidence.old
+      learning.old
+      shared-context.old
+      shared-manifest-rev.old
+      outstanding-keens.old
+      remote-manifests.old
+      recent-clay.old
+      context-revs.old
+      review-log.old
+      next-review-id.old
+      pending-show.old
+      rwkv.old
+      predictions.old
+      rwkv-blobs=~
+      operating.old
+  ==
+::  +rwkv-blob-sha: the sha-256 a store path names, 64 hex digits
+::
+++  rwkv-blob-sha
+  |=  seg=@t
+  ^-  (unit @ux)
+  (rush seg (bass 16 (stun [64 64] hit)))
+::  +rwkv-store-bytes: what all stored blobs hold together
+::
+++  rwkv-store-bytes
+  |=  store=rwkv-store
+  ^-  @ud
+  (roll ~(val by store) |=([blob=rwkv-blob n=@ud] (add n p.data.blob)))
 ::  +in-unit-interval: a probability. nan fails both comparisons.
 ::
 ++  in-unit-interval
@@ -159,14 +206,22 @@
         =.  operator-authorized.native  trusted-operator:native
         (apply-command:native envelope)
           %handle-http-request
+        ::  only Eyre, the local vane, carries an HTTP request: a local
+        ::  agent or another ship poking this mark is refused, so none can
+        ::  stand in for Eyre or answer a live request. Eyre pokes
+        ::  authenticated requests as this ship; a guest identity only ever
+        ::  receives the redirect, or a 403 from the rwkv store, whose
+        ::  clients are fetch and curl.
+        ?>  =(/eyre sap.bol)
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
-        ::  Eyre pokes authenticated requests as this ship; a guest identity
-        ::  or a foreign poke of this mark only ever receives the redirect.
         ?:  ?&(authenticated.inbound-request =(our.bol src.bol))
           %+  poke-handle-http-request:sc  eyre-id
           inbound-request
         :_  state
         %+  give-simple-payload:app  eyre-id
+        =/  line  (parse-request-line url.request.inbound-request)
+        ?:  ?=([%apps %seer %rwkv *] site.line)
+          [[403 ~] ~]
         (login-redirect:gen request.inbound-request)
       ==
     =^  more  state  flush:sc
@@ -179,7 +234,9 @@
       ?+  path  (on-watch:def path)
         [%seertile *]                (peer-seertile:sc t.path)
         [%seer-primary *]            [~ state]
-        [%http-response *]           [~ state]
+        ::  Eyre watches for its response as the request's identity, a
+        ::  guest's included, so the watcher is checked by provenance only
+        [%http-response *]           ?>(=(/eyre sap.bol) [~ state])
         [%stack @ ~]                 (peer-stack:sc i.t.path)
         [%shared-context ~]          serve-shared-manifest:sc
         [%shared-context %file @ *]  (serve-shared-file:sc t.t.path)
@@ -360,7 +417,7 @@
     =^  more  state  flush:sc
     [(weld cards more) this]
   ::
-  ++  on-save  !>([%2 state])
+  ++  on-save  !>([%3 state])
   ++  on-load
     |=  old=vase
     ^-  (quip card _this)
@@ -368,17 +425,22 @@
     ::  ~ collides with %0, so bare molds are tried before tagged %0
     ::
     =/  new=(unit seer-state)
-      =/  v2  ((soft ,[%2 seer-state]) q.old)
-      ?^  v2  `+.u.v2
-      =/  v1  ((soft ,[%1 seer-state-1]) q.old)
-      ?^  v1  `(migrate-1-to-2 +.u.v1)
-      =/  bare  ((soft seer-state-1) q.old)
-      ?^  bare  `(migrate-1-to-2 u.bare)
-      =/  bare-0  ((soft seer-state-0) q.old)
-      ?^  bare-0  `(migrate-1-to-2 (migrate-0-to-1 u.bare-0))
-      =/  v0  ((soft ,[%0 seer-state-0]) q.old)
-      ?^  v0  `(migrate-1-to-2 (migrate-0-to-1 +.u.v0))
-      ~
+      =/  v3  ((soft ,[%3 seer-state]) q.old)
+      ?^  v3  `+.u.v3
+      %+  bind
+        ^-  (unit seer-state-2)
+        =/  v2  ((soft ,[%2 seer-state-2]) q.old)
+        ?^  v2  `+.u.v2
+        =/  v1  ((soft ,[%1 seer-state-1]) q.old)
+        ?^  v1  `(migrate-1-to-2 +.u.v1)
+        =/  bare  ((soft seer-state-1) q.old)
+        ?^  bare  `(migrate-1-to-2 u.bare)
+        =/  bare-0  ((soft seer-state-0) q.old)
+        ?^  bare-0  `(migrate-1-to-2 (migrate-0-to-1 u.bare-0))
+        =/  v0  ((soft ,[%0 seer-state-0]) q.old)
+        ?^  v0  `(migrate-1-to-2 (migrate-0-to-1 +.u.v0))
+        ~
+      migrate-2-to-3
     ?~  new
       ~|  'seer-state: unrecognized saved state; nuke %seer only as last resort'
       !!
@@ -822,7 +884,37 @@
     ?:  ?=(%| -.result)
       (respond-page eyre-id [%inbox ~] `'Invalid form. No operation was applied.')
     p.result
+  ::
+      %'PUT'
+    ?.  ?=([[~ [%apps %seer %rwkv @t ~]] ~] request-line)
+      (respond-payload eyre-id [[405 ~] ~])
+    (put-rwkv-blob eyre-id i.t.t.t.site.request-line request.inbound-request)
   ==
+::
+::  +put-rwkv-blob: store an upload under the sha-256 its path names, if
+::  its bytes hash to it, its content-type is a +rwkv-blob-type, and the
+::  store stays within +rwkv-store-cap. the same bytes again change
+::  nothing.
+::
+++  put-rwkv-blob
+  |=  [eyre-id=@ta seg=@t =request:http]
+  ^-  (quip card _state)
+  =/  data=octs  (fall body.request [0 0])
+  =/  sha  (rwkv-blob-sha seg)
+  =/  type
+    ((soft rwkv-blob-type) (fall (get-header:http 'content-type' header-list.request) ''))
+  =/  refuse
+    |=  [status=@ud code=@t]
+    (respond-payload eyre-id (json-status status (error-json code seg)))
+  ?~  sha  (refuse 400 'invalid-sha256')
+  ?~  type  (refuse 415 'unsupported-type')
+  ?.  =(u.sha (rev 3 32 (shay data)))  (refuse 400 'hash-mismatch')
+  ?:  (~(has by rwkv-blobs.state) u.sha)
+    (respond-payload eyre-id [[204 ~] ~])
+  ?:  (gth (add p.data (rwkv-store-bytes rwkv-blobs.state)) rwkv-store-cap)
+    (refuse 413 'store-full')
+  =.  rwkv-blobs.state  (~(put by rwkv-blobs.state) u.sha [u.type data])
+  (respond-payload eyre-id [[201 ~] ~])
 ::
 ++  web-get
   |=  [eyre-id=@ta =request-line]
@@ -879,6 +971,19 @@
       [[[~ %js] [%apps %seer %rwkv-loader ~]] ~]
     %+  respond-payload  eyre-id
     (js-response:gen (as-octs:mimes:html rwkv-loader-src))
+  ::  the rwkv store; on-poke answers anyone but the owner with 403. a
+  ::  cached copy is reused only under the same session cookie
+  ::
+      [[~ [%apps %seer %rwkv @t ~]] ~]
+    =/  blob  (biff (rwkv-blob-sha i.t.t.t.site.request-line) ~(get by rwkv-blobs.state))
+    ?~  blob  (respond-payload eyre-id not-found:gen)
+    %+  respond-payload  eyre-id
+    :_  `data.u.blob
+    :-  200
+    :~  ['content-type' type.u.blob]
+        ['cache-control' 'private, max-age=31536000, immutable']
+        ['vary' 'Cookie']
+    ==
   ::  the aero ios shell opens its native seer screen when this hint parses.
   ::
       [[[~ %json] [%apps %seer %aero ~]] ~]

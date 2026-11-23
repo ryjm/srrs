@@ -7,6 +7,8 @@
   var POKE_URL = "/apps/seer/actions/rwkv-predictions";
   // this script; as a Web Worker it runs the engine (serveEngine)
   var LOADER_URL = "/apps/seer/rwkv-loader.js";
+  // the ship's artifact store; each file is at its sha-256
+  var STORE_PATH = "/apps/seer/rwkv/";
 
   async function sha256Hex(bytes) {
     var digest = await crypto.subtle.digest("SHA-256", bytes);
@@ -15,14 +17,26 @@
     }).join("");
   }
 
-  // artifacts are public and hash-pinned: no cookies, so a CDN serving
-  // Access-Control-Allow-Origin: * can answer
-  async function fetchVerified(fetchFn, url, hex) {
-    var res = await fetchFn(url, { credentials: "omit" });
+  // a sha-256 as the config and manifests give it, checked before it goes
+  // into any URL; lowercase, as the store path and sha256Hex spell it
+  function digest(hex) {
+    if (typeof hex !== "string" || !/^[0-9a-fA-F]{64}$/.test(hex)) {
+      throw new Error("rwkv: not a sha-256: " + JSON.stringify(hex));
+    }
+    return hex.toLowerCase();
+  }
+
+  // inStore: url is the ship's store entry for hex on this page's origin.
+  // Only that request carries the session cookie, which the store needs,
+  // and it may not redirect; every other host or path gets no cookies.
+  async function fetchVerified(fetchFn, url, hex, inStore) {
+    var res = await fetchFn(url, inStore
+      ? { credentials: "same-origin", redirect: "error" }
+      : { credentials: "omit" });
     if (!res.ok) throw new Error("rwkv: fetch " + url + " " + res.status);
     var bytes = new Uint8Array(await res.arrayBuffer());
     var got = await sha256Hex(bytes);
-    if (got !== String(hex).toLowerCase()) {
+    if (got !== hex) {
       throw new Error("rwkv: hash mismatch for " + url);
     }
     return bytes;
@@ -131,16 +145,24 @@
       var config = await configRes.json();
       if (!config.enabled || !config.artifact_url || !config.artifact_hash) return null;
       if (config.head === null || config.fresh) return null;
+      // this page's store entry for a checked sha-256
+      var storeUrl = function (hex) { return new URL(STORE_PATH + hex, deps.base).href; };
+      var fetchFile = function (url, hex) {
+        return fetchVerified(deps.fetch, url, hex, url === storeUrl(hex));
+      };
+      var manifestHash = digest(config.artifact_hash);
       var base = new URL(config.artifact_url, deps.base);
+      // a manifest in the ship's store names its files by sha-256 there
+      var onShip = base.href === storeUrl(manifestHash);
       var manifest = JSON.parse(new TextDecoder().decode(
-        await fetchVerified(deps.fetch, base.href, config.artifact_hash),
+        await fetchFile(base.href, manifestHash),
       ));
-      var engineBytes = await fetchVerified(
-        deps.fetch, new URL(manifest.engine.url, base).href, manifest.engine.sha256,
-      );
-      var weightBytes = await fetchVerified(
-        deps.fetch, new URL(manifest.weights.url, base).href, manifest.weights.sha256,
-      );
+      var fileBytes = function (file) {
+        var hex = digest(file.sha256);
+        return fetchFile(onShip ? storeUrl(hex) : new URL(file.url, base).href, hex);
+      };
+      var engineBytes = await fileBytes(manifest.engine);
+      var weightBytes = await fileBytes(manifest.weights);
       var engine = await deps.engine(engineBytes, weightBytes);
       // the ship's clock, the one its revlog uses: a browser clock behind
       // the newest answer would query before the history it replays
