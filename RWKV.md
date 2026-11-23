@@ -54,7 +54,7 @@ The ship keeps every answer in its revlog. The replay uses only the answers of l
 
 Any failure is logged with `console.warn` and nothing is sent.
 
-Every request uses `credentials: "same-origin"`. The ship's store answers only the owner's session cookie, which the browser sends only to the ship's own origin; a manifest, engine, or weights file on another origin is fetched without cookies, so a host that answers `Access-Control-Allow-Origin: *` can serve it.
+The config read and the POST use `credentials: "same-origin"`. An artifact fetch carries the session cookie only when its URL is the page origin's store entry for the SHA-256 it is checked against, `/apps/seer/rwkv/<sha256>`; that fetch uses `credentials: "same-origin"` and `redirect: "error"`, so a redirect fails the run. Every other manifest, engine, or weights fetch, on the ship's origin or another, uses `credentials: "omit"`, so a host that answers `Access-Control-Allow-Origin: *` can serve it. `artifact_hash` and each `sha256` in the manifest must be 64 hex digits; the loader stops before building a URL from any other value.
 
 htmx runs the script again each time it swaps in a review view. One run is in flight per page. A request that arrives during a run waits, replacing any earlier waiting request, and gets one more run against the latest config and head when the current run ends. After a run the ship accepted (HTTP 200), the loader refreshes `#seer-app` only if the review view that made the latest request is still in the document, so a late result never replaces another page.
 
@@ -67,7 +67,7 @@ htmx runs the script again each time it swaps in a review view. One run is in fl
 }
 ```
 
-URLs resolve relative to the manifest URL, except for a manifest in the [ship's store](#ship-hosting): its engine and weights are fetched from `/apps/seer/rwkv/<sha256>`, the `sha256` the manifest lists, and `url` is not used.
+URLs resolve relative to the manifest URL, except for a manifest in the [ship's store](#ship-hosting), at `/apps/seer/rwkv/<artifact_hash>` on the page's origin: its engine and weights are fetched from `/apps/seer/rwkv/<sha256>`, the `sha256` the manifest lists, and `url` is not used.
 
 ### Engine ABI
 

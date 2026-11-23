@@ -160,22 +160,40 @@ test("a failed config fetch stops before any artifact fetch", async () => {
   assert.match(warnings[0], /config 503/);
 });
 
-test("every fetch is same-origin: a cross-origin artifact host gets no cookies", async () => {
-  const { fetch, requests } = stubFetch(await files(await sha256Hex(await manifestBytes())));
+// the request init of each fetch, POST bodies left out
+const inits = (requests) => requests.map(({ url, init }) =>
+  [url, init?.credentials, ...(init?.redirect ? [init.redirect] : [])]);
+
+test("artifacts off the ship's store are fetched without cookies", async () => {
+  const hash = await sha256Hex(await manifestBytes());
+  const { fetch, requests } = stubFetch(await files(hash));
   await run({ fetch, engine: stubEngine, base: "http://ship/" });
-  assert.deepEqual(requests.map(({ url, init }) => [url, init?.credentials]), [
+  assert.deepEqual(inits(requests), [
     ["/~/scry/seer/rwkv.json", "same-origin"],
-    ["https://cdn.example/rwkv/manifest.json", "same-origin"],
-    ["https://cdn.example/rwkv/engine.wasm", "same-origin"],
-    ["https://cdn.example/rwkv/weights.bin", "same-origin"],
+    ["https://cdn.example/rwkv/manifest.json", "omit"],
+    ["https://cdn.example/rwkv/engine.wasm", "omit"],
+    ["https://cdn.example/rwkv/weights.bin", "omit"],
     ["/apps/seer/actions/rwkv-predictions", "same-origin"],
   ]);
+  // same-origin paths that are not the manifest's own store entry
+  for (const artifactUrl of [
+    "/rwkv/manifest.json",
+    `/apps/seer/rwkv/${hash}/`,
+    `/apps/seer/rwkv/${hash}?v=1`,
+    `/apps/seer/rwkv/${"0".repeat(64)}`,
+    `http://other.ship/apps/seer/rwkv/${hash}`,
+  ]) {
+    const stub = stubFetch({ "/~/scry/seer/rwkv.json": { ...config(hash), artifact_url: artifactUrl } });
+    await quiet(() => run({ fetch: stub.fetch, engine: stubEngine, base: "http://ship/apps/seer/review" }));
+    assert.deepEqual(inits(stub.requests).slice(1), [[new URL(artifactUrl, "http://ship/").href, "omit"]],
+      artifactUrl);
+  }
 });
 
 // The ship's artifact store as the ship answers it: a request without the
 // owner's session cookie gets 403.
-async function shipStore() {
-  const manifest = await manifestBytes();
+async function shipStore(manifest) {
+  manifest ??= await manifestBytes();
   const hash = await sha256Hex(manifest);
   const blobs = {};
   for (const blob of [manifest, engineBytes, weightBytes]) {
@@ -195,20 +213,49 @@ async function shipStore() {
   return { ...stub, fetch, hash };
 }
 
-test("a manifest in the ship's store loads each file from the store by sha-256, with the cookie", async () => {
+test("a manifest in the ship's store loads each file from the store by sha-256, with the cookie and no redirect", async () => {
   const ship = await shipStore();
   const [body, warnings] = await quiet(() =>
     run({ fetch: ship.fetch, engine: stubEngine, base: "http://ship/apps/seer/review" }));
   assert.deepEqual(warnings, []);
   assert.notEqual(body, null);
   assert.equal(ship.posts.length, 1);
-  assert.deepEqual(ship.requests.map(({ url, init }) => [url, init?.credentials]), [
+  assert.deepEqual(inits(ship.requests), [
     ["/~/scry/seer/rwkv.json", "same-origin"],
-    [`http://ship/apps/seer/rwkv/${ship.hash}`, "same-origin"],
-    [`http://ship/apps/seer/rwkv/${await sha256Hex(engineBytes)}`, "same-origin"],
-    [`http://ship/apps/seer/rwkv/${await sha256Hex(weightBytes)}`, "same-origin"],
+    [`http://ship/apps/seer/rwkv/${ship.hash}`, "same-origin", "error"],
+    [`http://ship/apps/seer/rwkv/${await sha256Hex(engineBytes)}`, "same-origin", "error"],
+    [`http://ship/apps/seer/rwkv/${await sha256Hex(weightBytes)}`, "same-origin", "error"],
     ["/apps/seer/actions/rwkv-predictions", "same-origin"],
   ]);
+});
+
+test("a digest that is not 64 hex digits is never fetched", async () => {
+  // in the config: nothing past the config read
+  for (const artifactHash of ["../actions/rwkv-predictions", "ab".repeat(31), `${"ab".repeat(32)}/`, 7]) {
+    const ship = await shipStore();
+    const fetch = async (url, init) => url === "/~/scry/seer/rwkv.json"
+      ? { ok: true, json: async () => ({ ...config(ship.hash), artifact_url: "/rwkv/m.json", artifact_hash: artifactHash }) }
+      : ship.fetch(url, init);
+    const [body, warnings] = await quiet(() =>
+      run({ fetch, engine: stubEngine, base: "http://ship/apps/seer/review" }));
+    assert.equal(body, null);
+    assert.deepEqual(ship.requests, [], String(artifactHash));
+    assert.match(warnings[0], /not a sha-256/);
+  }
+  // in a stored manifest: nothing past the manifest
+  for (const sha256 of ["../../actions/rwkv-predictions", `..%2F${"0".repeat(58)}`, undefined]) {
+    const ship = await shipStore(bytes(JSON.stringify({
+      engine: { url: "engine.wasm", sha256 },
+      weights: { url: "weights.bin", sha256: await sha256Hex(weightBytes) },
+    })));
+    const [body, warnings] = await quiet(() =>
+      run({ fetch: ship.fetch, engine: stubEngine, base: "http://ship/apps/seer/review" }));
+    assert.equal(body, null);
+    assert.deepEqual(inits(ship.requests).map(([url]) => url), [
+      "/~/scry/seer/rwkv.json", `http://ship/apps/seer/rwkv/${ship.hash}`,
+    ], String(sha256));
+    assert.match(warnings[0], /not a sha-256/);
+  }
 });
 
 // Holds the first weights fetch until release(); atWeights settles when a
