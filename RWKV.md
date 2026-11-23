@@ -68,4 +68,12 @@ Output: UTF-8 JSON `[{"owner": "~zod", "stack": "s1", "item": "c1", "r": 0.83}, 
 
 ### Predictions POST
 
-Form-encoded fields: `idempotency-epoch`, `operation-id`, `head`, and `r`, one line per card, `~owner,stack,item,ppm`, where `ppm` is R in integer parts per million.
+Form-encoded fields: `idempotency-epoch`, `operation-id`, `head`, and `predictions`, a JSON array of `{"owner": "~zod", "stack": "s1", "item": "c1", "ppm": 830000}`, where `ppm` is R in integer parts per million. `stack` and `item` are the strings from the scry, so any card key round-trips, including imported IDs that start with a digit.
+
+The response is JSON, never a page:
+
+| status | body | meaning |
+| --- | --- | --- |
+| `200` | operation receipt | stored, or identical to what was stored |
+| `400` | `{"code": "invalid-predictions"}` or `{"code": "invalid-operation"}` | the batch or the operation fields did not parse; nothing is applied |
+| `409` | operation receipt | the ship rejected the batch, e.g. a stale `head`; the stored predictions are unchanged |

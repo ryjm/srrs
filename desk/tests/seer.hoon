@@ -585,6 +585,76 @@
     (expect-eq !>(b+%.n) !>((json-field (peek-rwkv core) 'fresh')))
   ==
 ::
+::  +post-predictions: the loader's POST through the real HTTP decoder;
+::  the response status and the next core
+::
+++  post-predictions
+  |=  [core=agent:gall op=@t top=@ud rows=@t]
+  ^-  [@ud agent:gall]
+  =/  body=@t
+    %-  crip
+    ;:  weld
+      "idempotency-epoch="  (trip (peek-epoch core))
+      "&operation-id="  (trip op)
+      "&head="  ((d-co:co 1) top)
+      "&predictions="  (en-urlt:html (trip rows))
+    ==
+  =/  request=inbound-request:eyre
+    %*  .  *inbound-request:eyre
+      authenticated  %.y
+      request  [%'POST' '/apps/seer/actions/rwkv-predictions' ~ `[(met 3 body) body]]
+    ==
+  =/  shell  ~(. seer-agent %*(. bol sap /eyre))
+  =/  browser  +:(on-load:shell on-save:core)
+  =/  res  (on-poke:browser %handle-http-request !>(['rwkv' request]))
+  =/  codes=(list @ud)
+    %+  murn  -.res
+    |=  =card:agent:gall
+    ?.  ?=([%give %fact * %http-response-header *] card)  ~
+    =/  header  !<(response-header:http q.cage.p.card)
+    `status-code.header
+  ?>  ?=([@ ~] codes)
+  [i.codes +.res]
+::
+::  the predictions POST decodes any card key, including ids the
+::  importer makes, and rejects a malformed batch whole (400) or a stale
+::  head (409) without touching the stored predictions
+::
+++  test-rwkv-predictions-post
+  ^-  tang
+  =/  imported  (@tas '0v5-q3les-klmn1-ljt4k')
+  =/  core  rwkv-deck
+  =.  core
+    (do core [%new-item ~zod ~zod %s1 imported 'Card' *perm-config 'front' 'back'])
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  sm2  (peek-queue core)
+  =/  good=@t
+    %-  crip
+    ;:  weld
+      "[\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"0v5-q3les-klmn1-ljt4k\",\"ppm\":100000},"
+      "\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c2\",\"ppm\":200000}]"
+    ==
+  =/  bad=@t
+    %-  crip
+    ;:  weld
+      "[\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c3\",\"ppm\":1},"
+      "\{\"owner\":\"zod\",\"stack\":\"s1\",\"item\":\"c4\",\"ppm\":2}]"
+    ==
+  =^  good-status  core  (post-predictions core 'good' 0 good)
+  =/  ranked  (peek-queue core)
+  =^  bad-status  core  (post-predictions core 'bad' 0 bad)
+  =/  after-bad  (peek-queue core)
+  =^  stale-status  core  (post-predictions core 'stale' 5 good)
+  =/  rest  (skip sm2 |=(rev=review |(=(%c2 item.rev) =(imported item.rev))))
+  ;:  weld
+    (expect-eq !>(200) !>(good-status))
+    (expect-eq !>(`(list review)`[(card-in imported) (card-in %c2) rest]) !>(ranked))
+    (expect-eq !>(400) !>(bad-status))
+    (expect-eq !>(ranked) !>(after-bad))
+    (expect-eq !>(409) !>(stale-status))
+    (expect-eq !>(ranked) !>((peek-queue core)))
+  ==
+::
 ::  sm-2: box walks the fixed intervals on %good and resets on %again.
 ::
 ++  test-sm2-scheduling

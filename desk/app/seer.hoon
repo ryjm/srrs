@@ -1071,17 +1071,22 @@
     ==
   ::
       [[~ [%apps %seer %actions %rwkv-predictions ~]] ~]
-    =/  top=@ud  (rash (form-got fields 'head') dem)
-    =/  rows=(list [@p @tas @tas @ud])
-      %+  rash  (form-got fields 'r')
-      %+  more  (just '\0a')
-      ;~((glue com) ;~(pfix sig fed:ag) sym sym dem)
-    =/  r=(map card-key @rd)
-      %-  malt
-      %+  turn  rows
-      |=  [who=@p stak=@tas name=@tas ppm=@ud]
-      [[who stak name] (div:rd (sun:rd ppm) (sun:rd 1.000.000))]
-    (apply-web-action eyre-id [%rwkv-predictions top r] [%review ~] ~)
+    ::  a background request: answer with the receipt, not a page
+    ::
+    =/  act  (rwkv-predictions-form fields)
+    ?~  act
+      %+  respond-payload  eyre-id
+      (json-status 400 (error-json 'invalid-predictions' 'predictions'))
+    =^  ran  state  (web-command u.act)
+    ?~  ran
+      %+  respond-payload  eyre-id
+      (json-status 400 (error-json 'invalid-operation' 'operation'))
+    :_  state
+    %+  weld  cards.u.ran
+    %+  give-simple-payload:app  eyre-id
+    %+  json-status
+      ?:(=(%ok status.receipt.u.ran) 200 409)
+    (receipt-json:effects receipt.u.ran 32.768)
   ::
       [[~ [%apps %seer %actions %request-change ~]] ~]
     =/  prompt  (form-got fields 'prompt')
@@ -1499,23 +1504,61 @@
 ++  apply-web-action
   |=  [eyre-id=@ta act=action page=page:index notice=(unit @t)]
   ^-  (quip card _state)
-  =/  epoch  (slaw %da (form-got form-fields 'idempotency-epoch'))
-  =/  operation  (form-got form-fields 'operation-id')
-  ?~  epoch  (respond-page eyre-id page `'This page is out of date. Reload it before trying again.')
-  ?.  ?&(!=('' operation) (bounded-text:ev operation 128))
+  =^  ran  state  (web-command act)
+  ?~  ran
     (respond-page eyre-id page `'This page is out of date. Reload it before trying again.')
-  =/  cmd  (make-command u.epoch operation act)
-  =^  action-cards  state  (apply-command(operator-authorized %.y) cmd)
-  =/  receipt  (operation-receipt-at:effects operating.state u.epoch operation `digest.cmd)
+  =/  receipt  receipt.u.ran
   =.  notice
     ?:  =(%ok status.receipt)
       ?:  =(%no-change reason.receipt)  `'No change was needed.'
       notice
     `(operation-outcome receipt)
   :_  (stamp-shown page)
-  %+  weld  action-cards
+  %+  weld  cards.u.ran
   %+  give-simple-payload:app  eyre-id
   (render-action-page page notice)
+::
+::  +web-command: apply one browser action under the form's operation
+::  envelope; ~ when the envelope is malformed
+::
+++  web-command
+  |=  act=action
+  ^-  [(unit [cards=(list card) receipt=operation-receipt]) _state]
+  =/  epoch  (slaw %da (form-got form-fields 'idempotency-epoch'))
+  =/  operation  (form-got form-fields 'operation-id')
+  ?~  epoch  [~ state]
+  ?.  ?&(!=('' operation) (bounded-text:ev operation 128))  [~ state]
+  =/  cmd  (make-command u.epoch operation act)
+  =^  cards  state  (apply-command(operator-authorized %.y) cmd)
+  :_  state
+  `[cards (operation-receipt-at:effects operating.state u.epoch operation `digest.cmd)]
+::
+::  +rwkv-predictions-form: the loader's batch. .predictions is a JSON
+::  array, so any card key round-trips; one bad row rejects the batch.
+::
+++  rwkv-predictions-form
+  |=  fields=(map @t @t)
+  ^-  (unit action)
+  =/  top  (rush (form-got fields 'head') dem)
+  =/  rows
+    %+  biff  (de:json:html (form-got fields 'predictions'))
+    =,  dejs-soft:format
+    (ar (ot ~[owner+(su ;~(pfix sig fed:ag)) stack+so item+so ppm+ni]))
+  ?~  top  ~
+  ?~  rows  ~
+  :-  ~
+  :+  %rwkv-predictions  u.top
+  %-  malt
+  %+  turn  u.rows
+  |=  [who=@p stak=@t name=@t ppm=@ud]
+  :-  `card-key`[who (@tas stak) (@tas name)]
+  (div:rd (sun:rd ppm) (sun:rd 1.000.000))
+::
+++  json-status
+  |=  [status=@ud body=json]
+  ^-  simple-payload:http
+  =/  payload  (json-response:gen body)
+  payload(status-code.response-header status)
 ::
 ++  render-action-page
   |=  [page=page:index notice=(unit @t)]

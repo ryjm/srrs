@@ -26,17 +26,19 @@
 
   // rows: [{owner, stack, item, r}] with 0 <= r <= 1
   function pokeBody(config, rows, operationId) {
-    var lines = [];
+    var predictions = [];
     rows.forEach(function (row) {
       if (!Number.isFinite(row.r)) return;
-      var ppm = Math.round(Math.min(1, Math.max(0, row.r)) * 1e6);
-      lines.push([row.owner, row.stack, row.item, ppm].join(","));
+      predictions.push({
+        owner: row.owner, stack: row.stack, item: row.item,
+        ppm: Math.round(Math.min(1, Math.max(0, row.r)) * 1e6),
+      });
     });
     return new URLSearchParams({
       "idempotency-epoch": config.idempotency_epoch,
       "operation-id": operationId,
       head: String(config.head),
-      r: lines.join("\n"),
+      predictions: JSON.stringify(predictions),
     }).toString();
   }
 

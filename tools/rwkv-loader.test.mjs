@@ -59,7 +59,7 @@ const stubEngine = async (engine, weights) => {
       assert.equal(input.events.length, 1);
       return [
         { owner: "~zod", stack: "s1", item: "c1", r: 0.25 },
-        { owner: "~zod", stack: "s1", item: "c2", r: 0.9123456 },
+        { owner: "~zod", stack: "s1", item: "0v5-q3les-klmn1", r: 0.9123456 },
       ];
     },
   };
@@ -83,10 +83,14 @@ test("verified artifact with stub engine pokes predictions", async () => {
   await run({ fetch, engine: stubEngine, now: () => 1000, base: "http://ship/" });
   assert.equal(posts.length, 1);
   assert.equal(posts[0].url, "/apps/seer/actions/rwkv-predictions");
-  assert.deepEqual(Object.fromEntries(new URLSearchParams(posts[0].body)), {
+  const fields = Object.fromEntries(new URLSearchParams(posts[0].body));
+  assert.deepEqual({ ...fields, predictions: JSON.parse(fields.predictions) }, {
     "idempotency-epoch": "~2026.9.2",
     "operation-id": "rwkv-3-1000",
     head: "3",
-    r: "~zod,s1,c1,250000\n~zod,s1,c2,912346",
+    predictions: [
+      { owner: "~zod", stack: "s1", item: "c1", ppm: 250000 },
+      { owner: "~zod", stack: "s1", item: "0v5-q3les-klmn1", ppm: 912346 },
+    ],
   });
 });
