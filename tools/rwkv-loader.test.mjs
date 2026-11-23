@@ -94,6 +94,24 @@ test("manifest hash mismatch never pokes", async () => {
   assert.deepEqual(posts, []);
 });
 
+for (const name of ["engine.wasm", "weights.bin"]) {
+  test(`${name} bytes the manifest does not pin never reach the engine`, async () => {
+    const served = await files(await sha256Hex(await manifestBytes()));
+    served[`https://cdn.example/rwkv/${name}`] = bytes("tampered");
+    const { fetch, posts } = stubFetch(served);
+    let engineCalls = 0;
+    const engine = async () => {
+      engineCalls++;
+      return { predict: () => [] };
+    };
+    const [body, warnings] = await quiet(() => run({ fetch, engine, base: "http://ship/" }));
+    assert.equal(body, null);
+    assert.equal(engineCalls, 0);
+    assert.deepEqual(posts, []);
+    assert.match(warnings[0], new RegExp(`hash mismatch for .*${name}`));
+  });
+}
+
 test("verified artifact with stub engine pokes predictions", async () => {
   const hash = await sha256Hex(await manifestBytes());
   const { fetch, posts } = stubFetch(await files(hash));

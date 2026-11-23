@@ -1,9 +1,12 @@
-// The real artifact through the loader: tools/build-rwkv-artifact writes it
-// to rwkv-engine/dist (or RWKV_ARTIFACT_DIR), and rwkv-engine/parity/run.sh
-// adds native-r.json, the native engine's output. Only fetch and the ship
-// are stubbed.
+// The real artifact through the loader. tools/verify-rwkv builds the
+// artifact into rwkv-engine/dist (or RWKV_ARTIFACT_DIR) with native-r.json,
+// the native engine's output on the fixture, and runs these tests. Only
+// fetch and the ship are stubbed. Missing files fail the suite; with
+// RWKV_ARTIFACT_OPTIONAL=1 they skip it instead, for a local run that
+// has not built them.
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
@@ -32,13 +35,18 @@ function nodeWorker() {
 }
 
 const dir = process.env.RWKV_ARTIFACT_DIR ??
-  new URL("../rwkv-engine/dist/", import.meta.url).pathname;
+  fileURLToPath(new URL("../rwkv-engine/dist/", import.meta.url));
 const fixtures = new URL("../rwkv-engine/tests/fixtures/", import.meta.url);
-const skip = !existsSync(`${dir}/manifest.json`) && `no artifact in ${dir}: run tools/build-rwkv-artifact`;
-const skipNative = skip || (!existsSync(`${dir}/native-r.json`) &&
-  `no native-r.json in ${dir}: run rwkv-engine/parity/run.sh`);
+const missing = ["manifest.json", "engine.wasm", "weights.bin", "native-r.json"]
+  .filter((name) => !existsSync(join(dir, name)));
+const skip = process.env.RWKV_ARTIFACT_OPTIONAL === "1" && missing.length > 0 &&
+  `RWKV_ARTIFACT_OPTIONAL=1 and ${missing.join(", ")} missing from ${dir}`;
 
-const read = (name) => new Uint8Array(readFileSync(`${dir}/${name}`));
+test("real artifact: the built artifact and native output are present", { skip }, () => {
+  assert.deepEqual(missing, [], `missing from ${dir}: run tools/verify-rwkv`);
+});
+
+const read = (name) => new Uint8Array(readFileSync(join(dir, name)));
 const { now_ms, events } = JSON.parse(readFileSync(new URL("revlog.json", fixtures)));
 const fork = JSON.parse(readFileSync(new URL("reference-r.json", fixtures))).cards;
 const key = (row) => JSON.stringify([row.owner, row.stack, row.item]);
@@ -155,11 +163,11 @@ test("real artifact: a query before the newest answer gets no scores", { skip },
   assert.equal(posts.length, 0);
 });
 
-test("real artifact: wasm R equals the native engine and the fork", { skip: skipNative }, async () => {
+test("real artifact: wasm R equals the native engine and the fork", { skip }, async () => {
   const engine = await wasmEngine(read("engine.wasm"), read("weights.bin"));
   const rows = engine.predict({ now_ms, events });
   for (const row of rows) assert.ok(row.r >= 0 && row.r <= 1, JSON.stringify(row));
-  const native = JSON.parse(readFileSync(`${dir}/native-r.json`));
+  const native = JSON.parse(readFileSync(join(dir, "native-r.json")));
   const vsNative = maxDiff(rows, native);
   const vsFork = maxDiff(rows, fork);
   console.log(`max |wasm - native| R = ${vsNative}; max |wasm - fork| R = ${vsFork}; ${rows.length} cards`);

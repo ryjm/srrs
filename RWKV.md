@@ -143,7 +143,7 @@ The engine is reproducible in a clean environment: no `CARGO_PROFILE_*`, `CARGO_
 - Show time: kernel parity on the live query the loader would have sent for each answered card when it was shown, at `shown_at`, separate from the answer-time update. On the fixture the two differ by up to 2.4e-3 in R, so they are not interchangeable.
 - Translation: `rwkv-engine/tests/fixtures/cases.json` holds %seer inputs with model rows written by hand from the fork's rules: learning and review queries across the 04:00 UTC rollover, the 15-minute box-one step, timestamp ties, the four answer states, and a rollover inside committed history. `cargo test --test translation`, which needs no weights, checks the adapter emits exactly those rows; the parity test checks this engine's R on each input against the fork's R on the hand-written rows.
 
-`node --test tools/rwkv-artifact.test.mjs` then runs the built artifact through the loader with a stubbed ship.
+`tools/verify-rwkv` is the required check. It builds the artifact into `rwkv-engine/dist/`, writes the native engine's output on the fixture beside it, runs the engine's tests against the committed fork numbers, and runs every Node test, which put the built artifact through the loader with a stubbed ship. It fails on any failure, missing input, or skipped test. Run alone, `node --test tools/*.test.mjs` fails when the artifact is missing; `RWKV_ARTIFACT_OPTIONAL=1` skips the artifact tests instead, for a local run that has not built it.
 
 ### Weights: evaluation only
 
