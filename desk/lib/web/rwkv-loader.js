@@ -62,8 +62,11 @@
     var mod = await WebAssembly.instantiate(engineBytes, {});
     var x = mod.instance.exports;
     var enc = new TextEncoder();
+    // each buffer goes to exactly one load_weights or predict call, with the
+    // same length, which frees it (RWKV.md, "Engine ABI")
     function put(bytes) {
       var ptr = x.alloc(bytes.length);
+      if (ptr === 0) throw new Error("rwkv: engine cannot allocate " + bytes.length + " bytes");
       new Uint8Array(x.memory.buffer, ptr, bytes.length).set(bytes);
       return ptr;
     }

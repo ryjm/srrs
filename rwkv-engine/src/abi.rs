@@ -1,5 +1,8 @@
-//! The engine ABI of RWKV.md. A buffer from `alloc` belongs to the call it
-//! is passed to, which frees it.
+//! The engine ABI of RWKV.md. A buffer from `alloc` belongs to the one call
+//! it is passed to, with the same length, which frees it. Lengths outside
+//! `0..=i32::MAX` and null pointers are refused before any ownership is
+//! taken. `predict` output is borrowed until the next `predict` or the end
+//! of the instance.
 
 use std::cell::RefCell;
 
@@ -11,22 +14,39 @@ thread_local! {
     static OUTPUT: RefCell<Vec<u8>> = const { RefCell::new(Vec::new()) };
 }
 
-unsafe fn take(ptr: i32, len: i32) -> Box<[u8]> {
-    let slice = std::ptr::slice_from_raw_parts_mut(ptr as usize as *mut u8, len as usize);
-    unsafe { Box::from_raw(slice) }
+/// # Safety
+/// `ptr` and `len` come from one `alloc` call not yet passed to `take`.
+unsafe fn take(ptr: i32, len: i32) -> Option<Box<[u8]>> {
+    let len = usize::try_from(len).ok()?;
+    if ptr == 0 {
+        return None;
+    }
+    let slice = std::ptr::slice_from_raw_parts_mut(ptr as usize as *mut u8, len);
+    Some(unsafe { Box::from_raw(slice) })
 }
 
+/// A pointer to `len` zeroed bytes, or 0 when `len` is negative or the
+/// memory cannot grow to hold it.
 #[no_mangle]
 pub extern "C" fn alloc(len: i32) -> i32 {
-    let buffer = vec![0u8; len.max(0) as usize].into_boxed_slice();
-    Box::into_raw(buffer) as *mut u8 as usize as i32
+    let Ok(len) = usize::try_from(len) else {
+        return 0;
+    };
+    let mut buffer = Vec::new();
+    if buffer.try_reserve_exact(len).is_err() {
+        return 0;
+    }
+    buffer.resize(len, 0u8);
+    Box::into_raw(buffer.into_boxed_slice()) as *mut u8 as usize as i32
 }
 
 /// # Safety
-/// `ptr` and `len` come from one `alloc` call.
+/// `ptr` and `len` come from one `alloc` call not passed to any other call.
 #[no_mangle]
 pub unsafe extern "C" fn load_weights(ptr: i32, len: i32) -> i32 {
-    let weights = unsafe { take(ptr, len) };
+    let Some(weights) = (unsafe { take(ptr, len) }) else {
+        return 1;
+    };
     match Engine::load(&weights) {
         Ok(engine) => {
             ENGINE.with(|slot| *slot.borrow_mut() = Some(engine));
@@ -37,13 +57,14 @@ pub unsafe extern "C" fn load_weights(ptr: i32, len: i32) -> i32 {
 }
 
 /// # Safety
-/// `ptr` and `len` come from one `alloc` call.
+/// `ptr` and `len` come from one `alloc` call not passed to any other call.
 #[no_mangle]
 pub unsafe extern "C" fn predict(ptr: i32, len: i32) -> i32 {
-    let input = unsafe { take(ptr, len) };
-    let output = ENGINE.with(|slot| match slot.borrow_mut().as_mut() {
-        Some(engine) => seer::predict(engine, &input).ok(),
-        None => None,
+    let output = unsafe { take(ptr, len) }.and_then(|input| {
+        ENGINE.with(|slot| match slot.borrow_mut().as_mut() {
+            Some(engine) => seer::predict(engine, &input).ok(),
+            None => None,
+        })
     });
     OUTPUT.with(|slot| {
         let mut slot = slot.borrow_mut();

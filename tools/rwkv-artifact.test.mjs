@@ -163,6 +163,28 @@ test("real artifact: a query before the newest answer gets no scores", { skip },
   assert.equal(posts.length, 0);
 });
 
+test("real artifact: the ABI refuses negative lengths and null pointers", { skip }, async () => {
+  const { instance } = await WebAssembly.instantiate(read("engine.wasm"), {});
+  const x = instance.exports;
+  const put = (bytes) => {
+    const ptr = x.alloc(bytes.length);
+    new Uint8Array(x.memory.buffer, ptr, bytes.length).set(bytes);
+    return ptr;
+  };
+  assert.equal(x.alloc(-1), 0, "alloc refuses a negative length");
+  assert.notEqual(x.load_weights(0, 4), 0, "load_weights refuses a null pointer");
+  assert.notEqual(x.load_weights(x.alloc(4), -1), 0, "load_weights refuses a negative length");
+  const weights = read("weights.bin");
+  assert.equal(x.load_weights(put(weights), weights.length), 0);
+  const input = new TextEncoder().encode(JSON.stringify({ now_ms, events }));
+  assert.equal(x.predict(0, input.length), 0, "predict refuses a null pointer");
+  assert.equal(x.predict(x.alloc(4), -1), 0, "predict refuses a negative length");
+  assert.notEqual(x.predict(put(input), input.length), 0, "the instance still predicts");
+  assert.equal(JSON.parse(new TextDecoder().decode(
+    new Uint8Array(x.memory.buffer, x.predict(put(input), input.length), x.output_len()),
+  )).length, cards.size);
+});
+
 test("real artifact: wasm R equals the native engine and the fork", { skip }, async () => {
   const engine = await wasmEngine(read("engine.wasm"), read("weights.bin"));
   const rows = engine.predict({ now_ms, events });

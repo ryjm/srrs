@@ -76,12 +76,12 @@ URLs resolve relative to the manifest URL.
 | export | signature | meaning |
 | --- | --- | --- |
 | `memory` | memory | linear memory |
-| `alloc` | `(len: i32) -> i32` | pointer to `len` writable bytes |
+| `alloc` | `(len: i32) -> i32` | pointer to `len` zeroed bytes; `0` if `len` is negative or memory cannot grow to hold it |
 | `load_weights` | `(ptr: i32, len: i32) -> i32` | load the weights; `0` on success |
 | `predict` | `(ptr: i32, len: i32) -> i32` | run on UTF-8 JSON input; pointer to output, `0` on failure |
 | `output_len` | `() -> i32` | byte length of the last `predict` output |
 
-A buffer from `alloc` belongs to the call it is passed to; `load_weights` and `predict` free it.
+The host passes each buffer from `alloc` to exactly one `load_weights` or `predict` call, with the length it allocated, and does not touch it afterwards: that call frees it. `load_weights` and `predict` refuse a negative length or a null pointer, returning failure without taking ownership. Lengths run from 0 to 2^31 − 1. The `predict` output stays engine-owned: it is valid until the next `predict` call or the end of the instance, and the host copies it out before either.
 
 Input: `{"now_ms": <now_ms from the scry>, "events": <revlog from the scry>}`. `now_ms` is the ship's time, the clock the revlog uses, not the browser's. `predict` fails when `now_ms` is earlier than the newest `answered_at`: a query day before the last replayed day is outside the model's input domain and can give every card the same score.
 
