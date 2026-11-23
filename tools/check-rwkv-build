@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Checks tools/build-rwkv-artifact end to end. Slow: each check is a full
-# build, and every build downloads the weights. Exits non-zero at the first
-# check that fails.
+# build, and every build downloads the weights. All work happens under a
+# directory whose name contains a space. Exits non-zero at the first check
+# that fails.
 set -euo pipefail
 export LC_ALL=C
 
 root=$(cd "$(dirname "$0")/.." && pwd)
-work=$(mktemp -d "${TMPDIR:-/tmp}/rwkv-build-check.XXXXXX")
+work=$(mktemp -d "${TMPDIR:-/tmp}/rwkv build check.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 unset CARGO_TARGET_DIR
 
@@ -19,6 +20,14 @@ pass() { echo "ok: $*"; }
 "$root/tools/build-rwkv-artifact" "$work/reference" >"$work/reference.log" 2>&1 ||
   fail "reference build: $(tail -5 "$work/reference.log")"
 pass "reference build, manifest $(sha256sum "$work/reference/manifest.json" | cut -d' ' -f1)"
+
+no_host_paths() {
+  for path in "$root" "${CARGO_HOME:-$HOME/.cargo}" "$HOME"; do
+    if grep -qaF "$path" "$1"; then fail "$1 embeds $path"; fi
+  done
+}
+no_host_paths "$work/reference/engine.wasm"
+pass "engine.wasm embeds no checkout, Cargo home or home path"
 
 for file in LICENSE NOTICE THIRD-PARTY-LICENSES WEIGHTS-NOTICE.md rwkv-engine-source.tar; do
   [ -s "$work/reference/$file" ] || fail "$file missing beside engine.wasm"
@@ -37,7 +46,32 @@ tar -xf "$work/reference/rwkv-engine-source.tar" -C "$work/unpacked"
   fail "build from rwkv-engine-source.tar: $(tail -5 "$work/from-source.log")"
 cmp -s "$work/reference/engine.wasm" "$work/from-source/engine.wasm" ||
   fail "rwkv-engine-source.tar does not rebuild the same engine.wasm"
-pass "rwkv-engine-source.tar rebuilds engine.wasm byte for byte"
+pass "rwkv-engine-source.tar rebuilds engine.wasm byte for byte from a path with spaces"
+
+mkdir -p "$work/unpacked/.cargo"
+printf '[profile.release]\nopt-level = "s"\n' >"$work/unpacked/.cargo/config.toml"
+if "$work/unpacked/tools/build-rwkv-artifact" "$work/config-profile" >"$work/config-profile.log" 2>&1; then
+  fail "a Cargo config with another release profile built and pinned"
+fi
+[ ! -e "$work/config-profile/manifest.json" ] || fail "a refused build left a manifest"
+grep -q 'pinned in rwkv-engine/engine.wasm.sha256' "$work/config-profile.log" ||
+  fail "unexpected failure: $(tail -3 "$work/config-profile.log")"
+pass "a Cargo config that changes the release profile fails the pinned digest, no manifest"
+
+if CARGO_PROFILE_RELEASE_OPT_LEVEL=s "$root/tools/build-rwkv-artifact" "$work/env-profile" \
+  >"$work/env-profile.log" 2>&1; then
+  fail "CARGO_PROFILE_RELEASE_OPT_LEVEL=s built and pinned"
+fi
+[ ! -e "$work/env-profile/manifest.json" ] || fail "a refused build left a manifest"
+pass "CARGO_PROFILE_RELEASE_OPT_LEVEL is refused, no manifest"
+
+CARGO_ENCODED_RUSTFLAGS= RUSTFLAGS=-Copt-level=1 CARGO_TARGET_DIR="$work/target flags" \
+  "$root/tools/build-rwkv-artifact" "$work/ambient-flags" >"$work/ambient-flags.log" 2>&1 ||
+  fail "build with ambient rustflags: $(tail -5 "$work/ambient-flags.log")"
+cmp -s "$work/reference/engine.wasm" "$work/ambient-flags/engine.wasm" ||
+  fail "ambient RUSTFLAGS or an empty CARGO_ENCODED_RUSTFLAGS changed engine.wasm"
+no_host_paths "$work/ambient-flags/engine.wasm"
+pass "an empty CARGO_ENCODED_RUSTFLAGS and other RUSTFLAGS change nothing"
 
 mkdir -p "$work/cwd/target-rel/wasm32-unknown-unknown/release"
 printf 'an older build\n' >"$work/cwd/target-rel/wasm32-unknown-unknown/release/rwkv_engine.wasm"
