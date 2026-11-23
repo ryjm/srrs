@@ -116,7 +116,7 @@ test("one invalid engine row rejects the whole batch", async () => {
   const good = { owner: "~zod", stack: "s1", item: "c1", r: 0.5 };
   const bads = [
     { ...good, r: null }, { ...good, r: 1.25 }, { ...good, r: -0.1 }, { ...good, r: NaN },
-    { ...good, item: "" }, { ...good, owner: "zod" }, null,
+    { ...good, item: "" }, { ...good, owner: "zod" }, null, { ...good, r: 0.25 },
   ];
   for (const bad of bads) {
     const { fetch, posts } = stubFetch(await files(await sha256Hex(await manifestBytes())));

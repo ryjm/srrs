@@ -652,10 +652,17 @@
       "[\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c3\",\"ppm\":1},"
       "\{\"owner\":\"zod\",\"stack\":\"s1\",\"item\":\"c4\",\"ppm\":2}]"
     ==
+  =/  twice=@t
+    %-  crip
+    ;:  weld
+      "[\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c3\",\"ppm\":1},"
+      "\{\"owner\":\"~zod\",\"stack\":\"s1\",\"item\":\"c3\",\"ppm\":2}]"
+    ==
   =^  good-status  core  (post-predictions core 'good' 0 good)
   =/  ranked  (peek-queue core)
   =^  bad-status  core  (post-predictions core 'bad' 0 bad)
   =/  after-bad  (peek-queue core)
+  =^  twice-status  core  (post-predictions core 'twice' 0 twice)
   =^  stale-status  core  (post-predictions core 'stale' 5 good)
   =/  rest  (skip sm2 |=(rev=review |(=(%c2 item.rev) =(imported item.rev))))
   ;:  weld
@@ -663,6 +670,7 @@
     (expect-eq !>(`(list review)`[(card-in imported) (card-in %c2) rest]) !>(ranked))
     (expect-eq !>(400) !>(bad-status))
     (expect-eq !>(ranked) !>(after-bad))
+    (expect-eq !>(400) !>(twice-status))
     (expect-eq !>(409) !>(stale-status))
     (expect-eq !>(ranked) !>((peek-queue core)))
   ==

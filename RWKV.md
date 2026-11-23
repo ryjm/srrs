@@ -39,7 +39,7 @@ Any new answer appends to the revlog, so the stored predictions go stale until t
 2. Stop if disabled, unconfigured, `head` is `null`, or `fresh` is true.
 3. Fetch the manifest and check its SHA-256 against `artifact_hash`.
 4. Fetch the engine and weights named in the manifest and check each against its listed SHA-256.
-5. Run the engine. If any output row lacks a string `owner` starting with `~`, a non-empty `stack` or `item`, or an `r` in `[0, 1]`, drop the whole output.
+5. Run the engine. If any output row lacks a string `owner` starting with `~`, a non-empty `stack` or `item`, or an `r` in `[0, 1]`, or repeats an earlier row's card, drop the whole output.
 6. POST the result to `/apps/seer/actions/rwkv-predictions`.
 
 Any failure is logged with `console.warn` and nothing is sent.
@@ -77,7 +77,7 @@ Output: UTF-8 JSON `[{"owner": "~zod", "stack": "s1", "item": "c1", "r": 0.83}, 
 
 ### Predictions POST
 
-Form-encoded fields: `idempotency-epoch`, `operation-id`, `head`, `artifact` (the `artifact_hash` the loader verified the manifest against), and `predictions`, a JSON array of `{"owner": "~zod", "stack": "s1", "item": "c1", "ppm": 830000}`, where `ppm` is R in integer parts per million. `stack` and `item` are the strings from the scry, so any card key round-trips, including imported IDs that start with a digit.
+Form-encoded fields: `idempotency-epoch`, `operation-id`, `head`, `artifact` (the `artifact_hash` the loader verified the manifest against), and `predictions`, a JSON array of `{"owner": "~zod", "stack": "s1", "item": "c1", "ppm": 830000}`, where `ppm` is R in integer parts per million. `stack` and `item` are the strings from the scry, so any card key round-trips, including imported IDs that start with a digit. A batch that names the same card twice does not parse.
 
 The response is JSON, never a page:
 

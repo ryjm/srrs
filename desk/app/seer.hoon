@@ -1555,13 +1555,16 @@
   ?~  top  ~
   ?~  artifact  ~
   ?~  rows  ~
-  :-  ~
-  :^  %rwkv-predictions  u.top  u.artifact
-  %-  malt
-  %+  turn  u.rows
-  |=  [who=@p stak=@t name=@t ppm=@ud]
-  :-  `card-key`[who (@tas stak) (@tas name)]
-  (div:rd (sun:rd ppm) (sun:rd 1.000.000))
+  =/  r=(map card-key @rd)
+    %-  malt
+    %+  turn  u.rows
+    |=  [who=@p stak=@t name=@t ppm=@ud]
+    :-  `card-key`[who (@tas stak) (@tas name)]
+    (div:rd (sun:rd ppm) (sun:rd 1.000.000))
+  ::  a repeated card would silently lose a row in the map
+  ::
+  ?.  =(~(wyt by r) (lent u.rows))  ~
+  `[%rwkv-predictions u.top u.artifact r]
 ::
 ++  json-status
   |=  [status=@ud body=json]

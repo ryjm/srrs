@@ -27,16 +27,21 @@
   }
 
   // rows: the engine output, [{owner, stack, item, r}]. One row without a
-  // card key or with r outside [0, 1] rejects the batch.
+  // card key, with r outside [0, 1], or repeating a card rejects the batch.
   function pokeBody(config, rows, operationId) {
     if (!Array.isArray(rows)) throw new Error("rwkv: engine output is not a list");
+    var seen = new Set();
     var predictions = rows.map(function (row, i) {
       var ok = row !== null && typeof row === "object" &&
         typeof row.owner === "string" && row.owner.charAt(0) === "~" &&
         typeof row.stack === "string" && row.stack !== "" &&
         typeof row.item === "string" && row.item !== "" &&
         typeof row.r === "number" && row.r >= 0 && row.r <= 1;
-      if (!ok) throw new Error("rwkv: bad engine row " + i + ": " + JSON.stringify(row));
+      var key = ok && JSON.stringify([row.owner, row.stack, row.item]);
+      if (!ok || seen.has(key)) {
+        throw new Error("rwkv: bad engine row " + i + ": " + JSON.stringify(row));
+      }
+      seen.add(key);
       return {
         owner: row.owner, stack: row.stack, item: row.item,
         ppm: Math.round(row.r * 1e6),
