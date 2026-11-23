@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
 
-const { run, sha256Hex } = createRequire(import.meta.url)("../desk/lib/web/rwkv-loader.js");
+const { run, scheduler, sha256Hex } = createRequire(import.meta.url)("../desk/lib/web/rwkv-loader.js");
 
 const bytes = (text) => new TextEncoder().encode(text);
 const engineBytes = bytes("engine");
@@ -151,4 +151,62 @@ test("artifact fetches omit credentials; ship requests stay same-origin", async 
     ["https://cdn.example/rwkv/weights.bin", "omit"],
     ["/apps/seer/actions/rwkv-predictions", "same-origin"],
   ]);
+});
+
+// Holds the first weights fetch until release(); atWeights settles when a
+// run is parked there.
+async function heldRun() {
+  const hash = await sha256Hex(await manifestBytes());
+  const served = await files(hash);
+  const stub = stubFetch(served);
+  let release;
+  let parked;
+  const gate = new Promise((resolve) => { release = resolve; });
+  const atWeights = new Promise((resolve) => { parked = resolve; });
+  let held = false;
+  const fetch = async (url, init) => {
+    if (url.endsWith("/weights.bin") && !held) {
+      held = true;
+      parked();
+      await gate;
+    }
+    return stub.fetch(url, init);
+  };
+  const refreshes = [];
+  const request = scheduler({
+    fetch, engine: stubEngine, now: () => 1000, base: "http://ship/",
+    refresh: () => refreshes.push(true),
+  });
+  const setHead = (head) => { served["/~/scry/seer/rwkv.json"] = { ...config(hash), head }; };
+  return { request, release, atWeights, posts: stub.posts, refreshes, setHead };
+}
+
+const postedHeads = (posts) => posts.map((p) => new URLSearchParams(p.body).get("head"));
+
+test("a run that outlives its review view posts but does not refresh", async () => {
+  const held = await heldRun();
+  const view = { isConnected: true };
+  const done = held.request(view);
+  await held.atWeights;
+  view.isConnected = false;
+  held.release();
+  await done;
+  assert.deepEqual(postedHeads(held.posts), ["3"]);
+  assert.deepEqual(held.refreshes, []);
+});
+
+test("requests during a run coalesce into one rerun at the latest head", async () => {
+  const held = await heldRun();
+  const views = [{ isConnected: true }, { isConnected: true }, { isConnected: true }];
+  const done = held.request(views[0]);
+  await held.atWeights;
+  held.setHead(4);
+  views[0].isConnected = false;
+  held.request(views[1]);
+  views[1].isConnected = false;
+  held.request(views[2]);
+  held.release();
+  await done;
+  assert.deepEqual(postedHeads(held.posts), ["3", "4"]);
+  assert.deepEqual(held.refreshes, [true]);
 });

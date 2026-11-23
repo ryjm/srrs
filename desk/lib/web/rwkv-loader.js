@@ -111,30 +111,55 @@
     }
   }
 
+  // One run at a time per page. A request that arrives during a run waits,
+  // replacing any earlier waiting request; when the run ends, one more run
+  // serves it against the latest config and head. The page refreshes only
+  // if some run was accepted and the latest requesting review view is
+  // still in the document. deps: run's deps plus refresh().
+  function scheduler(deps) {
+    var busy = null;
+    var next = null;
+    async function loop(view) {
+      var accepted = false;
+      for (;;) {
+        if (await run(deps)) accepted = true;
+        if (!next) break;
+        view = next;
+        next = null;
+      }
+      busy = null;
+      if (accepted && view.isConnected) deps.refresh();
+    }
+    return function request(view) {
+      if (busy) {
+        next = view;
+        return busy;
+      }
+      busy = loop(view);
+      return busy;
+    };
+  }
+
   if (typeof module === "object" && module.exports) {
-    module.exports = { sha256Hex: sha256Hex, pokeBody: pokeBody, run: run };
+    module.exports = { sha256Hex: sha256Hex, pokeBody: pokeBody, run: run, scheduler: scheduler };
     return;
   }
-  // htmx re-runs this script on every swap of #seer-app; one run at a time.
-  if (window.seerRwkvRunning) return;
-  window.seerRwkvRunning = true;
-  var deps = {
-    fetch: window.fetch.bind(window),
-    engine: wasmEngine,
-    now: Date.now,
-    base: location.href,
-  };
-  run(deps).then(async function (body) {
-    if (!body || !window.htmx) return;
-    // refresh only if the ship accepted the predictions
-    var config = await (await deps.fetch(CONFIG_URL)).json();
-    if (!config.fresh) return;
-    htmx.ajax("GET", "/apps/seer/review", {
-      target: "#seer-app", select: "#seer-app", swap: "outerHTML",
+  // htmx re-runs this script each time it swaps in a review view
+  if (!window.seerRwkvRequest) {
+    window.seerRwkvRequest = scheduler({
+      fetch: window.fetch.bind(window),
+      engine: wasmEngine,
+      now: Date.now,
+      base: location.href,
+      refresh: function () {
+        if (!window.htmx) return;
+        htmx.ajax("GET", "/apps/seer/review", {
+          target: "#seer-app", select: "#seer-app", swap: "outerHTML",
+        });
+      },
     });
-  }).catch(function (err) {
-    console.warn(err);
-  }).finally(function () {
-    window.seerRwkvRunning = false;
-  });
+  }
+  var script = document.currentScript;
+  var view = script && script.closest("[data-review]");
+  if (view) window.seerRwkvRequest(view);
 })();
