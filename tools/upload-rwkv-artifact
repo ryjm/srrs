@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Uploads a built RWKV artifact (tools/build-rwkv-artifact) to a ship's %seer
+# artifact store: one PUT per file to /apps/seer/rwkv/<sha-256>, the engine's
+# license, notices and source with it. The ship stores a file only when its
+# bytes hash to the path; see RWKV.md, "Ship hosting".
+#
+# usage: SEER_COOKIE=<cookie> tools/upload-rwkv-artifact SHIP-URL [DIR]
+#
+# SHIP-URL is the ship's web address. DIR defaults to rwkv-engine/dist.
+# SEER_COOKIE is the owner's session cookie, `urbauth-~<ship>=<value>`. curl
+# reads it from stdin, so it is never on a command line.
+set -euo pipefail
+export LC_ALL=C
+
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "usage: SEER_COOKIE=<cookie> $0 SHIP-URL [DIR]" >&2
+  exit 2
+fi
+if [ -z "${SEER_COOKIE:-}" ]; then
+  echo "SEER_COOKIE is not set: give the ship owner's session cookie" >&2
+  exit 2
+fi
+root=$(cd "$(dirname "$0")/.." && pwd)
+ship=${1%/}
+dir=${2:-$root/rwkv-engine/dist}
+
+# file and the content-type the ship stores it under (rwkv-blob-type in
+# desk/sur/seer.hoon)
+files=(
+  "manifest.json|application/json"
+  "engine.wasm|application/wasm"
+  "weights.bin|application/octet-stream"
+  "LICENSE|text/plain; charset=utf-8"
+  "NOTICE|text/plain; charset=utf-8"
+  "THIRD-PARTY-LICENSES|text/plain; charset=utf-8"
+  "rwkv-engine-source.tar|application/x-tar"
+  "WEIGHTS-NOTICE.md|text/markdown; charset=utf-8"
+)
+
+sha256() {
+  if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d' ' -f1
+}
+
+for entry in "${files[@]}"; do
+  [ -f "$dir/${entry%%|*}" ] || { echo "missing $dir/${entry%%|*}: run tools/build-rwkv-artifact" >&2; exit 1; }
+done
+
+for entry in "${files[@]}"; do
+  name=${entry%%|*}
+  sha=$(sha256 "$dir/$name")
+  out=$(printf 'Cookie: %s\n' "$SEER_COOKIE" |
+    curl --silent --show-error --write-out '\n%{http_code}' \
+      --request PUT --header @- --header "Content-Type: ${entry#*|}" \
+      --data-binary "@$dir/$name" "$ship/apps/seer/rwkv/$sha")
+  case ${out##*$'\n'} in
+    201) echo "stored   $name /apps/seer/rwkv/$sha" ;;
+    204) echo "present  $name /apps/seer/rwkv/$sha" ;;
+    *)
+      echo "upload of $name refused: HTTP ${out##*$'\n'} ${out%$'\n'*}" >&2
+      exit 1
+      ;;
+  esac
+done
+
+manifest=$(sha256 "$dir/manifest.json")
+echo "artifact-url   /apps/seer/rwkv/$manifest"
+echo "artifact-hash  $manifest"
