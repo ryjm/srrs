@@ -146,7 +146,9 @@
   }
 
   if (typeof module === "object" && module.exports) {
-    module.exports = { sha256Hex: sha256Hex, pokeBody: pokeBody, run: run, scheduler: scheduler };
+    module.exports = {
+      sha256Hex: sha256Hex, pokeBody: pokeBody, run: run, scheduler: scheduler, wasmEngine: wasmEngine,
+    };
     return;
   }
   // htmx re-runs this script each time it swaps in a review view
