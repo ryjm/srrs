@@ -753,6 +753,30 @@
     (expect-eq !>(~s5) !>(`@dr`interval.l3))
   ==
 ::
+::  an early second answer supersedes the first answer's timer: the
+::  older wake leaves the card out of the sm-2 queue; the newer one
+::  admits it
+::
+++  test-sm2-superseded-wake-ignored
+  ^-  tang
+  =/  core  ag
+  =.  core  (do core [%new-stack %s1 'Stack one' ~])
+  =.  core
+    (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =.  core  (do core [%answered-item ~zod %s1 %c1 %good])
+  =/  first=wire  /review-schedule/s1/c1/(scot %da (add fixed-now ~m15))
+  =/  later  (add fixed-now ~m1)
+  =.  core  (at-time core later)
+  =.  core  (do core [%answered-item ~zod %s1 %c1 %good])
+  =/  second=wire  /review-schedule/s1/c1/(scot %da (add later ~d1))
+  =/  stale  +:(arvo core first wake)
+  =/  due  +:(arvo core second wake)
+  ;:  weld
+    (expect-eq !>(`(list review)`~) !>((peek-queue core)))
+    (expect-eq !>(`(list review)`~) !>((peek-queue stale)))
+    (expect-eq !>(`(list review)`~[(card-in %c1)]) !>((peek-queue due)))
+  ==
+::
 ::  Each answer appends one ordered review event; SM-2 state is unchanged.
 ::
 ++  test-review-log-records-answers

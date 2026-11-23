@@ -5256,6 +5256,12 @@
     ?~  item
       ~&  peer+"missing {(spud t.t.wire)} item scheduled for review!"
       [~ state]
+    ::  an answer since this timer was set scheduled a different review;
+    ::  only the timer for the newest answer admits the card
+    ::
+    =/  due  (bind last-review.u.item |=(at=@da (add at interval.learn.u.item)))
+    ?.  &(?=(^ due) =(due (slaw %da i.t.t.t.wire)))
+      [~ state]
     =<  abet
     %.  (need item)
     %~  add-review-item  stack-emit  (~(got by stacks) i.t.wire)
