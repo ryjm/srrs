@@ -600,6 +600,43 @@
     (expect-eq !>(307) !>((status page)))
   ==
 ::
+::  +agent-via: .core reloaded under a bowl whose request comes from .who
+::  by way of .via, the provenance gall reports
+::
+++  agent-via
+  |=  [core=agent:gall who=ship via=path]
+  ^-  agent:gall
+  +:(on-load:~(. seer-agent %*(. bol src who, sap via)) on-save:core)
+::
+::  only eyre carries http: a local agent poking an authenticated request
+::  as this ship, or watching a response path, is refused. eyre's own
+::  watch is accepted whichever identity it carries, so a guest still
+::  gets its 403
+::
+++  test-http-only-from-eyre
+  ^-  tang
+  =/  url  (blob-url engine-octs)
+  =/  core  ag
+  =^  stored  core  (put-blob core owner url 'application/wasm' engine-octs)
+  =/  request=inbound-request:eyre
+    %*(. *inbound-request:eyre authenticated %.y, request [%'GET' url ~ ~])
+  =/  poke
+    |=  via=path
+    |.((on-poke:(agent-via core ~zod via) %handle-http-request !>(['blob' request])))
+  =/  watch
+    |=  [who=ship via=path]
+    |.((on-watch:(agent-via core who via) /http-response/blob))
+  ;:  weld
+    (expect-eq !>(201) !>((status stored)))
+    (expect-fail (poke /gall/hood))
+    (expect-fail (poke /gall/seer-cli))
+    (expect-success (poke /eyre))
+    (expect-fail (watch ~zod /gall/hood))
+    (expect-fail (watch ~nec /gall/seer))
+    (expect-success (watch ~zod /eyre))
+    (expect-success (watch ~nec /eyre))
+  ==
+::
 ::  all blobs together stay within +rwkv-store-cap: an upload past it is
 ::  refused and not stored; one that lands exactly on it is stored, and
 ::  bytes already stored do not count twice

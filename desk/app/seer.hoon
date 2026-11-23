@@ -206,10 +206,14 @@
         =.  operator-authorized.native  trusted-operator:native
         (apply-command:native envelope)
           %handle-http-request
+        ::  only Eyre, the local vane, carries an HTTP request: a local
+        ::  agent or another ship poking this mark is refused, so none can
+        ::  stand in for Eyre or answer a live request. Eyre pokes
+        ::  authenticated requests as this ship; a guest identity only ever
+        ::  receives the redirect, or a 403 from the rwkv store, whose
+        ::  clients are fetch and curl.
+        ?>  =(/eyre sap.bol)
         =+  !<([eyre-id=@ta =inbound-request:eyre] vase)
-        ::  Eyre pokes authenticated requests as this ship; a guest identity
-        ::  or a foreign poke of this mark only ever receives the redirect,
-        ::  or a 403 from the rwkv store, whose clients are fetch and curl.
         ?:  ?&(authenticated.inbound-request =(our.bol src.bol))
           %+  poke-handle-http-request:sc  eyre-id
           inbound-request
@@ -230,7 +234,9 @@
       ?+  path  (on-watch:def path)
         [%seertile *]                (peer-seertile:sc t.path)
         [%seer-primary *]            [~ state]
-        [%http-response *]           [~ state]
+        ::  Eyre watches for its response as the request's identity, a
+        ::  guest's included, so the watcher is checked by provenance only
+        [%http-response *]           ?>(=(/eyre sap.bol) [~ state])
         [%stack @ ~]                 (peer-stack:sc i.t.path)
         [%shared-context ~]          serve-shared-manifest:sc
         [%shared-context %file @ *]  (serve-shared-file:sc t.t.path)
