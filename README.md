@@ -102,11 +102,13 @@ Gall reloads an installed `%seer` agent. For the first installation, run `|insta
 The reload keeps the saved state; upgrading over a save `%seer` recognizes
 never needs a nuke. `on-save` tags the state with its version, currently
 `%3`. `on-load` reads saves tagged `%3`, `%2`, `%1`, and `%0`, and the untagged
-saves from before tags, and migrates each older one forward to `%3`. What the
-older save holds carries over, among it stacks, items, the review log,
-subscriptions, provider accounts, and RWKV settings; fields it lacks start
-at their defaults, such as an empty RWKV artifact store for a `%2` save. To
-upgrade from any of these, copy the desk and `|commit %seer` as above.
+saves from before tags, and migrates each older one forward to `%3`. Every
+field the older save has carries over, among them stacks, items,
+subscriptions, and provider accounts. Fields added after that save start at
+their defaults: a `%0` save starts with an empty review log, a `%1` save with
+RWKV off and no predictions, and a `%2` save with an empty RWKV artifact
+store. To upgrade from any of these, copy the desk and `|commit %seer` as
+above.
 
 The saved-state tag is not the MCP protocol version. `schema_version: 3` in
 tool calls and replies (see [Schema-3 cutover](#schema-3-cutover)) changes
