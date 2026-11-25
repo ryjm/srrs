@@ -136,7 +136,7 @@ and its state shape changes, its reload fails with
 `|nuke %seer-cli, =hard &` and then `|revive %seer`.
 
 Run the desk tests from the Dojo. They drive real Hoon state transitions for
-same-shape reloads, saved-state migrations, SM-2 scheduling, bounded reads, atomic plans and receipts,
+same-shape reloads, saved-state migrations, SM-2 scheduling, conditional review answers, bounded reads, atomic plans and receipts,
 evidence/citations, learning reuse, the outbound destination policy, and
 provider response parsing:
 
@@ -169,6 +169,7 @@ with `node --test tools/check-ship-alignment.test.mjs`.
 - `desk/app/seer.hoon` handles routes, form data, state changes, and persistent state.
 - GET routes render the review queue, library, shared stacks, and stack details.
 - POST routes decode typed commands and record authoritative effect receipts before rendering the result.
+- A review grade form carries `head-revision`, the revision of the card it shows; `/seer/stacks.json` returns the same value beside `review`. The ship records such an answer only while that card is still the review head at that revision. Otherwise it records an `answered-item` receipt with status `conflict` and reason `review-head-moved` or `review-card-changed`, logs and schedules nothing, and answers 409. A form without `head-revision` grades the named card as before.
 - `hx-boost`, `hx-target`, `hx-select`, and `hx-swap` replace the `#seer-app` fragment.
 - Each route also returns usable HTML when JavaScript is unavailable. The one exception is the local-file context source, which needs the inline script to read the file.
 - The shared app shell adds Vim-style navigation: `j`/`k` move between targets and wrap through stack cards, `J`/`K` and `d`/`u` scroll, `gg`/`G` jump, `gr`/`gi`/`gl`/`gs` change sections, `za`/`zo`/`zc`/`zR`/`zM` control disclosures, `i` enters a focused form, `ga` opens the assistant, and `?` opens the shortcut guide.
