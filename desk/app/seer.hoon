@@ -591,7 +591,8 @@
   --
 ::  cards: list of outgoing moves
 ::  stak:  the current stack
-::  answer-fence: the head-revision a review answer form cites, if any
+::  answer-fence: the head-revision a conditional answer cites; set only
+::    by its route, so every other command runs without it
 ::
 =|  $:  cards=(list card)
         stak=stack
@@ -1193,17 +1194,17 @@
     ==
   ::
       [[~ [%apps %seer %actions %answer ~]] ~]
-    =/  owner       (slav %p (form-got fields 'owner'))
-    =/  stack-name  (slav %tas (form-got fields 'stack'))
-    =/  item-name   (slav %tas (form-got fields 'item'))
-    =/  answer      (grade (form-got fields 'answer'))
-    ::  a form with head-revision answers only the review head at that
-    ::  revision (+answer-refusal); a form without it grades as before
-    ::
-    =/  fence  (~(get by fields) 'head-revision')
-    %:  apply-web-action(answer-fence fence)
+    (apply-web-action eyre-id (form-answer fields) [%review ~] ~)
+  ::  the review page's grade forms post here. the answer is recorded
+  ::  only while the card it names is the review head at the
+  ::  head-revision it cites (+answer-refusal); a missing head-revision
+  ::  is an empty one, which matches none. an older desk has no such
+  ::  route, so it answers 404 and grades nothing.
+  ::
+      [[~ [%apps %seer %actions %conditional-answer ~]] ~]
+    %:  apply-web-action(answer-fence `(form-got fields 'head-revision'))
       eyre-id
-      [%answered-item owner stack-name item-name answer]
+      (form-answer fields)
       [%review ~]
       ~
     ==
@@ -2751,6 +2752,18 @@
       %hard   %hard
       %good   %good
       %easy   %easy
+  ==
+::
+::  +form-answer: the answer a review grade form names
+::
+++  form-answer
+  |=  fields=(map @t @t)
+  ^-  action
+  :*  %answered-item
+      (slav %p (form-got fields 'owner'))
+      (slav %tas (form-got fields 'stack'))
+      (slav %tas (form-got fields 'item'))
+      (grade (form-got fields 'answer'))
   ==
 ::
 ++  poke-seer-action

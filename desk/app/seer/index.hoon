@@ -1796,7 +1796,8 @@
                   document.addEventListener("htmx:beforeSwap", function (e) {
                     var d = e.detail;
                     if (d && d.xhr && d.xhr.status === 409 && d.pathInfo
-                      && d.pathInfo.requestPath === "/apps/seer/actions/answer") {
+                      && d.pathInfo.requestPath
+                        === "/apps/seer/actions/conditional-answer") {
                       d.shouldSwap = true;
                       d.isError = false;
                       if (done > 0) { done -= 1; }
@@ -5246,8 +5247,8 @@
     ^-  manx
     ;form.grade
       =method           "post"
-      =action           "/apps/seer/actions/answer"
-      =hx-post          "/apps/seer/actions/answer"
+      =action           "/apps/seer/actions/conditional-answer"
+      =hx-post          "/apps/seer/actions/conditional-answer"
       =hx-target        "#seer-app"
       =hx-select        "#seer-app"
       =hx-swap          "outerHTML show:top"
