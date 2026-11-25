@@ -76,7 +76,7 @@ Revisions answer different questions:
 | `state_revision`, `observed_at` | Which coherent local observation produced a response; not a global cross-ship snapshot |
 | `content_revision` | Monotonic editorial state, including A→B→A changes; used for content edits |
 | `review_revision` | Learner scheduling/grade state; an unrelated grade must not invalidate an editorial change |
-| `head-revision` | The review head as a page shows it: which card, the row the page renders, its version, its stack's title, how many answers are logged, and the idempotency epoch, so a reinstall never reuses one; an answer citing it is recorded only against that head, so one value admits one answer, and its receipt digest covers the value it cited |
+| `head-revision` | The review head as a page shows it: which card, the row the page renders, its version, its stack's title, how many answers are logged, and the idempotency epoch, so a reinstall never reuses one; an answer citing it is recorded only against that head, so one value admits one answer, and its receipt digest covers the value it cited. The answer is also refused when the head's row is missing or names another card, since a grade writes the row under the name it holds |
 | `snapshot_ref`, `digest` | Exact normalized source bytes and their identity; a digest proves identity, not truth |
 | `work_ref`, `attempt`, `deadline` | Durable request identity, a particular execution, and the ship-time bound after which that execution is fenced |
 | `operation_id`, `idempotency_epoch` | One caller intent within a server-advertised replay namespace |
