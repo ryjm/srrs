@@ -4778,7 +4778,7 @@
         ==
         ;div.review-prompt: {(trip (body-text front.content.current))}
         ;details.flip
-          =data-persist  "reveal|{card-key}"
+          =data-persist  "reveal|{card-key}|{(trip revision)}"
           ;summary.flip-bar
             ;span.flip-show: Show answer
             ;span.flip-hide: Hide answer
