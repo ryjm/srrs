@@ -1197,9 +1197,10 @@
     (apply-web-action eyre-id (form-answer fields) [%review ~] ~)
   ::  the review page's grade forms post here. the answer is recorded
   ::  only while the card it names is the review head at the
-  ::  head-revision it cites (+answer-refusal); a missing head-revision
-  ::  is an empty one, which matches none. an older desk has no such
-  ::  route, so it answers 404 and grades nothing.
+  ::  head-revision it cites and its row is stored under its own name
+  ::  (+answer-refusal); a missing head-revision is an empty one, which
+  ::  matches none. an older desk has no such route, so it answers 404
+  ::  and grades nothing.
   ::
       [[~ [%apps %seer %actions %conditional-answer ~]] ~]
     %:  apply-web-action(answer-fence `(form-got fields 'head-revision'))
@@ -1759,8 +1760,11 @@
   state(pending-show (~(put by pending-show.state) key now.bol))
 ::
 ::  +answer-refusal: why a conditional answer may not grade .rev: it is
-::  not the review head now, or the head's revision is not the one the
-::  answer cites. ~ when they match, or when the answer cites none.
+::  not the review head now, the head's revision is not the one the
+::  answer cites, or the head's row is missing or names another card.
+::  a grade writes the row under its name, so grading a row that names
+::  another card would overwrite that card. ~ when they match, or when
+::  the answer cites none.
 ::
 ++  answer-refusal
   |=  rev=review
@@ -1770,6 +1774,9 @@
   =/  reviews  all-reviews
   ?.  ?&(?=(^ reviews) =(rev i.reviews))  `%review-head-moved
   ?.  =(u.fence (review-revision rev))  `%review-card-changed
+  =/  found  (context-stack who.rev stack.rev)
+  =/  row  ?~(found ~ (~(get by items.u.found) item.rev))
+  ?.  ?&(?=(^ row) =(item.rev name.u.row))  `%review-card-misfiled
   ~
 ::
 ++  respond-payload

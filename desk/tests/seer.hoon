@@ -3143,6 +3143,63 @@
     (expect-eq !>(200) !>((status res.current)))
   ==
 ::
+::  rows filed under other cards' names: %a holds a row named %b, %b its
+::  own row, and %c a row named %a, which raising %c queues as the review
+::  head %a. a grade writes the row it reads under that row's name, so
+::  grading %a would write %a's row over %b. an edit to %b after %a was
+::  shown leaves %a's revision as it was; an answer citing it is refused
+::  all the same, with a conflict receipt and a 409. the edit to %b
+::  survives, nothing is logged, learned or scheduled, and %a keeps its
+::  shown stamp. the stamp is from a minute before the answer: the 409
+::  page stamps at fixed-now, so a stamp consumed and set again then
+::  would look kept
+::
+++  test-conditional-answer-refuses-a-misfiled-row
+  ^-  tang
+  =/  row
+    |=  [name=@tas front=@t]
+    ^-  item
+    (create-item:effects ~zod fixed-now [%new-item ~zod ~zod %s1 name 'Card' *perm-config front 'back'])
+  =/  rows=(map @tas item)
+    (my ~[[%a (row %b 'front a')] [%b (row %b 'front b')] [%c (row %a 'front c')]])
+  =/  core  (do ag [%new-stack %s1 'Stack one' rows])
+  =.  core  (do core [%raise-item ~zod %s1 %c])
+  =/  shown  (head-revision-of core)
+  =/  edited  (do core [%edit-item ~zod %s1 %b 'Card' *perm-config 'new front' 'back'])
+  =/  earlier=@da  (sub fixed-now ~m1)
+  =/  cur=seer-state  (saved edited)
+  =.  pending-show.cur  (~(put by pending-show.cur) (card-in %a) earlier)
+  =.  edited  +:(on-load:ag !>([%3 cur]))
+  =/  before  (saved edited)
+  =/  refused  (answer-form edited 'misfiled' (card-in %a) 'good' `shown)
+  =/  after  (saved core.refused)
+  =/  receipt  (answer-receipt core.refused 'misfiled' (card-in %a) %good `shown)
+  =/  ours
+    |=  c=agent:gall
+    ^-  stack
+    (need (peek-stack c %s1))
+  ;:  weld
+    (expect-eq !>(`(list review)`~[(card-in %a)]) !>((peek-queue edited)))
+    (expect-eq !>(`@tas`%b) !>(name:(~(got by items:(ours edited)) %a)))
+    (expect-eq !>('front a') !>((front-of (ours edited) %a)))
+    (expect-eq !>('new front') !>((front-of (ours edited) %b)))
+    (expect-eq !>(shown) !>((head-revision-of edited)))
+    (expect-eq !>(409) !>((status res.refused)))
+    (expect-eq !>('answered-item') !>((json-text receipt 'action')))
+    (expect-eq !>('conflict') !>((json-text receipt 'status')))
+    (expect-eq !>('review-card-misfiled') !>((json-text receipt 'reason')))
+    (expect-eq !>('none') !>((json-text receipt 'effect')))
+    (expect-eq !>('new front') !>((front-of (ours core.refused) %b)))
+    (expect-eq !>(stacks.before) !>(stacks.after))
+    (expect-eq !>(review-log.before) !>(review-log.after))
+    (expect-eq !>(next-review-id.before) !>(next-review-id.after))
+    (expect-eq !>(learning.before) !>(learning.after))
+    %+  expect-eq  !>(`(unit @da)``earlier)
+    !>((~(get by pending-show.after) (card-in %a)))
+    (expect-eq !>(pending-show.before) !>(pending-show.after))
+    (expect-eq !>(0) !>((lent (review-timers cards.refused))))
+  ==
+::
 ::  a conditional answer's digest covers the revision it cites. its
 ::  operation id resent citing another revision, or none, is told the id
 ::  belongs to different content, with a 409 on the conditional route;
