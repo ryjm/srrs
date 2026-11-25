@@ -5543,21 +5543,28 @@
   `(review-revision i.reviews)
 ::
 ::  +review-revision: one opaque value for the card a review page shows
-::  for .rev and for what grading it would change: the card's version
-::  where it is read (our stack, else the followed one), that stack's
-::  title, and the number of answers logged. an edit, a grade, a
-::  rename, or an update to a followed stack changes it; so does every
-::  answer, which need not change a followed card. a revision therefore
-::  admits at most one answer.
+::  for .rev and for what grading it would change. it hashes the
+::  idempotency epoch, which a reinstall renews; the card's row where
+::  it is read (our stack, else the followed one), which is what the
+::  page renders and the answer grades; the card's version there; that
+::  stack's title; and the number of answers logged. counters restart
+::  with a fresh agent and a malformed row can be written under another
+::  card's name, so the row itself is hashed, not only its version. an
+::  edit, a grade, a rename, an update to a followed stack or a
+::  reinstall changes it; so does every answer, which need not change a
+::  followed card. a revision therefore admits at most one answer.
 ::
 ++  review-revision
   |=  rev=review
   ^-  @t
+  =/  found  (context-stack who.rev stack.rev)
   %+  scot  %uv
   %-  sham
-  :*  rev
+  :*  epoch.operating.state
+      rev
+      (bind found |=(=stack (~(get by items.stack) item.rev)))
       (~(get by versions.operating.state) [%card who.rev stack.rev item.rev])
-      (bind (context-stack who.rev stack.rev) local-stack-title)
+      (bind found local-stack-title)
       next-review-id.state
   ==
 ::
