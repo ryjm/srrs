@@ -1693,6 +1693,18 @@
                     } else {
                       done = 0;
                     }
+                    // A revealed back stays open only while each render
+                    // shows the same card at the same revision. Forget any
+                    // other reveal, so a revision that comes back is closed.
+                    var rendered = {};
+                    qa("details[data-persist]").forEach(function (d) {
+                      rendered[d.getAttribute("data-persist")] = true;
+                    });
+                    Object.keys(open).forEach(function (key) {
+                      if (key.indexOf("reveal|") === 0 && !rendered[key]) {
+                        delete open[key];
+                      }
+                    });
                     qa("details[data-persist]").forEach(function (d) {
                       var key = d.getAttribute("data-persist");
                       if (open[key] !== undefined) { d.open = open[key]; }
