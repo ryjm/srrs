@@ -521,15 +521,15 @@
   ^-  ship
   (end 3^16 (cat 3 (end 3^8 (fein:ob ~zod)) (~(raw og 0v1) 128)))
 ::
-::  +send: one request as eyre pokes it, from .who, authenticated or
-::  not; the response eyre would send and the next core
+::  +exchange: one request as eyre pokes it, from .who, authenticated or
+::  not; the response eyre would send, every card, and the next core
 ::
-++  send
+++  exchange
   |=  $:  core=agent:gall
           who=[src=ship authed=?]
           [method=method:http url=@t headers=header-list:http body=(unit octs)]
       ==
-  ^-  [simple-payload:http agent:gall]
+  ^-  [res=simple-payload:http cards=(list card:agent:gall) core=agent:gall]
   =/  shell  ~(. seer-agent (eyre-bowl src.who 'blob'))
   =/  agent  +:(on-load:shell on-save:core)
   =/  request=inbound-request:eyre
@@ -541,8 +541,19 @@
     ?.  ?=([%give %fact [[%http-response %blob ~] ~] *] card)  ~
     `cage.p.card
   ?>  ?=([[%http-response-header *] [%http-response-data *] ~] facts)
-  :_  +.res
-  [!<(response-header:http q.i.facts) !<((unit octs) q.i.t.facts)]
+  :+  [!<(response-header:http q.i.facts) !<((unit octs) q.i.t.facts)]
+    -.res
+  +.res
+::  +send: +exchange without the cards
+::
+++  send
+  |=  $:  core=agent:gall
+          who=[src=ship authed=?]
+          request=[method=method:http url=@t headers=header-list:http body=(unit octs)]
+      ==
+  ^-  [simple-payload:http agent:gall]
+  =/  sent  (exchange core who request)
+  [res.sent core.sent]
 ++  owner     [~zod %.y]
 ++  guest     [guest-id %.n]
 ::  another ship signed in through eauth: eyre deals as that ship
@@ -2653,5 +2664,294 @@
     (expect-eq !>('front') !>((clean-body:effects front.content.card)))
     (expect-eq !>('back') !>((clean-body:effects back.content.card)))
     (expect-eq !>('Source') !>((json-text (peek-snapshot core snapshot:(snag 0 citations.original) 6) 'text')))
+  ==
+::
+::  conditional answers: a grade form citing head-revision grades only
+::  the review head at that revision; a form without it grades as before
+::
+::  +saved: the agent's state as +on-save keeps it
+::
+++  saved
+  |=  core=agent:gall
+  ^-  seer-state
+  +:(need ((soft ,[%3 seer-state]) q:on-save:core))
+::  +show: GET the review page as the owner's browser does; the page
+::  records when it first showed its head card
+::
+++  show
+  |=  core=agent:gall
+  ^-  [simple-payload:http agent:gall]
+  (send core owner %'GET' '/apps/seer/review' ~ ~)
+::  +head-revision-of: the head-revision /seer/stacks.json returns
+::
+++  head-revision-of
+  |=  core=agent:gall
+  ^-  @t
+  =/  res  -:(send core owner %'GET' '/seer/stacks.json' ~ ~)
+  (json-text (need (de:json:html q:(need data.res))) 'head-revision')
+::  +form-value: the value a page gives input .name, if it has one
+::
+++  form-value
+  |=  [res=simple-payload:http name=tape]
+  ^-  (unit @t)
+  =/  html  (trip q:(need data.res))
+  =/  tag  "name=\"{name}\" value=\""
+  =/  at  (find tag html)
+  ?~  at  ~
+  =/  rest  (slag (add u.at (lent tag)) html)
+  `(crip (scag (need (find "\"" rest)) rest))
+::  +answer-form: POST the review page's grade form for .rev as
+::  operation .op, citing .revision as head-revision if there is one;
+::  the response, every card, and the next core
+::
+++  answer-form
+  |=  [core=agent:gall op=@t rev=review answer=@t revision=(unit @t)]
+  ^-  [res=simple-payload:http cards=(list card:agent:gall) core=agent:gall]
+  =/  body=@t
+    %-  crip
+    ;:  weld
+      "owner="  (scow %p who.rev)
+      "&stack="  (trip stack.rev)
+      "&item="  (trip item.rev)
+      "&answer="  (trip answer)
+      ?~(revision "" (weld "&head-revision=" (trip u.revision)))
+      "&idempotency-epoch="  (trip (peek-epoch core))
+      "&operation-id="  (trip op)
+    ==
+  (exchange core owner %'POST' '/apps/seer/actions/answer' ~ `[(met 3 body) body])
+::  +answer-receipt: the receipt of answer form .op, looked up with the
+::  digest of grading .rev .grade, so another payload's receipt cannot
+::  pass for it
+::
+++  answer-receipt
+  |=  [core=agent:gall op=@t rev=review grade=recall-grade]
+  ^-  json
+  %+  peek-receipt  core
+  (make-command (slav %da (peek-epoch core)) op [%answered-item who.rev stack.rev item.rev grade])
+::  +copies: how many pokes .cards send to an agent; an answer to a
+::  followed card sends one, to copy the card into our stack
+::
+++  copies
+  |=  cards=(list card:agent:gall)
+  ^-  @ud
+  %-  lent
+  (murn cards (soft ,[%pass wire=path %agent destination=[ship=@p app=@tas] %poke *]))
+::  +followed-head: our copy of ~nec's stack %shared keeps the review
+::  items it copied, which name ~nec as author, so the review head is
+::  ~nec's card %remote, read from our subscription to that stack. the
+::  peer, so a test can change its stack, and our core
+::
+++  followed-head
+  ^-  [peer=agent:gall core=agent:gall]
+  =/  peer  ~(. seer-agent %*(. bol our ~nec, src ~nec))
+  =.  peer  (do peer [%new-stack %shared 'Remote stack' ~])
+  =.  peer
+    (do peer [%new-item ~nec ~nec %shared %remote 'Remote card' *perm-config 'front' 'back'])
+  =/  source  (need (peek-stack peer %shared))
+  =/  core  +:(on-agent:ag /import/~nec/shared [%fact %seer-stack !>(source)])
+  [peer (do core [%copy-stack ~nec %shared %.y])]
+::  +follow: deliver ~nec's stack %shared, as .peer has it, as an update
+::
+++  follow
+  |=  [core=agent:gall peer=agent:gall]
+  ^-  agent:gall
+  =/  source  (need (peek-stack peer %shared))
+  +:(on-agent:core /import/~nec/shared [%fact %seer-primary-delta !>([%update-stack ~nec source])])
+::
+::  the revision the page shows is the one stacks.json returns, and a
+::  form citing it grades the head as a plain answer does
+::
+++  test-conditional-answer-records-a-matching-grade
+  ^-  tang
+  =/  core  (do ag [%new-stack %s1 'Stack one' ~])
+  =.  core  (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =^  page  core  (show core)
+  =/  shown  (head-revision-of core)
+  =/  before  (saved core)
+  =/  answered  (answer-form core 'match' (card-in %c1) 'good' `shown)
+  =/  after  (saved core.answered)
+  =/  item  (~(got by items:(~(got by stacks.after) %s1)) %c1)
+  ;:  weld
+    (expect-eq !>(`shown) !>((form-value page "head-revision")))
+    (expect-eq !>(200) !>((status res.answered)))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt core.answered 'match' (card-in %c1) %good) 'status'))
+    (expect-eq !>(+(next-review-id.before)) !>(next-review-id.after))
+    (expect-eq !>(%.y) !>((~(has by pending-show.before) (card-in %c1))))
+    (expect-eq !>(%.n) !>((~(has by pending-show.after) (card-in %c1))))
+    (expect-eq !>(1) !>(`@`box.learn.item))
+  ==
+::
+::  a form citing the revision of a card that is no longer the review
+::  head is refused with a conflict receipt and a 409, and leaves the
+::  review log, pending-show, learning state and stacks as they were.
+::  that operation stays refused once the card is the head again; a new
+::  operation citing the same revision is recorded. c3 and c2 were each
+::  shown as head, so the 409 page, which renders c3, stamps nothing new
+::  (any review page stamps an unstamped head)
+::
+++  test-conditional-answer-refuses-a-moved-head
+  ^-  tang
+  =/  core  rwkv-deck
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =/  c3-first  ~[[%c3 .~0.1] [%c2 .~0.2]]
+  =/  c2-first  ~[[%c2 .~0.1] [%c3 .~0.2]]
+  =.  core  (do core (predict (head-of core) c3-first))
+  =.  core  +:(show core)
+  =.  core  (do core (predict (head-of core) c2-first))
+  =.  core  +:(show core)
+  =/  shown  (head-revision-of core)
+  =.  core  (do core (predict (head-of core) c3-first))
+  =/  before  (saved core)
+  =/  refused  (answer-form core 'stale' (card-in %c2) 'good' `shown)
+  =/  after  (saved core.refused)
+  =/  receipt  (answer-receipt core.refused 'stale' (card-in %c2) %good)
+  =.  core  (do core.refused (predict (head-of core.refused) c2-first))
+  =/  replayed  (answer-form core 'stale' (card-in %c2) 'good' `shown)
+  =/  fresh  (answer-form core.replayed 'fresh' (card-in %c2) 'good' `shown)
+  ;:  weld
+    %+  expect-eq  !>(`(list review)`~[(card-in %c3) (card-in %c2)])
+    !>((scag 2 (peek-queue core.refused)))
+    (expect-eq !>(409) !>((status res.refused)))
+    (expect-eq !>('answered-item') !>((json-text receipt 'action')))
+    (expect-eq !>('conflict') !>((json-text receipt 'status')))
+    (expect-eq !>('review-head-moved') !>((json-text receipt 'reason')))
+    (expect-eq !>('none') !>((json-text receipt 'effect')))
+    (expect-eq !>(review-log.before) !>(review-log.after))
+    (expect-eq !>(next-review-id.before) !>(next-review-id.after))
+    (expect-eq !>(pending-show.before) !>(pending-show.after))
+    (expect-eq !>(stacks.before) !>(stacks.after))
+    (expect-eq !>(learning.before) !>(learning.after))
+    (expect-eq !>(0) !>((copies cards.refused)))
+    (expect-eq !>(409) !>((status res.replayed)))
+    (expect-eq !>(receipt) !>((answer-receipt core.replayed 'stale' (card-in %c2) %good)))
+    (expect-eq !>(review-log.after) !>(review-log:(saved core.replayed)))
+    (expect-eq !>(200) !>((status res.fresh)))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt core.fresh 'fresh' (card-in %c2) %good) 'status'))
+    (expect-eq !>(+(next-review-id.after)) !>(next-review-id:(saved core.fresh)))
+  ==
+::
+::  a rename of the card's stack, an edit of the card, and an answer the
+::  ship recorded meanwhile each make the revision a page showed stale;
+::  the revision the ship returns after the change is accepted
+::
+++  test-conditional-answer-needs-the-current-revision
+  ^-  tang
+  =/  core  (do ag [%new-stack %s1 'Stack one' ~])
+  =.  core  (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =.  core  +:(show core)
+  =/  shown  (head-revision-of core)
+  =/  renamed  (do core [%edit-stack %s1 'Stack two'])
+  =/  edited  (do core [%edit-item ~zod %s1 %c1 'Card' *perm-config 'other front' 'back'])
+  =/  graded  (do core [%answered-item ~zod %s1 %c1 %good])
+  =/  stale
+    |=  c=agent:gall
+    ^-  [@ud @t]
+    =/  sent  (answer-form c 'stale' (card-in %c1) 'good' `shown)
+    :-  (status res.sent)
+    (json-text (answer-receipt core.sent 'stale' (card-in %c1) %good) 'reason')
+  =/  current
+    |=  c=agent:gall
+    ^-  @t
+    =/  sent  (answer-form c 'current' (card-in %c1) 'good' `(head-revision-of c))
+    (json-text (answer-receipt core.sent 'current' (card-in %c1) %good) 'status')
+  ;:  weld
+    (expect-eq !>([409 'review-card-changed']) !>((stale renamed)))
+    (expect-eq !>([409 'review-card-changed']) !>((stale edited)))
+    (expect-eq !>([409 'review-head-moved']) !>((stale graded)))
+    (expect-eq !>('ok') !>((current renamed)))
+    (expect-eq !>('ok') !>((current edited)))
+  ==
+::
+::  with a followed card at the review head, an update to the followed
+::  stack makes the shown revision stale, and so does an answer to that
+::  card, which moves neither the card's version nor the head. a refused
+::  answer logs nothing and sends no copy; the current revision is
+::  accepted and sends the copy
+::
+++  test-conditional-answer-covers-a-followed-card
+  ^-  tang
+  =/  [peer=agent:gall core=agent:gall]  followed-head
+  =/  remote=review  [~nec %shared %remote]
+  =.  core  +:(show core)
+  =/  shown  (head-revision-of core)
+  =/  edited
+    %+  follow  core
+    (do peer [%edit-item ~nec %shared %remote 'Remote card' *perm-config 'new front' 'back'])
+  =/  renamed  (follow core (do peer [%edit-stack %shared 'Renamed stack']))
+  =/  answered  (do core [%answered-item ~nec %shared %remote %good])
+  =/  before  (saved edited)
+  =/  refused  (answer-form edited 'edited' remote 'good' `shown)
+  =/  after  (saved core.refused)
+  =/  reason
+    |=  [c=agent:gall op=@t]
+    ^-  [@ud @t @ud]
+    =/  sent  (answer-form c op remote 'good' `shown)
+    :+  (status res.sent)
+      (json-text (answer-receipt core.sent op remote %good) 'reason')
+    (copies cards.sent)
+  =/  current  (answer-form edited 'current' remote 'good' `(head-revision-of edited))
+  ;:  weld
+    (expect-eq !>(`(list review)`~[remote]) !>((peek-queue core)))
+    (expect-eq !>(`(list review)`~[remote]) !>((peek-queue answered)))
+    %+  expect-eq  !>((peek-version core %card ~nec %shared %remote))
+    !>((peek-version answered %card ~nec %shared %remote))
+    (expect-eq !>(409) !>((status res.refused)))
+    %+  expect-eq  !>('review-card-changed')
+    !>((json-text (answer-receipt core.refused 'edited' remote %good) 'reason'))
+    (expect-eq !>(review-log.before) !>(review-log.after))
+    (expect-eq !>(pending-show.before) !>(pending-show.after))
+    (expect-eq !>(0) !>((copies cards.refused)))
+    (expect-eq !>([409 'review-card-changed' 0]) !>((reason renamed 'renamed')))
+    (expect-eq !>([409 'review-card-changed' 0]) !>((reason answered 'answered')))
+    (expect-eq !>(200) !>((status res.current)))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt core.current 'current' remote %good) 'status'))
+    (expect-eq !>(1) !>((copies cards.current)))
+  ==
+::
+::  a replay of an answer the ship recorded returns that receipt and logs
+::  nothing, though by then the revision it cites is stale
+::
+++  test-conditional-answer-replay-keeps-its-receipt
+  ^-  tang
+  =/  core  (do ag [%new-stack %s1 'Stack one' ~])
+  =.  core  (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =.  core  +:(show core)
+  =/  shown  (head-revision-of core)
+  =/  once  (answer-form core 'once' (card-in %c1) 'good' `shown)
+  =/  receipt  (answer-receipt core.once 'once' (card-in %c1) %good)
+  =/  replayed  (answer-form core.once 'once' (card-in %c1) 'good' `shown)
+  ;:  weld
+    (expect-eq !>('ok') !>((json-text receipt 'status')))
+    (expect-eq !>(`(list review)`~) !>((peek-queue core.once)))
+    (expect-eq !>(200) !>((status res.replayed)))
+    (expect-eq !>(receipt) !>((answer-receipt core.replayed 'once' (card-in %c1) %good)))
+    (expect-eq !>(review-log:(saved core.once)) !>(review-log:(saved core.replayed)))
+  ==
+::
+::  a form without head-revision grades the card it names as before, even
+::  off the review head; an empty head-revision matches no revision
+::
+++  test-answer-without-revision-grades-as-before
+  ^-  tang
+  =/  core  (do ag [%new-stack %s1 'Stack one' ~])
+  =.  core  (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =.  core  (do core [%new-item ~zod ~zod %s1 %c2 'Card' *perm-config 'front' 'back'])
+  =/  queue  (peek-queue core)
+  ?>  ?=([* * ~] queue)
+  =/  plain  (answer-form core 'plain' i.t.queue 'easy' ~)
+  =/  blank  (answer-form core 'blank' i.queue 'easy' `'')
+  =/  graded  (~(got by items:(need (peek-stack core.plain %s1))) item.i.t.queue)
+  ;:  weld
+    (expect-eq !>(200) !>((status res.plain)))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt core.plain 'plain' i.t.queue %easy) 'status'))
+    (expect-eq !>(`(list review)`~[i.queue]) !>((peek-queue core.plain)))
+    (expect-eq !>(2) !>(`@`box.learn.graded))
+    (expect-eq !>(409) !>((status res.blank)))
+    %+  expect-eq  !>('review-card-changed')
+    !>((json-text (answer-receipt core.blank 'blank' i.queue %easy) 'reason'))
   ==
 --
