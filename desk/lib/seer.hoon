@@ -421,7 +421,19 @@
 ++  make-command
   |=  [epoch=@da operation=@t act=action]
   ^-  command
-  [seer-schema-version epoch operation (shax (jam act)) (shax (jam [epoch operation act])) act]
+  [seer-schema-version epoch operation (payload-digest ~ act) (shax (jam [epoch operation act])) act]
+::
+::  +payload-digest: what a command's digest covers: its action, and for
+::  a conditional answer also the head-revision it cites, under a tag no
+::  action has. the receipt then names the revision the ship checked,
+::  and the same operation resent citing another one is told its id
+::  belongs to different content.
+::
+++  payload-digest
+  |=  [revision=(unit @t) act=action]
+  ^-  @ux
+  ?~  revision  (shax (jam act))
+  (shax (jam [%conditional-answer u.revision act]))
 ::
 ++  command-vase
   |=  [epoch=@da operation=@t act=action]

@@ -1663,7 +1663,8 @@
   (give-simple-payload:app eyre-id payload)
 ::
 ::  +web-command: apply one browser action under the form's operation
-::  envelope; ~ when the envelope is malformed
+::  envelope; ~ when the envelope is malformed. a conditional answer's
+::  digest covers the revision it cites (+payload-digest)
 ::
 ++  web-command
   |=  act=action
@@ -1673,6 +1674,7 @@
   ?~  epoch  [~ state]
   ?.  ?&(!=('' operation) (bounded-text:ev operation 128))  [~ state]
   =/  cmd  (make-command u.epoch operation act)
+  =.  digest.cmd  (payload-digest answer-fence act)
   =^  cards  state  (apply-command(operator-authorized %.y) cmd)
   :_  state
   `[cards (operation-receipt-at:effects operating.state u.epoch operation `digest.cmd)]
@@ -2611,7 +2613,7 @@
     ==
   =/  result=(each (quip card _state) tang)
     ?.  ?&  =(seer-schema-version schema.cmd)
-            =(digest.cmd (shax (jam payload.cmd)))
+            =(digest.cmd (payload-digest answer-fence payload.cmd))
         ==
       [%& (fail-action %invalid %invalid-command)]
     ?:  ?&(!system-authorized (system-action payload.cmd))
