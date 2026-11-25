@@ -112,6 +112,7 @@
           changes=(map @tas change-request)
           logins=(map @tas login-request)
           reviews=(list review)
+          head-revision=(unit @t)
           =page
           notice=(unit @t)
           picker=(unit picker-data)
@@ -1084,6 +1085,20 @@
           [%role "status"]
           [%aria-label "Loading"]
       ==
+    ::  a tab keeps the shell it loaded and swaps in only #seer-app. a
+    ::  shell older than the conditional answer route leaves that route's
+    ::  409 an error, so the refused card would stay on screen: reload into
+    ::  the current shell. the current shell clears the error first, so
+    ::  this does nothing there
+    ::
+    =/  stale-shell-reload=tape
+      ;:  weld
+        "if (event.detail.isError) "
+        "if (event.detail.xhr.status === 409) "
+        "if (event.detail.pathInfo.requestPath"
+        " === '/apps/seer/actions/conditional-answer') "
+        "location.reload()"
+      ==
     :-  [%html ~]
     :~
       ;head
@@ -1644,6 +1659,20 @@
                       syncContextForm(form);
                     }
                   }
+                  // A revealed back stays open only while each render
+                  // shows the same card at the same revision. Forget any
+                  // other reveal, so a revision that comes back is closed.
+                  function forgetReveals() {
+                    var rendered = {};
+                    qa("details[data-persist]").forEach(function (d) {
+                      rendered[d.getAttribute("data-persist")] = true;
+                    });
+                    Object.keys(open).forEach(function (key) {
+                      if (key.indexOf("reveal|") === 0 && !rendered[key]) {
+                        delete open[key];
+                      }
+                    });
+                  }
                   function sync() {
                     syncContextForms();
                     var r = root();
@@ -1678,6 +1707,7 @@
                     } else {
                       done = 0;
                     }
+                    forgetReveals();
                     qa("details[data-persist]").forEach(function (d) {
                       var key = d.getAttribute("data-persist");
                       if (open[key] !== undefined) { d.open = open[key]; }
@@ -1689,6 +1719,17 @@
                       open[t.getAttribute("data-persist")] = t.open;
                     }
                   }, true);
+                  // htmx puts a page back from its history cache with no
+                  // swap event, and with the markup it was left with, an
+                  // open back included. A back is open there only if the
+                  // page before had the same card at the same revision open.
+                  document.addEventListener("htmx:historyRestore", function () {
+                    forgetReveals();
+                    var flips = qa('details[data-persist^="reveal|"]');
+                    flips.forEach(function (d) {
+                      d.open = open[d.getAttribute("data-persist")] === true;
+                    });
+                  });
                   document.addEventListener("click", function (e) {
                     var summary = e.target && e.target.closest
                       ? e.target.closest(".item-summary")
@@ -1788,6 +1829,18 @@
                     if (el && el.hasAttribute
                       && el.hasAttribute("data-grade") && done > 0) {
                       done -= 1;
+                    }
+                  });
+                  // A refused conditional answer is a 409 that still
+                  // renders the review page: show it, and uncount it.
+                  document.addEventListener("htmx:beforeSwap", function (e) {
+                    var d = e.detail;
+                    if (d && d.xhr && d.xhr.status === 409 && d.pathInfo
+                      && d.pathInfo.requestPath
+                        === "/apps/seer/actions/conditional-answer") {
+                      d.shouldSwap = true;
+                      d.isError = false;
+                      if (done > 0) { done -= 1; }
                     }
                   });
                   document.addEventListener("htmx:afterSwap", function () {
@@ -4052,7 +4105,8 @@
         =hx-select  "#seer-app"
         =hx-swap    "outerHTML show:top"
         ;main#seer-app.app-shell
-          =hx-indicator  "#request-status"
+          =hx-indicator            "#request-status"
+          =hx-on-htmx-before-swap  stale-shell-reload
           ;aside.sidebar
             ;a.brand(href "/apps/seer/review")
               ;span: Seer
@@ -4682,7 +4736,7 @@
       ;div.session-progress(data-progress "", hidden "", aria-hidden "true")
         ;div.session-progress-fill(data-progress-fill "");
       ==
-      ;+  (review-card i.reviews)
+      ;+  (review-card i.reviews (need head-revision))
       ;p.key-line
         ;span: space to flip · 1–4 to grade ·
         ;button.linkish(type "button", data-help-open ""): ? shortcuts
@@ -4731,7 +4785,7 @@
     ==
   ::
   ++  review-card
-    |=  rev=review
+    |=  [rev=review revision=@t]
     ^-  manx
     =/  maybe-stack  (lookup-stack who.rev stack.rev)
     ?~  maybe-stack
@@ -4739,6 +4793,14 @@
     =/  maybe-item  (~(get by items.u.maybe-stack) item.rev)
     ?~  maybe-item
       ;div.empty: This review points to a card that is no longer available.
+    ::  the ship refuses a grade that would change another card
+    ::  (+misaddressed-grade), so the page offers none
+    ::
+    =/  misaddressed  (misaddressed-grade:seer our rev maybe-stack)
+    ?:  =(`%review-card-misfiled misaddressed)
+      ;div.empty: This card is stored under the name of another card, so it can't be graded.
+    ?^  misaddressed
+      ;div.empty: Grading this card would take another card of the same name out of the review queue, so it can't be graded.
     =/  current  u.maybe-item
     =/  card-key=tape
       ;:  weld
@@ -4765,7 +4827,7 @@
         ==
         ;div.review-prompt: {(trip (body-text front.content.current))}
         ;details.flip
-          =data-persist  "reveal|{card-key}"
+          =data-persist  "reveal|{card-key}|{(trip revision)}"
           ;summary.flip-bar
             ;span.flip-show: Show answer
             ;span.flip-hide: Hide answer
@@ -4773,10 +4835,10 @@
           ==
           ;div.review-answer: {(trip (body-text back.content.current))}
           ;div.grade-row
-            ;+  (grade-form rev "again" "Again" "1")
-            ;+  (grade-form rev "hard" "Hard" "2")
-            ;+  (grade-form rev "good" "Good" "3")
-            ;+  (grade-form rev "easy" "Easy" "4")
+            ;+  (grade-form rev revision "again" "Again" "1")
+            ;+  (grade-form rev revision "hard" "Hard" "2")
+            ;+  (grade-form rev revision "good" "Good" "3")
+            ;+  (grade-form rev revision "easy" "Easy" "4")
           ==
         ==
       ==
@@ -5230,12 +5292,12 @@
     ==
   ::
   ++  grade-form
-    |=  [rev=review value=tape label=tape key=tape]
+    |=  [rev=review revision=@t value=tape label=tape key=tape]
     ^-  manx
     ;form.grade
       =method           "post"
-      =action           "/apps/seer/actions/answer"
-      =hx-post          "/apps/seer/actions/answer"
+      =action           "/apps/seer/actions/conditional-answer"
+      =hx-post          "/apps/seer/actions/conditional-answer"
       =hx-target        "#seer-app"
       =hx-select        "#seer-app"
       =hx-swap          "outerHTML show:top"
@@ -5244,6 +5306,7 @@
       ;input(type "hidden", name "owner", value (scow %p who.rev));
       ;input(type "hidden", name "stack", value (tas-tape stack.rev));
       ;input(type "hidden", name "item", value (tas-tape item.rev));
+      ;input(type "hidden", name "head-revision", value (trip revision));
       ;input(type "hidden", name "answer", value value);
       ;button(type "submit", class (weld "grade-btn grade-" value))
         ;span.grade-name: {label}

@@ -110,6 +110,12 @@
       'The changes no longer match the preview you approved. Open the latest preview and review it before approving.'
     ?(%stale-precondition %stale-observation %content-conflict %original-mismatch)
       'The card or library changed after this request was prepared. Review the current content and prepare updated changes before approving.'
+    ?(%review-head-moved %review-card-changed)
+      'The review queue changed after this card was shown, so this answer was not recorded. Review the current card before answering.'
+    %review-card-misfiled
+      'This card is no longer available or is stored under the name of another card, so this answer was not recorded.'
+    %review-slot-taken
+      'Another card of the same name is due for review, so this answer was not recorded. Recording it would have taken that card out of the review queue.'
     ?(%missing-precondition %duplicate-precondition %precondition-domain %unversioned-entity %subject-version-unavailable)
       'Seer could not verify the current card or library version. Open the current item and prepare a fresh preview before approving changes.'
     ?(%stack-id-in-use %stack-exists)
@@ -419,7 +425,44 @@
 ++  make-command
   |=  [epoch=@da operation=@t act=action]
   ^-  command
-  [seer-schema-version epoch operation (shax (jam act)) (shax (jam [epoch operation act])) act]
+  [seer-schema-version epoch operation (payload-digest ~ act) (shax (jam [epoch operation act])) act]
+::
+::  +payload-digest: what a command's digest covers: its action, and for
+::  a conditional answer also the head-revision it cites, under a tag no
+::  action has. the receipt then names the revision the ship checked,
+::  and the same operation resent citing another one is told its id
+::  belongs to different content.
+::
+++  payload-digest
+  |=  [revision=(unit @t) act=action]
+  ^-  @ux
+  ?~  revision  (shax (jam act))
+  (shax (jam [%conditional-answer u.revision act]))
+::
+::  +misaddressed-grade: why a grade of .rev, whose stack is .found,
+::  could not be written to .rev alone, or ~. a grade writes the row
+::  stored under the card's name, under the name that row holds: a
+::  missing row, or one naming another card, is %review-card-misfiled.
+::  grading a card of .our also clears the review slot under its name:
+::  a slot the queue reads as another card is %review-slot-taken. a
+::  copy of a followed stack keeps that stack's slots, which hold the
+::  followed cards. a conditional answer is refused for either reason.
+::
+++  misaddressed-grade
+  |=  [our=@p rev=review found=(unit stack)]
+  ^-  (unit @tas)
+  ?~  found  `%review-card-misfiled
+  =/  row  (~(get by items.u.found) item.rev)
+  ?.  ?&(?=(^ row) =(item.rev name.u.row))  `%review-card-misfiled
+  ::  the queue reads a slot as [author stack name] (+sm2-reviews)
+  ::
+  =/  slot  (~(get by review-items.u.found) item.rev)
+  ?:  ?&  =(our who.rev)
+          ?=(^ slot)
+          !=(rev [author.content.u.slot name.u.found name.u.slot])
+      ==
+    `%review-slot-taken
+  ~
 ::
 ++  command-vase
   |=  [epoch=@da operation=@t act=action]

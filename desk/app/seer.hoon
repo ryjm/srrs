@@ -591,6 +591,8 @@
   --
 ::  cards: list of outgoing moves
 ::  stak:  the current stack
+::  answer-fence: the head-revision a conditional answer cites; set only
+::    by its route, so every other command runs without it
 ::
 =|  $:  cards=(list card)
         stak=stack
@@ -599,6 +601,7 @@
         acting-operation=@t
         acting-epoch=@da
         form-fields=(map @t @t)
+        answer-fence=(unit @t)
     ==
 ::
 |_  bol=bowl:gall
@@ -1191,13 +1194,18 @@
     ==
   ::
       [[~ [%apps %seer %actions %answer ~]] ~]
-    =/  owner       (slav %p (form-got fields 'owner'))
-    =/  stack-name  (slav %tas (form-got fields 'stack'))
-    =/  item-name   (slav %tas (form-got fields 'item'))
-    =/  answer      (grade (form-got fields 'answer'))
-    %:  apply-web-action
+    (apply-web-action eyre-id (form-answer fields) [%review ~] ~)
+  ::  the review page's grade forms post here. the answer is recorded
+  ::  only while the card it names is the review head at the
+  ::  head-revision it cites and grading it changes no other card in
+  ::  that event (+answer-refusal); a missing head-revision is an empty
+  ::  one, which matches none. an older desk has no such route, so it
+  ::  answers 404 and grades nothing.
+  ::
+      [[~ [%apps %seer %actions %conditional-answer ~]] ~]
+    %:  apply-web-action(answer-fence `(form-got fields 'head-revision'))
       eyre-id
-      [%answered-item owner stack-name item-name answer]
+      (form-answer fields)
       [%review ~]
       ~
     ==
@@ -1645,13 +1653,19 @@
       ?:  =(%no-change reason.receipt)  `'No change was needed.'
       notice
     `(operation-outcome receipt)
+  =/  payload  (render-action-page page notice)
+  ::  a refused conditional answer is a 409; its receipt says why
+  ::
+  =?  status-code.response-header.payload
+      ?&(?=(^ answer-fence) =(%conflict status.receipt))
+    409
   :_  (stamp-shown page)
   %+  weld  cards.u.ran
-  %+  give-simple-payload:app  eyre-id
-  (render-action-page page notice)
+  (give-simple-payload:app eyre-id payload)
 ::
 ::  +web-command: apply one browser action under the form's operation
-::  envelope; ~ when the envelope is malformed
+::  envelope; ~ when the envelope is malformed. a conditional answer's
+::  digest covers the revision it cites (+payload-digest)
 ::
 ++  web-command
   |=  act=action
@@ -1661,6 +1675,7 @@
   ?~  epoch  [~ state]
   ?.  ?&(!=('' operation) (bounded-text:ev operation 128))  [~ state]
   =/  cmd  (make-command u.epoch operation act)
+  =.  digest.cmd  (payload-digest answer-fence act)
   =^  cards  state  (apply-command(operator-authorized %.y) cmd)
   :_  state
   `[cards (operation-receipt-at:effects operating.state u.epoch operation `digest.cmd)]
@@ -1744,6 +1759,22 @@
   ?:  (~(has by pending-show.state) key)  state
   state(pending-show (~(put by pending-show.state) key now.bol))
 ::
+::  +answer-refusal: why a conditional answer may not grade .rev: it is
+::  not the review head now, the head's revision is not the one the
+::  answer cites, or grading it would change another card: write over
+::  one, or take one out of the review queue (+misaddressed-grade). ~
+::  when none of these holds, or when the answer cites no revision.
+::
+++  answer-refusal
+  |=  rev=review
+  ^-  (unit @tas)
+  =/  fence  answer-fence
+  ?~  fence  ~
+  =/  reviews  all-reviews
+  ?.  ?&(?=(^ reviews) =(rev i.reviews))  `%review-head-moved
+  ?.  =(u.fence (review-revision rev))  `%review-card-changed
+  (misaddressed-grade our.bol rev (context-stack who.rev stack.rev))
+::
 ++  respond-payload
   |=  [eyre-id=@ta payload=simple-payload:http]
   ^-  (quip card _state)
@@ -1767,6 +1798,7 @@
     ==
   =/  desks=(list @tas)
     ?:(?=(?(%stack %stack-browse) -.page) clay-desks ~)
+  =/  reviews  all-reviews
   %-  manx-response:gen
   =/  stale=(map @tas ?(%stale %gone))
     ?.  ?=(?(%stack %stack-browse) -.page)  ~
@@ -1782,7 +1814,8 @@
     models.state
     changes.state
     redacted-logins
-    all-reviews
+    reviews
+    (head-revision reviews)
     page
     notice
     picker
@@ -2583,7 +2616,7 @@
     ==
   =/  result=(each (quip card _state) tang)
     ?.  ?&  =(seer-schema-version schema.cmd)
-            =(digest.cmd (shax (jam payload.cmd)))
+            =(digest.cmd (payload-digest answer-fence payload.cmd))
         ==
       [%& (fail-action %invalid %invalid-command)]
     ?:  ?&(!system-authorized (system-action payload.cmd))
@@ -2726,6 +2759,18 @@
       %easy   %easy
   ==
 ::
+::  +form-answer: the answer a review grade form names
+::
+++  form-answer
+  |=  fields=(map @t @t)
+  ^-  action
+  :*  %answered-item
+      (slav %p (form-got fields 'owner'))
+      (slav %tas (form-got fields 'stack'))
+      (slav %tas (form-got fields 'item'))
+      (grade (form-got fields 'answer'))
+  ==
+::
 ++  poke-seer-action
   |=  act=action
   ^-  (quip card _state)
@@ -2760,6 +2805,18 @@
     ?:  ?~(existing %.n (~(has by items.u.existing) name.act))
       (fail-action %conflict %card-id-in-use)
     =/  new-item=item  (create-item act)
+    ::  the card also takes the review slot under its name, and the queue
+    ::  reads a slot as [author stack name] (+sm2-reviews). a slot it
+    ::  reads as another card keeps that card, and the name is in use:
+    ::  the copy an answer to a followed card sends here must not take
+    ::  another card out of the review queue
+    ::
+    =/  slot=(unit item)
+      ?~(existing ~ (~(get by review-items.u.existing) name.act))
+    ?:  ?&  ?=(^ slot)
+            !=([author.content.u.slot name.u.slot] [author.content.new-item name.new-item])
+        ==
+      (fail-action %conflict %card-id-in-use)
     =<  abet
     =/  sub=(unit stack)
       (~(get by stack-subs) [stack-owner.act stak.act])
@@ -2769,9 +2826,14 @@
       ?~  sub
         this
       ?>  ?=(%.y -.info.u.sub)
+      ::  +create-stack names the stack after the file its info names,
+      ::  and a followed stack's info can name a file other than the name
+      ::  we follow it under. our stack of that name would be replaced,
+      ::  review slots and all, so ours takes .stak, the name asked for
+      ::
       =/  =stack-info  +.info.u.sub
       %~  add-stack  stack-emit
-      %+  create-stack  stack-info(owner our.bol)
+      %+  create-stack  stack-info(owner our.bol, filename stak.act)
       (my [[name.act new-item] ~])
     %.  new-item
     %~  add-item  stack-emit  u.pub
@@ -2838,6 +2900,10 @@
     =.  ..emit  ~(update-owner stack-emit their-stack)
     ~(add-stack stack-emit stak:emit)
       %answered-item
+    ::  a refused conditional answer changes nothing, so check first
+    ::
+    =/  refusal  (answer-refusal [owner.act stak.act item.act])
+    ?^  refusal  (fail-action %conflict u.refusal)
     =/  is-owner=?  =(our.bol owner.act)
     =/  stk=stack
       ?:  is-owner
@@ -5436,6 +5502,8 @@
 ++  state-to-json
   |=  sat=_state
   ^-  json
+  =/  reviews  all-reviews
+  =/  revision  (head-revision reviews)
   %-  pairs:enjs:format
   :~  :+  %pubs
         %o
@@ -5466,7 +5534,10 @@
   ::
       :+  %review
         %a
-      %+  turn  all-reviews  review-to-json
+      %+  turn  reviews  review-to-json
+  ::  what a conditional answer to the first review card cites
+  ::
+      [%head-revision ?~(revision ~ s+u.revision)]
   ==
 ::
 ++  make-tile-json
@@ -5494,6 +5565,43 @@
   =/  r  live-predictions
   ?~  r  sm2-reviews
   (rwkv-queue rwkv.state u.r all-cards sm2-reviews)
+::
+::  +head-revision: the revision of the first card in .reviews, the
+::  review head; ~ when nothing is due. the review page and
+::  /seer/stacks.json return it with the card they show, and a
+::  conditional answer cites it (+answer-refusal).
+::
+++  head-revision
+  |=  reviews=(list review)
+  ^-  (unit @t)
+  ?~  reviews  ~
+  `(review-revision i.reviews)
+::
+::  +review-revision: one opaque value for the card a review page shows
+::  for .rev and for what grading it would change. it hashes the
+::  idempotency epoch, which a reinstall renews; the card's row where
+::  it is read (our stack, else the followed one), which is what the
+::  page renders and the answer grades; the card's version there; that
+::  stack's title; and the number of answers logged. counters restart
+::  with a fresh agent and a malformed row can be written under another
+::  card's name, so the row itself is hashed, not only its version. an
+::  edit, a grade, a rename, an update to a followed stack or a
+::  reinstall changes it; so does every answer, which need not change a
+::  followed card. a revision therefore admits at most one answer.
+::
+++  review-revision
+  |=  rev=review
+  ^-  @t
+  =/  found  (context-stack who.rev stack.rev)
+  %+  scot  %uv
+  %-  sham
+  :*  epoch.operating.state
+      rev
+      (bind found |=(=stack (~(get by items.stack) item.rev)))
+      (~(get by versions.operating.state) [%card who.rev stack.rev item.rev])
+      (bind found local-stack-title)
+      next-review-id.state
+  ==
 ::
 ::  +live-predictions: the stored scores while rwkv is on and they are
 ::  fresh: made by the configured artifact less than +rwkv-max-age ago,
