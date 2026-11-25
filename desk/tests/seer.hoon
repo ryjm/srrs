@@ -3200,6 +3200,67 @@
     (expect-eq !>(0) !>((lent (review-timers cards.refused))))
   ==
 ::
+::  a copy of a followed stack keeps that stack's review slots, which
+::  name the followed card. reviewing the copy puts our card %remote in
+::  the slot, and a score ranks it first. copying the stack again puts
+::  the followed card back in that slot, due after ours, and leaves our
+::  card's row, version and revision as they were. the peer then edits
+::  its card, which changes the followed card and leaves ours. grading
+::  our card clears the slot under its name, so it would take the
+::  followed card out of the queue: an answer citing the current
+::  revision is refused, nothing is logged, learned or scheduled, and
+::  both cards are still due
+::
+++  test-conditional-answer-refuses-a-taken-review-slot
+  ^-  tang
+  =/  [peer=agent:gall core=agent:gall]  followed-head
+  =/  ours=review  [~zod %shared %remote]
+  =/  theirs=review  [~nec %shared %remote]
+  ::  an answer to another card of ours gives the replay a head for
+  ::  the score to cite
+  ::
+  =.  core  (do core [%new-stack %s1 'Stack one' ~])
+  =.  core  (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =.  core  (do core [%answered-item ~zod %s1 %c1 %good])
+  =.  core  (do core [%review-stack ~zod %shared])
+  =.  core  (do core [%set-rwkv-config (rwkv-on 200)])
+  =.  core
+    %+  do  core
+    :^  %rwkv-predictions  (head-of core)  pinned-artifact
+    (malt ~[[`card-key`ours .~0.1]])
+  =^  page  core  (show core)
+  =/  shown  (head-revision-of core)
+  =/  queued  (peek-queue core)
+  =.  core  (do core [%copy-stack ~nec %shared %.y])
+  =.  core
+    %+  follow  core
+    (do peer [%edit-item ~nec %shared %remote 'Remote card' *perm-config 'new front' 'back'])
+  =/  before  (saved core)
+  =/  refused  (answer-form core 'taken' ours 'good' `shown)
+  =/  after  (saved core.refused)
+  =/  receipt  (answer-receipt core.refused 'taken' ours %good `shown)
+  ;:  weld
+    (expect-eq !>(`(list review)`~[ours]) !>(queued))
+    %+  expect-eq  !>(`(list @t)`~[shown shown shown shown])
+    !>((form-values page "head-revision"))
+    (expect-eq !>(`(list review)`~[ours theirs]) !>((peek-queue core)))
+    (expect-eq !>(shown) !>((head-revision-of core)))
+    (expect-eq !>('front') !>((front-of (need (peek-stack core %shared)) %remote)))
+    (expect-eq !>('new front') !>((front-of (followed core) %remote)))
+    (expect-eq !>(409) !>((status res.refused)))
+    (expect-eq !>('answered-item') !>((json-text receipt 'action')))
+    (expect-eq !>('conflict') !>((json-text receipt 'status')))
+    (expect-eq !>('review-slot-taken') !>((json-text receipt 'reason')))
+    (expect-eq !>('none') !>((json-text receipt 'effect')))
+    (expect-eq !>(stacks.before) !>(stacks.after))
+    (expect-eq !>(review-log.before) !>(review-log.after))
+    (expect-eq !>(next-review-id.before) !>(next-review-id.after))
+    (expect-eq !>(learning.before) !>(learning.after))
+    (expect-eq !>(pending-show.before) !>(pending-show.after))
+    (expect-eq !>(0) !>((lent (review-timers cards.refused))))
+    (expect-eq !>(`(list review)`~[ours theirs]) !>((peek-queue core.refused)))
+  ==
+::
 ::  a conditional answer's digest covers the revision it cites. its
 ::  operation id resent citing another revision, or none, is told the id
 ::  belongs to different content, with a 409 on the conditional route;
