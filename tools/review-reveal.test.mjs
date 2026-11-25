@@ -1,8 +1,9 @@
-// The review page keeps a revealed back open across a swap only while the
-// swap renders the same card at the same revision, so a grade key never
-// answers a face the learner has not flipped. This runs the shell script
-// embedded in desk/app/seer/index.hoon and the vendored htmx in headless
-// Chromium, against pages shaped like +review-card and +grade-form.
+// The review page keeps a revealed back open across a render only while
+// the render shows the same card at the same revision, so a grade key never
+// answers a face the learner has not flipped. A page htmx puts back from its
+// history cache is a render too. This runs the shell script embedded in
+// desk/app/seer/index.hoon and the vendored htmx in headless Chromium,
+// against pages shaped like +review-card and +grade-form.
 // It skips when no Chromium is found; set CHROME_PATH to choose one.
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
@@ -22,10 +23,13 @@ const shell = index.slice(start + 1, end).join("\n");
 const htmx = await readFile(new URL("lib/web/htmx-min.js", desk), "utf8");
 
 const ANSWER = "/apps/seer/actions/conditional-answer";
+const HOME = "/apps/seer";
+const REVIEW = "/apps/seer/review";
+const INBOX = "/apps/seer/inbox";
 const CARD = "~nec|shared|card";
 const reveal = (revision) => `reveal|${CARD}|${revision}`;
 
-function page(revision) {
+function review(revision) {
   const form = (grade) => `
     <form class="grade" method="post" action="${ANSWER}" hx-post="${ANSWER}"
       hx-target="#seer-app" hx-select="#seer-app" hx-swap="outerHTML show:top"
@@ -34,7 +38,7 @@ function page(revision) {
       <input type="hidden" name="answer" value="${grade}">
       <button type="submit" class="grade-btn grade-${grade}">${grade}</button>
     </form>`;
-  const review = revision === null
+  return revision === null
     ? `<section class="review-session" data-review="" data-remaining="0"></section>`
     : `<section class="review-session" data-review="" data-remaining="1">
         <div><article class="review-card" data-review-card="" tabindex="-1"
@@ -47,14 +51,22 @@ function page(revision) {
           </details>
         </article></div>
       </section>`;
+}
+
+// The review is at /apps/seer and /apps/seer/review; the inbox has no card.
+function page(path, revision) {
   return `<!doctype html><html><head><script src="/htmx.js"></script>
     <script>${shell}</script></head>
     <body hx-boost="true" hx-target="#seer-app" hx-select="#seer-app"
-      hx-swap="outerHTML show:top"><main id="seer-app">${review}</main></body></html>`;
+      hx-swap="outerHTML show:top"><main id="seer-app">
+      <nav><a href="${REVIEW}">Review</a> <a href="${INBOX}">Inbox</a></nav>
+      ${path === INBOX ? "<section>Inbox</section>" : review(revision)}
+    </main></body></html>`;
 }
 
-// The ship: the review page shows .revision; each grade POST is logged and
-// answered with the next of .answers, a [status, revision] pair.
+// The ship: the review shows .revision; each grade POST is logged and
+// answered with the next of .answers, a [status, revision] pair, and pushes
+// the review URL, as +render-action-page does.
 async function ship(revision) {
   const state = { revision, answers: [], posts: [] };
   const server = createServer((req, res) => {
@@ -66,17 +78,19 @@ async function ship(revision) {
         res.end(htmx);
         return;
       }
+      const headers = { "content-type": "text/html" };
       let status = 200;
       if (req.method === "POST" && req.url === ANSWER) {
         state.posts.push(new URLSearchParams(body).get("head-revision"));
         [status, state.revision] = state.answers.shift();
+        headers["hx-push-url"] = REVIEW;
       }
-      res.writeHead(status, { "content-type": "text/html" });
-      res.end(page(state.revision));
+      res.writeHead(status, headers);
+      res.end(page(req.url, state.revision));
     });
   });
   await new Promise((done) => server.listen(0, "127.0.0.1", done));
-  state.url = `http://127.0.0.1:${server.address().port}/apps/seer/review`;
+  state.origin = `http://127.0.0.1:${server.address().port}`;
   state.close = () => new Promise((done) => {
     server.closeAllConnections();
     server.close(done);
@@ -144,6 +158,15 @@ async function tab(t, exe) {
     if (exceptionDetails) throw new Error(exceptionDetails.text);
     return result.value;
   };
+  const frame = () => run("new Promise((done) => requestAnimationFrame(() => done(true)))");
+  // wait until the page's counter .name passes .before
+  const until = async (name, before, message) => {
+    for (let tries = 0; tries < 200; tries += 1) {
+      if (await run(`window.${name}`) > before) break;
+      await sleep(25);
+    }
+    assert.ok(await run(`window.${name}`) > before, message);
+  };
   return {
     run,
     async open(url) {
@@ -155,10 +178,20 @@ async function tab(t, exe) {
         if (ready) break;
         await sleep(25);
       }
-      // count grade requests as htmx issues them, and swaps as they settle
-      await run(`window.requests = 0; window.settled = 0;
-        document.addEventListener("htmx:beforeRequest", () => { window.requests += 1; });
+      // count grade requests as htmx issues them, swaps as they settle,
+      // toggles as the page sees them, and pages put back from history,
+      // keeping the markup history had cached
+      await run(`window.grades = 0; window.settled = 0; window.toggled = 0;
+        window.restored = 0;
+        document.addEventListener("htmx:beforeRequest", (e) => {
+          if (e.detail.elt.hasAttribute("data-grade")) window.grades += 1;
+        });
         document.addEventListener("htmx:afterSettle", () => { window.settled += 1; });
+        document.addEventListener("toggle", () => { window.toggled += 1; }, true);
+        document.addEventListener("htmx:historyRestore", (e) => {
+          window.restored += 1;
+          window.cached = e.detail.item ? e.detail.item.content : null;
+        });
         true`);
     },
     async press(key) {
@@ -175,17 +208,38 @@ async function tab(t, exe) {
     async swap(act) {
       const before = await run("window.settled");
       await act();
-      for (let tries = 0; tries < 200; tries += 1) {
-        if (await run("window.settled") > before) break;
-        await sleep(25);
-      }
-      assert.ok(await run("window.settled") > before, "the swap did not settle");
-      await run("new Promise((done) => requestAnimationFrame(() => done(true)))");
+      await until("settled", before, "the swap did not settle");
+      await frame();
+    },
+    // open the back with space. the browser sends the toggle event the
+    // page keeps the reveal by as a later task, so wait for it, as a
+    // learner's next key would
+    async flip() {
+      const before = await run("window.toggled");
+      await this.press(" ");
+      await until("toggled", before, "the back did not open");
+    },
+    // click a link; htmx boosts it and pushes its URL
+    follow(href) {
+      return this.swap(() => run(`document.querySelector('a[href="${href}"]').click(); true`));
+    },
+    // render the review again, with a GET that leaves history alone
+    refresh() {
+      return this.swap(() => run(`htmx.ajax("GET", "${REVIEW}",
+        { target: "#seer-app", select: "#seer-app", swap: "outerHTML" }).then(() => true)`));
+    },
+    // go back a page, and wait for htmx to put it back
+    async back() {
+      const before = await run("window.restored");
+      await run("history.back(); true");
+      await until("restored", before, "the page was not put back");
+      await frame();
     },
     shown: () => run(`document.querySelector("[data-review] details.flip")
       ?.getAttribute("data-persist") ?? null`),
     revealed: () => run(`document.querySelector("[data-review] details.flip").open`),
-    requests: () => run("window.requests"),
+    grades: () => run("window.grades"),
+    cached: () => run("window.cached"),
   };
 }
 
@@ -195,32 +249,32 @@ test("a revision that comes back after a refused answer is closed", async (t) =>
   const server = await ship("0v1");
   t.after(server.close);
   const browser = await tab(t, exe);
-  await browser.open(server.url);
+  await browser.open(`${server.origin}${REVIEW}`);
   assert.equal(await browser.shown(), reveal("0v1"));
   await browser.press("3");
-  assert.equal(await browser.requests(), 0);
+  assert.equal(await browser.grades(), 0);
   // flip and grade; the ship refuses it and shows the card at 0v2
-  await browser.press(" ");
+  await browser.flip();
   assert.equal(await browser.revealed(), true);
   server.answers.push([409, "0v2"]);
   await browser.swap(() => browser.press("3"));
   assert.equal(await browser.shown(), reveal("0v2"));
   assert.equal(await browser.revealed(), false);
   await browser.press("3");
-  assert.equal(await browser.requests(), 1);
+  assert.equal(await browser.grades(), 1);
   // flip and grade again; a stack renamed and renamed back returns 0v1
-  await browser.press(" ");
+  await browser.flip();
   server.answers.push([409, "0v1"]);
   await browser.swap(() => browser.press("3"));
   assert.equal(await browser.shown(), reveal("0v1"));
   assert.equal(await browser.revealed(), false);
   await browser.press("3");
-  assert.equal(await browser.requests(), 2);
+  assert.equal(await browser.grades(), 2);
   // only a new flip grades it
-  await browser.press(" ");
+  await browser.flip();
   server.answers.push([200, null]);
   await browser.swap(() => browser.press("3"));
-  assert.equal(await browser.requests(), 3);
+  assert.equal(await browser.grades(), 3);
   assert.deepEqual(server.posts, ["0v1", "0v2", "0v1"]);
 });
 
@@ -230,14 +284,97 @@ test("the same card at the same revision stays revealed across a refresh", async
   const server = await ship("0v1");
   t.after(server.close);
   const browser = await tab(t, exe);
-  await browser.open(server.url);
-  await browser.press(" ");
-  await browser.swap(() => browser.run(`htmx.ajax("GET", "/apps/seer/review",
-    { target: "#seer-app", select: "#seer-app", swap: "outerHTML" }).then(() => true)`));
+  await browser.open(`${server.origin}${REVIEW}`);
+  await browser.flip();
+  await browser.refresh();
   assert.equal(await browser.shown(), reveal("0v1"));
   assert.equal(await browser.revealed(), true);
   server.answers.push([200, null]);
   await browser.swap(() => browser.press("3"));
-  assert.equal(await browser.requests(), 2);
+  assert.equal(await browser.grades(), 1);
+  assert.deepEqual(server.posts, ["0v1"]);
+});
+
+test("a back left open is closed when Back brings its page back", async (t) => {
+  const exe = chromium();
+  if (!exe) { t.skip("no Chromium found"); return; }
+  const server = await ship("0v1");
+  t.after(server.close);
+  const browser = await tab(t, exe);
+  await browser.open(`${server.origin}${REVIEW}`);
+  await browser.flip();
+  assert.equal(await browser.revealed(), true);
+  await browser.follow(INBOX);
+  assert.equal(await browser.shown(), null);
+  // htmx puts the review back from its history cache, back open
+  await browser.back();
+  assert.match(await browser.cached(), /<details class="flip"[^>]* open=""/);
+  assert.equal(await browser.shown(), reveal("0v1"));
+  assert.equal(await browser.revealed(), false);
+  await browser.press("3");
+  assert.equal(await browser.grades(), 0);
+  // only a new flip grades it
+  await browser.flip();
+  server.answers.push([200, null]);
+  await browser.swap(() => browser.press("3"));
+  assert.equal(await browser.grades(), 1);
+  assert.deepEqual(server.posts, ["0v1"]);
+});
+
+test("a revision revealed before Back is closed when a 409 brings it back", async (t) => {
+  const exe = chromium();
+  if (!exe) { t.skip("no Chromium found"); return; }
+  const server = await ship("0v2");
+  t.after(server.close);
+  const browser = await tab(t, exe);
+  await browser.open(`${server.origin}${HOME}`);
+  assert.equal(await browser.shown(), reveal("0v2"));
+  // by the Review link the ship shows 0v1; flip it, and a refresh at the
+  // same revision keeps it open
+  server.revision = "0v1";
+  await browser.follow(REVIEW);
+  assert.equal(await browser.shown(), reveal("0v1"));
+  await browser.flip();
+  await browser.refresh();
+  assert.equal(await browser.revealed(), true);
+  // Back puts 0v2 back from the history cache, closed
+  await browser.back();
+  assert.equal(await browser.shown(), reveal("0v2"));
+  assert.equal(await browser.revealed(), false);
+  // flip and grade it; the ship refuses it and shows 0v1
+  await browser.flip();
+  server.answers.push([409, "0v1"]);
+  await browser.swap(() => browser.press("3"));
+  assert.equal(await browser.shown(), reveal("0v1"));
+  assert.equal(await browser.revealed(), false);
+  await browser.press("3");
+  assert.equal(await browser.grades(), 1);
+  // only a new flip grades it
+  await browser.flip();
+  server.answers.push([200, null]);
+  await browser.swap(() => browser.press("3"));
+  assert.equal(await browser.grades(), 2);
+  assert.deepEqual(server.posts, ["0v2", "0v1"]);
+});
+
+test("Back to the same card at the same revision keeps it revealed", async (t) => {
+  const exe = chromium();
+  if (!exe) { t.skip("no Chromium found"); return; }
+  const server = await ship("0v1");
+  t.after(server.close);
+  const browser = await tab(t, exe);
+  await browser.open(`${server.origin}${HOME}`);
+  await browser.follow(REVIEW);
+  await browser.flip();
+  assert.equal(await browser.revealed(), true);
+  // Back puts /apps/seer back from the history cache with the back closed,
+  // but the card was on screen at that revision throughout
+  await browser.back();
+  assert.doesNotMatch(await browser.cached(), /<details class="flip"[^>]* open=""/);
+  assert.equal(await browser.shown(), reveal("0v1"));
+  assert.equal(await browser.revealed(), true);
+  server.answers.push([200, null]);
+  await browser.swap(() => browser.press("3"));
+  assert.equal(await browser.grades(), 1);
   assert.deepEqual(server.posts, ["0v1"]);
 });

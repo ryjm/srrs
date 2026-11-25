@@ -1659,6 +1659,20 @@
                       syncContextForm(form);
                     }
                   }
+                  // A revealed back stays open only while each render
+                  // shows the same card at the same revision. Forget any
+                  // other reveal, so a revision that comes back is closed.
+                  function forgetReveals() {
+                    var rendered = {};
+                    qa("details[data-persist]").forEach(function (d) {
+                      rendered[d.getAttribute("data-persist")] = true;
+                    });
+                    Object.keys(open).forEach(function (key) {
+                      if (key.indexOf("reveal|") === 0 && !rendered[key]) {
+                        delete open[key];
+                      }
+                    });
+                  }
                   function sync() {
                     syncContextForms();
                     var r = root();
@@ -1693,18 +1707,7 @@
                     } else {
                       done = 0;
                     }
-                    // A revealed back stays open only while each render
-                    // shows the same card at the same revision. Forget any
-                    // other reveal, so a revision that comes back is closed.
-                    var rendered = {};
-                    qa("details[data-persist]").forEach(function (d) {
-                      rendered[d.getAttribute("data-persist")] = true;
-                    });
-                    Object.keys(open).forEach(function (key) {
-                      if (key.indexOf("reveal|") === 0 && !rendered[key]) {
-                        delete open[key];
-                      }
-                    });
+                    forgetReveals();
                     qa("details[data-persist]").forEach(function (d) {
                       var key = d.getAttribute("data-persist");
                       if (open[key] !== undefined) { d.open = open[key]; }
@@ -1716,6 +1719,17 @@
                       open[t.getAttribute("data-persist")] = t.open;
                     }
                   }, true);
+                  // htmx puts a page back from its history cache with no
+                  // swap event, and with the markup it was left with, an
+                  // open back included. A back is open there only if the
+                  // page before had the same card at the same revision open.
+                  document.addEventListener("htmx:historyRestore", function () {
+                    forgetReveals();
+                    var flips = qa('details[data-persist^="reveal|"]');
+                    flips.forEach(function (d) {
+                      d.open = open[d.getAttribute("data-persist")] === true;
+                    });
+                  });
                   document.addEventListener("click", function (e) {
                     var summary = e.target && e.target.closest
                       ? e.target.closest(".item-summary")
