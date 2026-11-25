@@ -3152,7 +3152,7 @@
 ::  survives, nothing is logged, learned or scheduled, and %a keeps its
 ::  shown stamp. the stamp is from a minute before the answer: the 409
 ::  page stamps at fixed-now, so a stamp consumed and set again then
-::  would look kept
+::  would look kept. the review page shows %a without grade forms
 ::
 ++  test-conditional-answer-refuses-a-misfiled-row
   ^-  tang
@@ -3174,6 +3174,7 @@
   =/  refused  (answer-form edited 'misfiled' (card-in %a) 'good' `shown)
   =/  after  (saved core.refused)
   =/  receipt  (answer-receipt core.refused 'misfiled' (card-in %a) %good `shown)
+  =/  page  -:(show edited)
   =/  ours
     |=  c=agent:gall
     ^-  stack
@@ -3183,6 +3184,7 @@
     (expect-eq !>(`@tas`%b) !>(name:(~(got by items:(ours edited)) %a)))
     (expect-eq !>('front a') !>((front-of (ours edited) %a)))
     (expect-eq !>('new front') !>((front-of (ours edited) %b)))
+    (expect-eq !>(`(list @t)`~) !>((form-values page "head-revision")))
     (expect-eq !>(shown) !>((head-revision-of edited)))
     (expect-eq !>(409) !>((status res.refused)))
     (expect-eq !>('answered-item') !>((json-text receipt 'action')))
@@ -3209,7 +3211,8 @@
 ::  our card clears the slot under its name, so it would take the
 ::  followed card out of the queue: an answer citing the current
 ::  revision is refused, nothing is logged, learned or scheduled, and
-::  both cards are still due
+::  both cards are still due. the review page then shows our card
+::  without grade forms
 ::
 ++  test-conditional-answer-refuses-a-taken-review-slot
   ^-  tang
@@ -3235,6 +3238,7 @@
   =.  core
     %+  follow  core
     (do peer [%edit-item ~nec %shared %remote 'Remote card' *perm-config 'new front' 'back'])
+  =/  reshown  -:(show core)
   =/  before  (saved core)
   =/  refused  (answer-form core 'taken' ours 'good' `shown)
   =/  after  (saved core.refused)
@@ -3247,6 +3251,7 @@
     (expect-eq !>(shown) !>((head-revision-of core)))
     (expect-eq !>('front') !>((front-of (need (peek-stack core %shared)) %remote)))
     (expect-eq !>('new front') !>((front-of (followed core) %remote)))
+    (expect-eq !>(`(list @t)`~) !>((form-values reshown "head-revision")))
     (expect-eq !>(409) !>((status res.refused)))
     (expect-eq !>('answered-item') !>((json-text receipt 'action')))
     (expect-eq !>('conflict') !>((json-text receipt 'status')))

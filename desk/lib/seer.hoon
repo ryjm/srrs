@@ -113,7 +113,7 @@
     ?(%review-head-moved %review-card-changed)
       'The review queue changed after this card was shown, so this answer was not recorded. Review the current card before answering.'
     %review-card-misfiled
-      'This card is stored under the name of another card, so this answer was not recorded. Recording it would have changed the other card.'
+      'This card is no longer available or is stored under the name of another card, so this answer was not recorded.'
     %review-slot-taken
       'Another card of the same name is due for review, so this answer was not recorded. Recording it would have taken that card out of the review queue.'
     ?(%missing-precondition %duplicate-precondition %precondition-domain %unversioned-entity %subject-version-unavailable)

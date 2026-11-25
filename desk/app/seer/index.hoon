@@ -4767,6 +4767,14 @@
     =/  maybe-item  (~(get by items.u.maybe-stack) item.rev)
     ?~  maybe-item
       ;div.empty: This review points to a card that is no longer available.
+    ::  the ship refuses a grade that would change another card
+    ::  (+misaddressed-grade), so the page offers none
+    ::
+    =/  misaddressed  (misaddressed-grade:seer our rev maybe-stack)
+    ?:  =(`%review-card-misfiled misaddressed)
+      ;div.empty: This card is stored under the name of another card, so it can't be graded.
+    ?^  misaddressed
+      ;div.empty: Grading this card would take another card of the same name out of the review queue, so it can't be graded.
     =/  current  u.maybe-item
     =/  card-key=tape
       ;:  weld
