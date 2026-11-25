@@ -2826,9 +2826,14 @@
       ?~  sub
         this
       ?>  ?=(%.y -.info.u.sub)
+      ::  +create-stack names the stack after the file its info names,
+      ::  and a followed stack's info can name a file other than the name
+      ::  we follow it under. our stack of that name would be replaced,
+      ::  review slots and all, so ours takes .stak, the name asked for
+      ::
       =/  =stack-info  +.info.u.sub
       %~  add-stack  stack-emit
-      %+  create-stack  stack-info(owner our.bol)
+      %+  create-stack  stack-info(owner our.bol, filename stak.act)
       (my [[name.act new-item] ~])
     %.  new-item
     %~  add-item  stack-emit  u.pub

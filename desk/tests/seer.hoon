@@ -3340,6 +3340,61 @@
     %+  expect-eq  !>('ok')
     !>((json-text (answer-receipt delivered 'copied' answered %good `shown) 'status'))
   ==
+:::
+:::  a copy goes into our stack of the name it's for, and nowhere else.
+:::  we follow ~nec's stack %shared, whose info names its file %mine,
+:::  and have no stack %shared; our own stack %mine has card %own due.
+:::  an answer to ~nec's card on the plain route, which grades off the
+:::  review head, is recorded and sends a copy. delivered, the copy
+:::  makes our stack %shared with the card, %mine is as it was, %own is
+:::  still due, and the answer's receipt still says ok
+:::
+++  test-answer-copy-makes-only-the-stack-it-names
+  ^-  tang
+  =/  peer  ~(. seer-agent %*(. bol our ~nec, src ~nec))
+  =.  peer  (do peer [%new-stack %shared 'Remote stack' ~])
+  =.  peer
+    (do peer [%new-item ~nec ~nec %shared %card 'Remote card' *perm-config 'front' 'back'])
+  =/  source  (need (peek-stack peer %shared))
+  ?>  ?=(%.y -.info.source)
+  =.  filename.p.info.source  %mine
+  =/  core  +:(on-agent:ag /import/~nec/shared [%fact %seer-stack !>(`stack`source)])
+  =.  core  (do core [%new-stack %mine 'Local stack' ~])
+  =.  core
+    (do core [%new-item ~zod ~zod %mine %own 'Own card' *perm-config 'front' 'back'])
+  =/  sub  (followed core)
+  ?>  ?=(%.y -.info.sub)
+  =/  answered=review  [~nec %shared %card]
+  =/  due=review  [~zod %mine %own]
+  =/  sent  (plain-answer core 'copied' answered 'good')
+  =/  move
+    %+  snag  0
+    %+  murn  cards.sent
+    (soft ,[%pass wire=path %agent destination=[ship=@p app=@tas] %poke mark=@tas body=vase])
+  =/  copy  !<(command body.move)
+  =/  mine  (peek-stack core.sent %mine)
+  ::  the copy comes back as the agent's poke to itself
+  ::
+  =/  delivered
+    +:(on-poke:(agent-via core.sent %*(. bol sap /gall/seer)) mark.move body.move)
+  =/  made  (peek-stack delivered %shared)
+  ;:  weld
+    (expect-eq !>(%mine) !>(filename.p.info.sub))
+    (expect-eq !>(~) !>((peek-stack core %shared)))
+    (expect-eq !>(`(list review)`~[due]) !>((peek-queue core)))
+    (expect-eq !>(200) !>((status res.sent)))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt core.sent 'copied' answered %good ~) 'status'))
+    (expect-eq !>(1) !>((copies cards.sent)))
+    (expect-eq !>(%new-item) !>(-.payload.copy))
+    (expect-eq !>('ok') !>((json-text (peek-receipt delivered copy) 'status')))
+    (expect-eq !>(mine) !>((peek-stack delivered %mine)))
+    (expect-eq !>(`(list review)`~[due]) !>((peek-queue delivered)))
+    (expect-eq !>(`%shared) !>((bind made |=(=stack name.stack))))
+    (expect-eq !>(`%.y) !>((bind made |=(=stack (~(has by items.stack) %card)))))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt delivered 'copied' answered %good ~) 'status'))
+  ==
 ::
 ::  a conditional answer's digest covers the revision it cites. its
 ::  operation id resent citing another revision, or none, is told the id
