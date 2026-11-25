@@ -1197,10 +1197,10 @@
     (apply-web-action eyre-id (form-answer fields) [%review ~] ~)
   ::  the review page's grade forms post here. the answer is recorded
   ::  only while the card it names is the review head at the
-  ::  head-revision it cites and grading it changes no other card
-  ::  (+answer-refusal); a missing head-revision is an empty one, which
-  ::  matches none. an older desk has no such route, so it answers 404
-  ::  and grades nothing.
+  ::  head-revision it cites and grading it changes no other card in
+  ::  that event (+answer-refusal); a missing head-revision is an empty
+  ::  one, which matches none. an older desk has no such route, so it
+  ::  answers 404 and grades nothing.
   ::
       [[~ [%apps %seer %actions %conditional-answer ~]] ~]
     %:  apply-web-action(answer-fence `(form-got fields 'head-revision'))
@@ -2805,6 +2805,18 @@
     ?:  ?~(existing %.n (~(has by items.u.existing) name.act))
       (fail-action %conflict %card-id-in-use)
     =/  new-item=item  (create-item act)
+    ::  the card also takes the review slot under its name, and the queue
+    ::  reads a slot as [author stack name] (+sm2-reviews). a slot it
+    ::  reads as another card keeps that card, and the name is in use:
+    ::  the copy an answer to a followed card sends here must not take
+    ::  another card out of the review queue
+    ::
+    =/  slot=(unit item)
+      ?~(existing ~ (~(get by review-items.u.existing) name.act))
+    ?:  ?&  ?=(^ slot)
+            !=([author.content.u.slot name.u.slot] [author.content.new-item name.new-item])
+        ==
+      (fail-action %conflict %card-id-in-use)
     =<  abet
     =/  sub=(unit stack)
       (~(get by stack-subs) [stack-owner.act stak.act])

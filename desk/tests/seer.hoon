@@ -3265,6 +3265,81 @@
     (expect-eq !>(0) !>((lent (review-timers cards.refused))))
     (expect-eq !>(`(list review)`~[ours theirs]) !>((peek-queue core.refused)))
   ==
+:::
+:::  an answer to a followed card sends a copy of it, delivered in a
+:::  later event, to our stack of the same name, where the copy takes the
+:::  review slot under its name. here our stack %shared holds ~nec's
+:::  card %card under %nec-row, and its slot %card holds ~bud's card
+:::  %card: both rows were filed under other names, and ~bud's was
+:::  raised, then deleted. both followed cards are due, ~nec's first. an
+:::  answer to ~nec's card citing its revision is recorded, and the copy
+:::  it sends is refused on delivery, since the copy would have taken
+:::  ~bud's card out of the queue unanswered. ~bud's card is still due,
+:::  our stack is unchanged, and the answer's receipt still says ok
+:::
+++  test-conditional-answer-copy-keeps-a-taken-review-slot
+  ^-  tang
+  =/  remote
+    |=  who=@p
+    ^-  stack
+    =/  peer  ~(. seer-agent %*(. bol our who, src who))
+    =.  peer  (do peer [%new-stack %shared 'Remote stack' ~])
+    =.  peer
+      (do peer [%new-item who who %shared %card 'Remote card' *perm-config 'front' 'back'])
+    (need (peek-stack peer %shared))
+  =/  nec  (remote ~nec)
+  =/  bud  (remote ~bud)
+  =/  answered=review  [~nec %shared %card]
+  =/  held=review  [~bud %shared %card]
+  =/  core  +:(on-agent:ag /import/~nec/shared [%fact %seer-stack !>(nec)])
+  =.  core  +:(on-agent:core /import/~bud/shared [%fact %seer-stack !>(bud)])
+  =/  rows=(map @tas item)
+    %-  my
+    :~  [%nec-row (~(got by items.nec) %card)]
+        [%bud-row (~(got by items.bud) %card)]
+    ==
+  =.  core  (do core [%new-stack %shared 'Local stack' rows])
+  =.  core  (do core [%review-stack ~zod %shared])
+  =.  core  (do core [%raise-item ~zod %shared %bud-row])
+  =.  core  (do core [%delete-item %shared %bud-row])
+  =^  page  core  (show core)
+  =/  shown  (head-revision-of core)
+  =/  queued  (peek-queue core)
+  =/  sent  (answer-form core 'copied' answered 'good' `shown)
+  =/  move
+    %+  snag  0
+    %+  murn  cards.sent
+    (soft ,[%pass wire=path %agent destination=[ship=@p app=@tas] %poke mark=@tas body=vase])
+  =/  copy  !<(command body.move)
+  =/  before  (saved core.sent)
+  ::  the copy comes back as the agent's poke to itself
+  ::
+  =/  delivered
+    +:(on-poke:(agent-via core.sent %*(. bol sap /gall/seer)) mark.move body.move)
+  =/  after  (saved delivered)
+  =/  receipt  (peek-receipt delivered copy)
+  =/  ours  (need (peek-stack delivered %shared))
+  ;:  weld
+    (expect-eq !>(`(list review)`~[answered held]) !>(queued))
+    %+  expect-eq  !>(`(list @t)`~[shown shown shown shown])
+    !>((form-values page "head-revision"))
+    (expect-eq !>(200) !>((status res.sent)))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt core.sent 'copied' answered %good `shown) 'status'))
+    (expect-eq !>(+(next-review-id:(saved core))) !>(next-review-id.before))
+    (expect-eq !>(1) !>((copies cards.sent)))
+    (expect-eq !>(%new-item) !>(-.payload.copy))
+    (expect-eq !>('new-item') !>((json-text receipt 'action')))
+    (expect-eq !>('conflict') !>((json-text receipt 'status')))
+    (expect-eq !>('card-id-in-use') !>((json-text receipt 'reason')))
+    (expect-eq !>('none') !>((json-text receipt 'effect')))
+    (expect-eq !>(stacks.before) !>(stacks.after))
+    (expect-eq !>(%.n) !>((~(has by items.ours) %card)))
+    (expect-eq !>(~bud) !>(author.content:(~(got by review-items.ours) %card)))
+    (expect-eq !>(`(list review)`~[answered held]) !>((peek-queue delivered)))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt delivered 'copied' answered %good `shown) 'status'))
+  ==
 ::
 ::  a conditional answer's digest covers the revision it cites. its
 ::  operation id resent citing another revision, or none, is told the id
