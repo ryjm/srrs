@@ -112,6 +112,7 @@
           changes=(map @tas change-request)
           logins=(map @tas login-request)
           reviews=(list review)
+          head-revision=(unit @t)
           =page
           notice=(unit @t)
           picker=(unit picker-data)
@@ -1788,6 +1789,17 @@
                     if (el && el.hasAttribute
                       && el.hasAttribute("data-grade") && done > 0) {
                       done -= 1;
+                    }
+                  });
+                  // A refused conditional answer is a 409 that still
+                  // renders the review page: show it, and uncount it.
+                  document.addEventListener("htmx:beforeSwap", function (e) {
+                    var d = e.detail;
+                    if (d && d.xhr && d.xhr.status === 409 && d.pathInfo
+                      && d.pathInfo.requestPath === "/apps/seer/actions/answer") {
+                      d.shouldSwap = true;
+                      d.isError = false;
+                      if (done > 0) { done -= 1; }
                     }
                   });
                   document.addEventListener("htmx:afterSwap", function () {
@@ -4682,7 +4694,7 @@
       ;div.session-progress(data-progress "", hidden "", aria-hidden "true")
         ;div.session-progress-fill(data-progress-fill "");
       ==
-      ;+  (review-card i.reviews)
+      ;+  (review-card i.reviews (need head-revision))
       ;p.key-line
         ;span: space to flip · 1–4 to grade ·
         ;button.linkish(type "button", data-help-open ""): ? shortcuts
@@ -4731,7 +4743,7 @@
     ==
   ::
   ++  review-card
-    |=  rev=review
+    |=  [rev=review revision=@t]
     ^-  manx
     =/  maybe-stack  (lookup-stack who.rev stack.rev)
     ?~  maybe-stack
@@ -4773,10 +4785,10 @@
           ==
           ;div.review-answer: {(trip (body-text back.content.current))}
           ;div.grade-row
-            ;+  (grade-form rev "again" "Again" "1")
-            ;+  (grade-form rev "hard" "Hard" "2")
-            ;+  (grade-form rev "good" "Good" "3")
-            ;+  (grade-form rev "easy" "Easy" "4")
+            ;+  (grade-form rev revision "again" "Again" "1")
+            ;+  (grade-form rev revision "hard" "Hard" "2")
+            ;+  (grade-form rev revision "good" "Good" "3")
+            ;+  (grade-form rev revision "easy" "Easy" "4")
           ==
         ==
       ==
@@ -5230,7 +5242,7 @@
     ==
   ::
   ++  grade-form
-    |=  [rev=review value=tape label=tape key=tape]
+    |=  [rev=review revision=@t value=tape label=tape key=tape]
     ^-  manx
     ;form.grade
       =method           "post"
@@ -5244,6 +5256,7 @@
       ;input(type "hidden", name "owner", value (scow %p who.rev));
       ;input(type "hidden", name "stack", value (tas-tape stack.rev));
       ;input(type "hidden", name "item", value (tas-tape item.rev));
+      ;input(type "hidden", name "head-revision", value (trip revision));
       ;input(type "hidden", name "answer", value value);
       ;button(type "submit", class (weld "grade-btn grade-" value))
         ;span.grade-name: {label}

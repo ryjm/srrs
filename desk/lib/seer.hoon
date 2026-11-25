@@ -110,6 +110,8 @@
       'The changes no longer match the preview you approved. Open the latest preview and review it before approving.'
     ?(%stale-precondition %stale-observation %content-conflict %original-mismatch)
       'The card or library changed after this request was prepared. Review the current content and prepare updated changes before approving.'
+    ?(%review-head-moved %review-card-changed)
+      'The review queue changed after this card was shown, so this answer was not recorded. Review the current card before answering.'
     ?(%missing-precondition %duplicate-precondition %precondition-domain %unversioned-entity %subject-version-unavailable)
       'Seer could not verify the current card or library version. Open the current item and prepare a fresh preview before approving changes.'
     ?(%stack-id-in-use %stack-exists)
