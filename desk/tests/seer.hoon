@@ -3083,6 +3083,35 @@
     !>((json-text (answer-receipt core.own 'own' (card-in %c1) %good `new-revision) 'status'))
   ==
 ::
+::  the epoch alone: once the idempotency epoch is retired, a new
+::  operation citing a revision from before is refused, though the
+::  stack, the card's version and the answer count are as they were.
+::  the revision the ship gives in the new epoch is accepted
+::
+++  test-conditional-answer-needs-the-current-epoch
+  ^-  tang
+  =/  core  (do ag [%new-stack %s1 'Stack one' ~])
+  =.  core  (do core [%new-item ~zod ~zod %s1 %c1 'Card' *perm-config 'front' 'back'])
+  =/  shown  (head-revision-of core)
+  =/  retired  (do core [%retire-operation-epoch ~])
+  =/  stale  (answer-form retired 'stale' (card-in %c1) 'good' `shown)
+  =/  revision  (head-revision-of retired)
+  =/  current  (answer-form retired 'current' (card-in %c1) 'good' `revision)
+  ;:  weld
+    (expect-eq !>(%.n) !>(=((peek-epoch core) (peek-epoch retired))))
+    (expect-eq !>((peek-stack core %s1)) !>((peek-stack retired %s1)))
+    %+  expect-eq  !>((peek-version core %card ~zod %s1 %c1))
+    !>((peek-version retired %card ~zod %s1 %c1))
+    (expect-eq !>(next-review-id:(saved core)) !>(next-review-id:(saved retired)))
+    (expect-eq !>(`(list review)`~[(card-in %c1)]) !>((peek-queue retired)))
+    (expect-eq !>(409) !>((status res.stale)))
+    %+  expect-eq  !>('review-card-changed')
+    !>((json-text (answer-receipt core.stale 'stale' (card-in %c1) %good `shown) 'reason'))
+    (expect-eq !>(200) !>((status res.current)))
+    %+  expect-eq  !>('ok')
+    !>((json-text (answer-receipt core.current 'current' (card-in %c1) %good `revision) 'status'))
+  ==
+::
 ::  a row stored under another card's name: editing card %b writes the
 ::  row %b holds, which names %a, over %a, the review head, while the
 ::  version tracker looks at %b. the revision hashes the row the page
