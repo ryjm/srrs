@@ -1085,6 +1085,20 @@
           [%role "status"]
           [%aria-label "Loading"]
       ==
+    ::  a tab keeps the shell it loaded and swaps in only #seer-app. a
+    ::  shell older than the conditional answer route leaves that route's
+    ::  409 an error, so the refused card would stay on screen: reload into
+    ::  the current shell. the current shell clears the error first, so
+    ::  this does nothing there
+    ::
+    =/  stale-shell-reload=tape
+      ;:  weld
+        "if (event.detail.isError) "
+        "if (event.detail.xhr.status === 409) "
+        "if (event.detail.pathInfo.requestPath"
+        " === '/apps/seer/actions/conditional-answer') "
+        "location.reload()"
+      ==
     :-  [%html ~]
     :~
       ;head
@@ -4065,7 +4079,8 @@
         =hx-select  "#seer-app"
         =hx-swap    "outerHTML show:top"
         ;main#seer-app.app-shell
-          =hx-indicator  "#request-status"
+          =hx-indicator            "#request-status"
+          =hx-on-htmx-before-swap  stale-shell-reload
           ;aside.sidebar
             ;a.brand(href "/apps/seer/review")
               ;span: Seer
